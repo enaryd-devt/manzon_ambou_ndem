@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+ <record id="view_statement_report_wizard_form" model="ir.ui.view"><field name="name">association.statement.report.wizard.form</field><field name="model">association.statement.report.wizard</field><field name="arch" type="xml">
+  <form string="Rapports et relevés"><group><field name="report_type"/><field name="date_from" invisible="report_type == 'committee'"/><field name="date_to" invisible="report_type == 'committee'"/><field name="member_id" invisible="report_type not in ('member_account','discipline_member')" required="report_type == 'discipline_member'"/><field name="member_account_id" invisible="report_type != 'member_account'" required="report_type == 'member_account'"/><field name="fund_id" invisible="report_type != 'fund'" required="report_type == 'fund'"/><field name="committee_id" invisible="report_type != 'committee'" required="report_type == 'committee'"/></group><footer><button name="action_print" type="object" string="Imprimer" class="btn-primary" icon="fa-print"/><button string="Annuler" special="cancel" class="btn-secondary"/></footer></form>
+ </field></record>
+ <record id="action_statement_report_wizard" model="ir.actions.act_window"><field name="name">Rapports et relevés</field><field name="res_model">association.statement.report.wizard</field><field name="view_mode">form</field><field name="target">new</field></record>
+ <menuitem id="menu_statement_reports" name="Rapports et relevés" parent="menu_finance" action="action_statement_report_wizard" sequence="40"/>
+</odoo>

@@ -1,0 +1,597 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<odoo>
+
+    <!-- ========================================================= -->
+    <!-- RECHERCHE                                                 -->
+    <!-- ========================================================= -->
+
+    <record id="view_association_donation_search" model="ir.ui.view">
+
+        <field name="name">association.donation.search</field>
+
+        <field name="model">association.donation</field>
+
+        <field name="arch" type="xml">
+
+            <search string="Rechercher un don">
+
+                <field name="name"/>
+
+                <field name="member_id"/>
+
+                <field name="donor_name"/>
+
+                <field name="donation_date"/>
+
+                <field name="fund_id"/>
+
+                <field name="external_reference"/>
+
+                <separator/>
+
+                <filter
+                    name="filter_financial"
+                    string="Dons financiers"
+                    domain="[('donation_type', '=', 'financial')]"
+                />
+
+                <filter
+                    name="filter_in_kind"
+                    string="Dons en nature"
+                    domain="[('donation_type', '=', 'in_kind')]"
+                />
+
+                <separator/>
+
+                <filter
+                    name="filter_member"
+                    string="Membres"
+                    domain="[('donor_type', '=', 'member')]"
+                />
+
+                <filter
+                    name="filter_external"
+                    string="Donateurs externes"
+                    domain="[('donor_type', '=', 'external')]"
+                />
+
+                <filter
+                    name="filter_anonymous"
+                    string="Anonymes"
+                    domain="[('donor_type', '=', 'anonymous')]"
+                />
+
+                <separator/>
+
+                <filter
+                    name="filter_draft"
+                    string="Brouillons"
+                    domain="[('state', '=', 'draft')]"
+                />
+
+                <filter
+                    name="filter_validated"
+                    string="Validés"
+                    domain="[('state', '=', 'validated')]"
+                />
+
+                <filter
+                    name="filter_cancelled"
+                    string="Annulés"
+                    domain="[('state', '=', 'cancelled')]"
+                />
+
+                <separator/>
+
+                <filter
+                    name="filter_donation_date"
+                    string="Date du don"
+                    date="donation_date"
+                />
+
+                <group expand="0" string="Regrouper par">
+
+                    <filter
+                        name="group_donation_type"
+                        string="Type de don"
+                        context="{'group_by': 'donation_type'}"
+                    />
+
+                    <filter
+                        name="group_donor_type"
+                        string="Type de donateur"
+                        context="{'group_by': 'donor_type'}"
+                    />
+
+                    <filter
+                        name="group_fund"
+                        string="Compte financier"
+                        context="{'group_by': 'fund_id'}"
+                    />
+
+                    <filter
+                        name="group_state"
+                        string="Statut"
+                        context="{'group_by': 'state'}"
+                    />
+
+                    <filter
+                        name="group_company"
+                        string="Filiale"
+                        context="{'group_by': 'company_id'}"
+                    />
+
+                    <filter
+                        name="group_month"
+                        string="Mois"
+                        context="{'group_by': 'donation_date:month'}"
+                    />
+
+                </group>
+
+            </search>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- LISTE                                                     -->
+    <!-- ========================================================= -->
+
+    <record id="view_association_donation_list" model="ir.ui.view">
+
+        <field name="name">association.donation.list</field>
+
+        <field name="model">association.donation</field>
+
+        <field name="arch" type="xml">
+
+            <list
+                string="Dons"
+                decoration-muted="state == 'cancelled'"
+                decoration-success="state == 'validated'">
+
+                <field name="donation_date"/>
+
+                <field name="name"/>
+
+                <field
+                    name="donation_type"
+                    widget="badge"
+                    decoration-info="donation_type == 'financial'"
+                    decoration-warning="donation_type == 'in_kind'"
+                />
+
+                <field
+                    name="donor_type"
+                    widget="badge"
+                />
+
+                <field
+                    name="member_id"
+                    optional="show"
+                />
+
+                <field
+                    name="donor_name"
+                    optional="show"
+                />
+
+                <field
+                    name="amount"
+                    sum="Total des dons financiers"
+                    optional="show"
+                />
+
+                <field
+                    name="estimated_value"
+                    sum="Valeur estimée totale"
+                    optional="hide"
+                />
+
+                <field
+                    name="fund_id"
+                    optional="show"
+                />
+
+                <field
+                    name="payment_method"
+                    optional="hide"
+                />
+
+                <field
+                    name="company_id"
+                    optional="hide"
+                />
+
+                <field
+                    name="state"
+                    widget="badge"
+                    decoration-muted="state == 'draft'"
+                    decoration-success="state == 'validated'"
+                    decoration-danger="state == 'cancelled'"
+                />
+
+            </list>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- FORMULAIRE                                                -->
+    <!-- ========================================================= -->
+
+    <record id="view_association_donation_form" model="ir.ui.view">
+
+        <field name="name">association.donation.form</field>
+
+        <field name="model">association.donation</field>
+
+        <field name="arch" type="xml">
+
+            <form string="Don">
+
+                <!-- ================================================= -->
+                <!-- EN-TÊTE                                           -->
+                <!-- ================================================= -->
+
+                <header>
+
+                    <button
+                        name="action_validate"
+                        string="Valider"
+                        type="object"
+                        class="oe_highlight"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        invisible="state != 'draft'"
+                    />
+
+                    <button
+                        name="action_cancel"
+                        string="Annuler"
+                        type="object"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        invisible="state == 'cancelled'"
+                        confirm="Voulez-vous réellement annuler ce don ?"
+                    />
+
+                    <button
+                        name="action_reset_draft"
+                        string="Remettre en brouillon"
+                        type="object"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        invisible="state != 'cancelled'"
+                    />
+
+                    <field
+                        name="state"
+                        widget="statusbar"
+                        statusbar_visible="draft,validated,cancelled"
+                    />
+
+                </header>
+
+
+                <sheet>
+
+                    <!-- ================================================= -->
+                    <!-- BOUTONS STATISTIQUES                              -->
+                    <!-- ================================================= -->
+
+                    <div class="oe_button_box" name="button_box">
+
+                        <button
+                            name="action_view_fund_transaction"
+                            type="object"
+                            class="oe_stat_button"
+                            icon="fa-exchange"
+                            groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                            invisible="not fund_transaction_id">
+
+                            <div class="o_stat_info">
+
+                                <span class="o_stat_text">
+                                    Mouvement
+                                </span>
+
+                                <span class="o_stat_text">
+                                    financier
+                                </span>
+
+                            </div>
+
+                        </button>
+
+                    </div>
+
+
+                    <!-- ================================================= -->
+                    <!-- TITRE                                             -->
+                    <!-- ================================================= -->
+
+                    <div class="oe_title">
+
+                        <label for="name"/>
+
+                        <h1>
+
+                            <field
+                                name="name"
+                                readonly="1"
+                                placeholder="Nouveau"
+                            />
+
+                        </h1>
+
+                    </div>
+
+
+                    <!-- ================================================= -->
+                    <!-- INFORMATIONS PRINCIPALES                          -->
+                    <!-- ================================================= -->
+
+                    <group>
+
+                        <group string="Informations du don">
+
+                            <field
+                                name="donation_type"
+                                widget="radio"
+                                options="{'horizontal': true}"
+                                readonly="state != 'draft'"
+                            />
+
+                            <field
+                                name="donation_date"
+                                readonly="state != 'draft'"
+                            />
+
+                            <field
+                                name="company_id"
+                                string="Filiale"
+                                readonly="state != 'draft'"
+                            />
+
+                        </group>
+
+
+                        <group string="Identification">
+
+                            <field
+                                name="donor_type"
+                                widget="radio"
+                                options="{'horizontal': true}"
+                                readonly="state != 'draft'"
+                            />
+
+                            <field
+                                name="external_reference"
+                                readonly="state != 'draft'"
+                            />
+
+                        </group>
+
+                    </group>
+
+
+                    <!-- ================================================= -->
+                    <!-- DONATEUR                                          -->
+                    <!-- ================================================= -->
+
+                    <group string="Donateur">
+
+                        <group>
+
+                            <field
+                                name="member_id"
+                                domain="[('company_id', '=', company_id)]"
+                                invisible="donor_type != 'member'"
+                                required="donor_type == 'member'"
+                                readonly="state != 'draft'"
+                                options="{'no_create': true}"
+                            />
+
+                            <field
+                                name="donor_name"
+                                invisible="donor_type != 'external'"
+                                required="donor_type == 'external'"
+                                readonly="state != 'draft'"
+                            />
+
+                        </group>
+
+
+                        <group invisible="donor_type != 'external'">
+
+                            <field
+                                name="donor_phone"
+                                readonly="state != 'draft'"
+                            />
+
+                            <field
+                                name="donor_email"
+                                widget="email"
+                                readonly="state != 'draft'"
+                            />
+
+                        </group>
+
+                    </group>
+
+
+                    <!-- ================================================= -->
+                    <!-- DON FINANCIER                                     -->
+                    <!-- ================================================= -->
+
+                    <group
+                        string="Don financier"
+                        invisible="donation_type != 'financial'">
+
+                        <group>
+
+                            <field
+                                name="amount"
+                                readonly="state != 'draft'"
+                            />
+
+                            <field
+                                name="payment_method"
+                                readonly="state != 'draft'"
+                            />
+
+                        </group>
+
+
+                        <group>
+
+                            <field
+                                name="fund_id"
+                                domain="[
+                                    ('company_id', '=', company_id),
+                                    ('active', '=', True)
+                                ]"
+                                readonly="state != 'draft'"
+                                options="{
+                                    'no_create': true,
+                                    'no_open': true
+                                }"
+                            />
+
+                        </group>
+
+                    </group>
+
+
+                    <!-- ================================================= -->
+                    <!-- DON EN NATURE                                     -->
+                    <!-- ================================================= -->
+
+                    <group
+                        string="Don en nature"
+                        invisible="donation_type != 'in_kind'">
+
+                        <group>
+
+                            <field
+                                name="quantity"
+                                readonly="state != 'draft'"
+                            />
+
+                            <field
+                                name="estimated_value"
+                                readonly="state != 'draft'"
+                            />
+
+                        </group>
+
+
+                        <group>
+
+                            <field
+                                name="item_description"
+                                placeholder="Décrivez précisément le bien reçu..."
+                                readonly="state != 'draft'"
+                            />
+
+                        </group>
+
+                    </group>
+
+
+                    <!-- ================================================= -->
+                    <!-- DESCRIPTION                                       -->
+                    <!-- ================================================= -->
+
+                    <notebook>
+
+                        <page
+                            string="Description"
+                            name="description">
+
+                            <field
+                                name="description"
+                                placeholder="Description ou motif du don..."
+                                readonly="state != 'draft'"
+                            />
+
+                        </page>
+
+
+                        <page
+                            string="Notes internes"
+                            name="notes">
+
+                            <field
+                                name="note"
+                                placeholder="Notes internes..."
+                            />
+
+                        </page>
+
+                    </notebook>
+
+
+                    <!-- ================================================= -->
+                    <!-- CHAMPS TECHNIQUES                                 -->
+                    <!-- ================================================= -->
+
+                    <field
+                        name="fund_transaction_id"
+                        invisible="1"
+                    />
+
+                    <field
+                        name="currency_id"
+                        invisible="1"
+                    />
+
+                </sheet>
+
+
+                <chatter/>
+
+            </form>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- ACTION                                                    -->
+    <!-- ========================================================= -->
+
+    <record id="action_donation" model="ir.actions.act_window">
+
+        <field name="name">Dons</field>
+
+        <field name="res_model">association.donation</field>
+
+        <field name="view_mode">list,form</field>
+
+        <field
+            name="search_view_id"
+            ref="view_association_donation_search"
+        />
+
+        <field name="help" type="html">
+
+            <p class="o_view_nocontent_smiling_face">
+                Enregistrez votre premier don
+            </p>
+
+            <p>
+                Gérez les dons financiers et les dons en nature
+                reçus par la Filiale.
+            </p>
+
+        </field>
+
+    </record>
+
+</odoo>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="member_category_founder" model="association.member.category">
+        <field name="name">Fondateur</field>
+    </record>
+
+    <record id="member_category_active" model="association.member.category">
+        <field name="name">Membre Actif</field>
+    </record>
+
+    <record id="member_category_honorary" model="association.member.category">
+        <field name="name">Membre d'Honneur</field>
+    </record>
+
+    <record id="member_category_benefactor" model="association.member.category">
+        <field name="name">Bienfaiteur</field>
+    </record>
+
+    <record id="member_category_sympathizer" model="association.member.category">
+        <field name="name">Sympathisant</field>
+    </record>
+
+</odoo>

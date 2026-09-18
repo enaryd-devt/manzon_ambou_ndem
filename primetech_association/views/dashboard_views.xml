@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<odoo>
+
+    <!-- ====================================================== -->
+    <!-- ACTION CLIENT TABLEAU DE BORD                          -->
+    <!-- ====================================================== -->
+
+    <record
+        id="action_association_dashboard_client"
+        model="ir.actions.client">
+
+        <field name="name">Tableau de bord</field>
+
+        <field name="tag">primetech_association.dashboard</field>
+
+    </record>
+
+</odoo>

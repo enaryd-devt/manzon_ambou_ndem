@@ -1,0 +1,609 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<odoo>
+
+    <record
+        id="view_subscription_payment_wizard_form"
+        model="ir.ui.view">
+
+        <field name="name">association.subscription.payment.wizard.form</field>
+
+        <field name="model">association.subscription.payment.wizard</field>
+
+        <field name="arch" type="xml">
+
+            <form string="Paiement de cotisation">
+
+                <sheet>
+
+                    <!-- ================================================= -->
+                    <!-- CHAMPS TECHNIQUES                                 -->
+                    <!-- ================================================= -->
+
+                    <field
+                        name="currency_id"
+                        invisible="1"/>
+
+                    <!-- ================================================= -->
+                    <!-- EN-TÊTE                                           -->
+                    <!-- ================================================= -->
+
+                    <div
+                        class="
+                            d-flex
+                            justify-content-between
+                            align-items-start
+                            mb-3
+                        ">
+
+                        <div class="oe_title mb-0">
+
+                            <h1 class="mb-1">
+                                Paiement de cotisation
+                            </h1>
+
+                            <div class="text-muted">
+
+                                <i
+                                    class="fa fa-credit-card me-1"
+                                    title="Origine"/>
+
+                                <field
+                                    name="origin"
+                                    readonly="1"
+                                    nolabel="1"/>
+
+                            </div>
+
+                        </div>
+
+                        <div
+                            class="
+                                rounded
+                                border
+                                px-3
+                                py-2
+                                text-end
+                            "
+                            style="
+                                min-width: 220px;
+                                background:
+                                    rgba(113, 75, 103, 0.04);
+                                border-left:
+                                    3px solid
+                                    var(--o-brand-primary)
+                                    !important;
+                            ">
+
+                            <div
+                                class="
+                                    text-muted
+                                    text-uppercase
+                                    fw-semibold
+                                "
+                                style="
+                                    font-size: 10px;
+                                    letter-spacing: .6px;
+                                ">
+
+                                Cotisation
+
+                            </div>
+
+                            <div class="fw-bold mt-1">
+
+                                <field
+                                    name="subscription_id"
+                                    readonly="1"
+                                    nolabel="1"/>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- ================================================= -->
+                    <!-- MEMBRE ET CYCLE                                   -->
+                    <!-- ================================================= -->
+
+                    <div
+                        class="
+                            rounded
+                            border
+                            px-3
+                            py-3
+                            mb-3
+                        ">
+
+                        <div class="row g-3">
+
+                            <!-- MEMBRE -->
+
+                            <div class="col-lg-4">
+
+                                <div
+                                    class="text-muted text-uppercase"
+                                    style="font-size: 10px;">
+
+                                    Membre
+
+                                </div>
+
+                                <div class="fw-bold mt-1">
+
+                                    <i
+                                        class="fa fa-user me-1"
+                                        title="Membre"/>
+
+                                    <field
+                                        name="member_id"
+                                        nolabel="1"/>
+
+                                </div>
+
+                            </div>
+
+                            <!-- CYCLE -->
+
+                            <div
+                                class="col-lg-4"
+                                style="
+                                    border-left:
+                                        1px solid #dee2e6;
+                                ">
+
+                                <div
+                                    class="text-muted text-uppercase"
+                                    style="font-size: 10px;">
+
+                                    Cycle
+
+                                </div>
+
+                                <div class="fw-bold mt-1">
+
+                                    <i
+                                        class="fa fa-calendar me-1"
+                                        title="Cycle"/>
+
+                                    <field
+                                        name="period_id"
+                                        nolabel="1"/>
+
+                                </div>
+
+                            </div>
+
+                            <!-- RÉUNION -->
+
+                            <div
+                                class="col-lg-4"
+                                invisible="origin != 'meeting'"
+                                style="
+                                    border-left:
+                                        1px solid #dee2e6;
+                                ">
+
+                                <div
+                                    class="text-muted text-uppercase"
+                                    style="font-size: 10px;">
+
+                                    Réunion
+
+                                </div>
+
+                                <div class="fw-bold mt-1">
+
+                                    <i
+                                        class="fa fa-users me-1"
+                                        title="Réunion"/>
+
+                                    <field
+                                        name="meeting_id"
+                                        nolabel="1"/>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- ================================================= -->
+                    <!-- SITUATION DU MEMBRE                               -->
+                    <!-- ================================================= -->
+
+                    <div class="row g-2 mb-3">
+
+                        <!-- MONTANT DÛ -->
+
+                        <div class="col-lg-4 col-md-4">
+
+                            <div
+                                class="
+                                    h-100
+                                    rounded
+                                    border
+                                    px-3
+                                    py-2
+                                ">
+
+                                <div
+                                    class="text-muted text-uppercase"
+                                    style="font-size: 10px;">
+
+                                    Montant dû
+
+                                </div>
+
+                                <div
+                                    class="fw-bold fs-5 mt-1"
+                                    style="white-space: nowrap;">
+
+                                    <field
+                                        name="amount_due"
+                                        widget="monetary"
+                                        options="
+                                            {
+                                                'currency_field':
+                                                'currency_id'
+                                            }
+                                        "
+                                        readonly="1"
+                                        nolabel="1"/>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <!-- DÉJÀ PAYÉ -->
+
+                        <div class="col-lg-4 col-md-4">
+
+                            <div
+                                class="
+                                    h-100
+                                    rounded
+                                    border
+                                    px-3
+                                    py-2
+                                "
+                                style="
+                                    border-left:
+                                        3px solid #198754
+                                        !important;
+                                ">
+
+                                <div
+                                    class="text-muted text-uppercase"
+                                    style="font-size: 10px;">
+
+                                    Déjà payé
+
+                                </div>
+
+                                <div
+                                    class="fw-bold fs-5 mt-1"
+                                    style="white-space: nowrap;">
+
+                                    <field
+                                        name="amount_paid"
+                                        widget="monetary"
+                                        options="
+                                            {
+                                                'currency_field':
+                                                'currency_id'
+                                            }
+                                        "
+                                        readonly="1"
+                                        nolabel="1"/>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <!-- RESTE À PAYER -->
+
+                        <div class="col-lg-4 col-md-4">
+
+                            <div
+                                class="
+                                    h-100
+                                    rounded
+                                    border
+                                    px-3
+                                    py-2
+                                "
+                                style="
+                                    background:
+                                        rgba(
+                                            113,
+                                            75,
+                                            103,
+                                            0.04
+                                        );
+                                    border-left:
+                                        3px solid
+                                        var(--o-brand-primary)
+                                        !important;
+                                ">
+
+                                <div
+                                    class="
+                                        text-muted
+                                        text-uppercase
+                                        fw-semibold
+                                    "
+                                    style="font-size: 10px;">
+
+                                    Reste à payer
+
+                                </div>
+
+                                <div
+                                    class="fw-bold fs-4 mt-1"
+                                    style="
+                                        white-space: nowrap;
+                                        color:
+                                            var(
+                                                --o-brand-primary
+                                            );
+                                    ">
+
+                                    <field
+                                        name="balance"
+                                        widget="monetary"
+                                        options="
+                                            {
+                                                'currency_field':
+                                                'currency_id'
+                                            }
+                                        "
+                                        readonly="1"
+                                        nolabel="1"/>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- ================================================= -->
+                    <!-- ZONE PRINCIPALE D'ENCAISSEMENT                    -->
+                    <!-- ================================================= -->
+
+                    <div
+                        class="
+                            rounded
+                            border
+                            px-4
+                            py-4
+                            mb-3
+                        "
+                        style="
+                            background:
+                                rgba(113, 75, 103, 0.035);
+                            border:
+                                2px solid
+                                var(--o-brand-primary)
+                                !important;
+                        ">
+
+                        <div class="row align-items-center">
+
+                            <!-- INFORMATION -->
+
+                            <div class="col-lg-5">
+
+                                <div
+                                    class="
+                                        fw-semibold
+                                        fs-5
+                                        mb-1
+                                    ">
+
+                                    <i
+                                        class="
+                                            fa
+                                            fa-money
+                                            me-2
+                                        "/>
+
+                                    Montant reçu
+
+                                </div>
+
+                                <div
+                                    class="text-muted"
+                                    style="
+                                        font-size: 12px;
+                                        max-width: 300px;
+                                    ">
+
+                                    Saisissez le montant réellement
+                                    remis par le membre.
+
+                                </div>
+
+                            </div>
+
+                            <!-- MONTANT -->
+
+                            <div class="col-lg-7">
+
+                                <div
+                                    class="
+                                        d-flex
+                                        justify-content-end
+                                        align-items-center
+                                    ">
+
+                                    <div
+                                        style="
+                                            width: 100%;
+                                            max-width: 420px;
+                                        ">
+
+                                        <div
+                                            class="
+                                                text-muted
+                                                text-uppercase
+                                                fw-semibold
+                                                mb-1
+                                            "
+                                            style="
+                                                font-size: 10px;
+                                                letter-spacing: .6px;
+                                            ">
+
+                                            Montant encaissé
+
+                                        </div>
+
+                                        <div
+                                            class="
+                                                rounded
+                                                border
+                                                bg-white
+                                                px-3
+                                                py-2
+                                            "
+                                            style="
+                                                border:
+                                                    2px solid
+                                                    var(
+                                                        --o-brand-primary
+                                                    )
+                                                    !important;
+                                            ">
+
+                                            <field
+                                                name="amount_received"
+                                                widget="monetary"
+                                                options="
+                                                    {
+                                                        'currency_field':
+                                                        'currency_id'
+                                                    }
+                                                "
+                                                nolabel="1"
+                                                class="
+                                                    fw-bold
+                                                    fs-2
+                                                    w-100
+                                                "
+                                                placeholder="0"/>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- ================================================= -->
+                    <!-- MODE DE PAIEMENT                                  -->
+                    <!-- ================================================= -->
+
+                    <div
+                        class="
+                            rounded
+                            border
+                            px-3
+                            py-3
+                        ">
+
+                        <div
+                            class="
+                                fw-semibold
+                                mb-2
+                            "
+                            style="font-size: 13px;">
+
+                            <i
+                                class="
+                                    fa
+                                    fa-credit-card
+                                    me-1
+                                "/>
+
+                            Informations d'encaissement
+
+                        </div>
+
+                        <div class="row g-3">
+
+                            <div class="col-lg-4">
+
+                                <field
+                                    name="payment_method"
+                                    string="Mode de paiement"/>
+
+                            </div>
+
+                            <div class="col-lg-4">
+
+                                <field
+                                    name="receipt_account_id"
+                                    string="Compte de versement"/>
+
+                            </div>
+
+                            <div class="col-lg-4">
+
+                                <field
+                                    name="payment_reference"
+                                    string="Référence"
+                                    placeholder="
+                                        Référence facultative
+                                    "/>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </sheet>
+
+                <!-- ===================================================== -->
+                <!-- ACTIONS                                               -->
+                <!-- ===================================================== -->
+
+                <footer>
+
+                    <button
+                        name="action_validate_payment"
+                        type="object"
+                        string="Valider le paiement"
+                        class="btn-primary"
+                        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        icon="fa-check"/>
+
+                    <button
+                        string="Annuler"
+                        special="cancel"
+                        class="btn-secondary"/>
+
+                </footer>
+
+            </form>
+
+        </field>
+
+    </record>
+
+</odoo>

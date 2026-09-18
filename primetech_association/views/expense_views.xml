@@ -1,0 +1,660 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<odoo>
+
+    <!-- ========================================================= -->
+    <!-- RECHERCHE                                                 -->
+    <!-- ========================================================= -->
+
+    <record id="view_association_expense_search" model="ir.ui.view">
+
+        <field name="name">association.expense.search</field>
+
+        <field name="model">association.expense</field>
+
+        <field name="arch" type="xml">
+
+            <search string="Rechercher une dépense">
+
+                <field name="name"/>
+
+                <field name="subject"/>
+
+                <field name="member_id"/>
+
+                <field name="beneficiary_name"/>
+
+                <field name="fund_id"/>
+
+                <field name="receipt_number"/>
+
+                <field name="external_reference"/>
+
+                <separator/>
+
+                <!-- ================================================= -->
+                <!-- TYPES                                             -->
+                <!-- ================================================= -->
+
+                <filter
+                    name="filter_purchase"
+                    string="Achats"
+                    domain="[('expense_type', '=', 'purchase')]"
+                />
+
+                <filter
+                    name="filter_operation"
+                    string="Fonctionnement"
+                    domain="[('expense_type', '=', 'operation')]"
+                />
+
+                <filter
+                    name="filter_transport"
+                    string="Transport"
+                    domain="[('expense_type', '=', 'transport')]"
+                />
+
+                <filter
+                    name="filter_event"
+                    string="Événements"
+                    domain="[('expense_type', '=', 'event')]"
+                />
+
+                <filter
+                    name="filter_assistance"
+                    string="Assistance"
+                    domain="[('expense_type', '=', 'assistance')]"
+                />
+
+                <filter
+                    name="filter_maintenance"
+                    string="Maintenance"
+                    domain="[('expense_type', '=', 'maintenance')]"
+                />
+
+                <filter
+                    name="filter_rent"
+                    string="Loyer"
+                    domain="[('expense_type', '=', 'rent')]"
+                />
+
+                <filter
+                    name="filter_refund"
+                    string="Remboursements"
+                    domain="[('expense_type', '=', 'refund')]"
+                />
+
+                <separator/>
+
+                <!-- ================================================= -->
+                <!-- STATUTS                                           -->
+                <!-- ================================================= -->
+
+                <filter
+                    name="filter_draft"
+                    string="Brouillons"
+                    domain="[('state', '=', 'draft')]"
+                />
+
+                <filter
+                    name="filter_validated"
+                    string="Validées"
+                    domain="[('state', '=', 'validated')]"
+                />
+
+                <filter
+                    name="filter_cancelled"
+                    string="Annulées"
+                    domain="[('state', '=', 'cancelled')]"
+                />
+
+                <separator/>
+
+                <filter
+                    name="filter_expense_date"
+                    string="Date de la dépense"
+                    date="expense_date"
+                />
+
+                <!-- ================================================= -->
+                <!-- REGROUPEMENT                                      -->
+                <!-- ================================================= -->
+
+                <group expand="0" string="Regrouper par">
+
+                    <filter
+                        name="group_expense_type"
+                        string="Type de dépense"
+                        context="{'group_by': 'expense_type'}"
+                    />
+
+                    <filter
+                        name="group_beneficiary_type"
+                        string="Type de bénéficiaire"
+                        context="{'group_by': 'beneficiary_type'}"
+                    />
+
+                    <filter
+                        name="group_payment_method"
+                        string="Mode de décaissement"
+                        context="{'group_by': 'payment_method'}"
+                    />
+
+                    <filter
+                        name="group_fund"
+                        string="Compte financier"
+                        context="{'group_by': 'fund_id'}"
+                    />
+
+                    <filter
+                        name="group_state"
+                        string="Statut"
+                        context="{'group_by': 'state'}"
+                    />
+
+                    <filter
+                        name="group_company"
+                        string="Filiale"
+                        context="{'group_by': 'company_id'}"
+                    />
+
+                    <filter
+                        name="group_month"
+                        string="Mois"
+                        context="{'group_by': 'expense_date:month'}"
+                    />
+
+                    <filter
+                        name="group_year"
+                        string="Année"
+                        context="{'group_by': 'expense_date:year'}"
+                    />
+
+                </group>
+
+            </search>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- LISTE                                                     -->
+    <!-- ========================================================= -->
+
+    <record id="view_association_expense_list" model="ir.ui.view">
+
+        <field name="name">association.expense.list</field>
+
+        <field name="model">association.expense</field>
+
+        <field name="arch" type="xml">
+
+            <list
+                string="Dépenses"
+                default_order="expense_date desc, id desc"
+                decoration-muted="state == 'cancelled'"
+                decoration-danger="state == 'validated'">
+
+                <field
+                    name="expense_date"
+                    string="Date"
+                />
+
+                <field
+                    name="name"
+                    string="Référence"
+                />
+
+                <field
+                    name="expense_type"
+                    string="Type"
+                    widget="badge"
+                    decoration-info="expense_type == 'purchase'"
+                    decoration-warning="expense_type == 'operation'"
+                    decoration-primary="expense_type == 'event'"
+                    decoration-danger="expense_type == 'assistance'"
+                />
+
+                <field
+                    name="subject"
+                    string="Objet"
+                />
+
+                <field
+                    name="member_id"
+                    string="Membre"
+                    optional="hide"
+                />
+
+                <field
+                    name="beneficiary_name"
+                    string="Bénéficiaire"
+                    optional="show"
+                />
+
+                <field
+                    name="payment_method"
+                    string="Décaissement"
+                    optional="show"
+                />
+
+                <field
+                    name="fund_id"
+                    string="Compte financier"
+                    optional="show"
+                />
+
+                <field
+                    name="receipt_number"
+                    string="N° justificatif"
+                    optional="hide"
+                />
+
+                <field
+                    name="amount"
+                    string="Montant"
+                    sum="Total des dépenses"
+                />
+
+                <field
+                    name="company_id"
+                    string="Filiale"
+                    optional="hide"
+                />
+
+                <field
+                    name="state"
+                    string="Statut"
+                    widget="badge"
+                    decoration-muted="state == 'draft'"
+                    decoration-success="state == 'validated'"
+                    decoration-danger="state == 'cancelled'"
+                />
+
+            </list>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- FORMULAIRE                                                -->
+    <!-- ========================================================= -->
+
+    <record id="view_association_expense_form" model="ir.ui.view">
+
+        <field name="name">association.expense.form</field>
+
+        <field name="model">association.expense</field>
+
+        <field name="arch" type="xml">
+
+            <form string="Dépense">
+
+                <!-- ================================================= -->
+                <!-- EN-TÊTE                                           -->
+                <!-- ================================================= -->
+
+                <header>
+
+                    <button
+                        name="action_validate"
+                        string="Valider"
+                        type="object"
+                        class="oe_highlight"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        invisible="state != 'draft'"
+                    />
+
+                    <button
+                        name="action_cancel"
+                        string="Annuler"
+                        type="object"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        invisible="state == 'cancelled'"
+                        confirm="Voulez-vous réellement annuler cette dépense ?"
+                    />
+
+                    <button
+                        name="action_reset_draft"
+                        string="Remettre en brouillon"
+                        type="object"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        invisible="state != 'cancelled'"
+                    />
+
+                    <field
+                        name="state"
+                        widget="statusbar"
+                        statusbar_visible="draft,validated,cancelled"
+                    />
+
+                </header>
+
+
+                <sheet>
+
+                    <!-- ================================================= -->
+                    <!-- BOUTONS STATISTIQUES                              -->
+                    <!-- ================================================= -->
+
+                    <div
+                        class="oe_button_box"
+                        name="button_box">
+
+                        <button
+                            name="action_view_fund_transaction"
+                            type="object"
+                            class="oe_stat_button"
+                            icon="fa-exchange"
+                            groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                            invisible="not fund_transaction_id">
+
+                            <div class="o_stat_info">
+
+                                <span class="o_stat_text">
+                                    Mouvement
+                                </span>
+
+                                <span class="o_stat_text">
+                                    financier
+                                </span>
+
+                            </div>
+
+                        </button>
+
+                    </div>
+
+
+                    <!-- ================================================= -->
+                    <!-- TITRE                                             -->
+                    <!-- ================================================= -->
+
+                    <div class="oe_title">
+
+                        <label for="name"/>
+
+                        <h1>
+
+                            <field
+                                name="name"
+                                readonly="1"
+                                placeholder="Nouveau"
+                            />
+
+                        </h1>
+
+                    </div>
+
+
+                    <!-- ================================================= -->
+                    <!-- INFORMATIONS PRINCIPALES                          -->
+                    <!-- ================================================= -->
+
+                    <group>
+
+                        <group string="Informations de la dépense">
+
+                            <field
+                                name="expense_date"
+                                readonly="state != 'draft'"
+                            />
+
+                            <field
+                                name="expense_type"
+                                readonly="state != 'draft'"
+                            />
+
+                            <field
+                                name="company_id"
+                                string="Filiale"
+                                readonly="state != 'draft'"
+                            />
+
+                        </group>
+
+
+                        <group string="Objet">
+
+                            <field
+                                name="subject"
+                                readonly="state != 'draft'"
+                                placeholder="Ex. Achat de matériel..."
+                            />
+
+                            <field
+                                name="external_reference"
+                                readonly="state != 'draft'"
+                                placeholder="Référence externe..."
+                            />
+
+                        </group>
+
+                    </group>
+
+
+                    <!-- ================================================= -->
+                    <!-- BÉNÉFICIAIRE                                      -->
+                    <!-- ================================================= -->
+
+                    <group string="Bénéficiaire">
+
+                        <group>
+
+                            <field
+                                name="beneficiary_type"
+                                readonly="state != 'draft'"
+                            />
+
+                            <field
+                                name="member_id"
+                                domain="[('company_id', '=', company_id)]"
+                                invisible="beneficiary_type != 'member'"
+                                required="beneficiary_type == 'member'"
+                                readonly="state != 'draft'"
+                                options="{'no_create': true}"
+                            />
+
+                            <field
+                                name="beneficiary_name"
+                                invisible="beneficiary_type == 'member'"
+                                required="beneficiary_type != 'member'"
+                                readonly="state != 'draft'"
+                                placeholder="Nom du bénéficiaire..."
+                            />
+
+                        </group>
+
+
+                        <group>
+
+                            <field
+                                name="beneficiary_phone"
+                                invisible="beneficiary_type == 'member'"
+                                readonly="state != 'draft'"
+                            />
+
+                        </group>
+
+                    </group>
+
+
+                    <!-- ================================================= -->
+                    <!-- DÉCAISSEMENT                                      -->
+                    <!-- ================================================= -->
+
+                    <group string="Décaissement">
+
+                        <group>
+
+                            <field
+                                name="amount"
+                                readonly="state != 'draft'"
+                            />
+
+                            <field
+                                name="payment_method"
+                                readonly="state != 'draft'"
+                            />
+
+                        </group>
+
+
+                        <group>
+
+                            <field
+                                name="fund_id"
+                                domain="[
+                                    ('company_id', '=', company_id),
+                                    ('active', '=', True)
+                                ]"
+                                readonly="state != 'draft'"
+                                options="{
+                                    'no_create': true,
+                                    'no_open': true
+                                }"
+                            />
+
+                            <field
+                                name="fund_balance"
+                                string="Solde disponible"
+                                readonly="1"
+                            />
+
+                        </group>
+
+                    </group>
+
+
+                    <!-- ================================================= -->
+                    <!-- JUSTIFICATIF                                      -->
+                    <!-- ================================================= -->
+
+                    <group string="Justificatif">
+
+                        <group>
+
+                            <field
+                                name="receipt_number"
+                                readonly="state != 'draft'"
+                                placeholder="N° facture, reçu..."
+                            />
+
+                        </group>
+
+
+                        <group>
+
+                            <field
+                                name="attachment"
+                                filename="attachment_filename"
+                                readonly="state != 'draft'"
+                            />
+
+                            <field
+                                name="attachment_filename"
+                                invisible="1"
+                            />
+
+                        </group>
+
+                    </group>
+
+
+                    <!-- ================================================= -->
+                    <!-- INFORMATIONS COMPLÉMENTAIRES                       -->
+                    <!-- ================================================= -->
+
+                    <notebook>
+
+                        <page
+                            string="Description"
+                            name="description">
+
+                            <field
+                                name="description"
+                                readonly="state != 'draft'"
+                                placeholder="Décrivez précisément cette dépense..."
+                            />
+
+                        </page>
+
+
+                        <page
+                            string="Notes internes"
+                            name="notes">
+
+                            <field
+                                name="note"
+                                placeholder="Notes internes..."
+                            />
+
+                        </page>
+
+                    </notebook>
+
+
+                    <!-- ================================================= -->
+                    <!-- CHAMPS TECHNIQUES                                 -->
+                    <!-- ================================================= -->
+
+                    <field
+                        name="fund_transaction_id"
+                        invisible="1"
+                    />
+
+                    <field
+                        name="currency_id"
+                        invisible="1"
+                    />
+
+                </sheet>
+
+
+                <chatter/>
+
+            </form>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- ACTION                                                    -->
+    <!-- ========================================================= -->
+
+    <record id="action_expense" model="ir.actions.act_window">
+
+        <field name="name">Dépenses</field>
+
+        <field name="res_model">association.expense</field>
+
+        <field name="view_mode">list,form</field>
+
+        <field
+            name="search_view_id"
+            ref="view_association_expense_search"
+        />
+
+        <field name="help" type="html">
+
+            <p class="o_view_nocontent_smiling_face">
+                Enregistrez votre première dépense
+            </p>
+
+            <p>
+                Enregistrez et contrôlez les dépenses de la Filiale.
+                Chaque dépense validée génère automatiquement
+                une sortie sur le compte financier sélectionné.
+            </p>
+
+        </field>
+
+    </record>
+
+</odoo>

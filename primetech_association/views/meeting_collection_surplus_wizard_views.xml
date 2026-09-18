@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+  <record id="view_association_meeting_collection_surplus_wizard_form" model="ir.ui.view">
+    <field name="name">association.meeting.collection.surplus.wizard.form</field>
+    <field name="model">association.meeting.collection.surplus.wizard</field>
+    <field name="arch" type="xml">
+      <form string="Traitement du surplus">
+        <sheet>
+          <div class="alert alert-warning border-0" role="alert"><strong>Le montant reçu dépasse le reste à payer.</strong><div class="small mt-1">Choisissez le traitement du surplus.</div></div>
+          <group>
+            <group string="Encaissement"><field name="collection_id" invisible="1"/><field name="member_id"/><field name="amount_received" widget="monetary" options="{'currency_field': 'currency_id'}"/><field name="amount_to_pay" widget="monetary" options="{'currency_field': 'currency_id'}"/></group>
+            <group string="Surplus"><field name="surplus_amount" widget="monetary" options="{'currency_field': 'currency_id'}"/><field name="surplus_action" widget="radio"/><field name="currency_id" invisible="1"/></group>
+          </group>
+        </sheet>
+        <footer><button name="action_process" type="object" string="Valider l'encaissement" class="btn-primary" groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"/><button string="Annuler" special="cancel" class="btn-secondary"/></footer>
+      </form>
+    </field>
+  </record>
+</odoo>

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+  <t t-name="primetech_association.AssociationDashboard">
+    <div class="o_association_dashboard">
+      <t t-if="state.loading"><div class="o_dashboard_loading"><i class="fa fa-circle-o-notch fa-spin"/><span>Chargement du tableau de bord…</span></div></t>
+      <t t-else="">
+        <header class="dash_head">
+          <div><h1>Bonjour, <t t-esc="state.data.user_name || 'Administrateur'"/> <span>👋</span></h1><p>Tableau de bord de l'association</p></div>
+          <div class="dash_head_actions">
+            <span class="dash_filter"><i class="fa fa-calendar-o"/> <t t-esc="todayLabel()"/></span>
+            <label class="dash_select"><i class="fa fa-filter"/><select t-on-change="onPeriodChange"><option value="all">Toute la période</option><option value="month">Ce mois</option><option value="quarter">3 derniers mois</option><option value="year">Cette année</option></select><i class="fa fa-angle-down"/></label>
+            <div class="dash_org"><span class="dash_logo"><i class="fa fa-users"/></span><span><strong t-esc="state.data.company.name"/><small>Vue générale</small></span></div>
+            <button class="dash_refresh" title="Actualiser" t-on-click="loadDashboard"><i class="fa fa-refresh"/></button>
+          </div>
+        </header>
+
+        <section class="kpi_grid">
+          <t t-foreach="kpis" t-as="kpi" t-key="kpi.label">
+            <article class="kpi_card interactive_card" role="button" tabindex="0" t-att-aria-label="'Ouvrir ' + kpi.label" t-on-click="() => this.openKpi(kpi.action)" t-on-keydown="(ev) => this.onInteractiveKeydown(ev, () => this.openKpi(kpi.action))"><span t-att-class="'kpi_icon ' + kpi.color"><i t-att-class="'fa ' + kpi.icon"/></span><div><small t-esc="kpi.label"/><strong><t t-esc="kpi.value"/><em t-if="kpi.currency" t-esc="state.data.currency.symbol"/></strong><span t-att-class="kpi.negative ? 'trend down' : 'trend'"><i t-att-class="kpi.negative ? 'fa fa-arrow-down' : 'fa fa-arrow-up'"/> <t t-esc="kpi.note"/></span></div><i class="fa fa-angle-right card_chevron"/></article>
+          </t>
+        </section>
+
+        <section class="quick_actions" aria-label="Actions rapides">
+          <div class="quick_actions_intro"><span class="quick_actions_icon"><i class="fa fa-bolt"/></span><div><strong>Actions rapides</strong><small>Accédez aux opérations les plus fréquentes.</small></div></div>
+          <div class="quick_actions_list">
+            <button class="quick_action primary" t-on-click="createMember"><i class="fa fa-user-plus"/><span>Nouveau membre</span></button>
+            <button class="quick_action" t-on-click="openMeetings"><i class="fa fa-calendar-plus-o"/><span>Réunions</span></button>
+            <button class="quick_action" t-on-click="openPayments"><i class="fa fa-money"/><span>Encaissements</span></button>
+            <button class="quick_action" t-on-click="openSubscriptions"><i class="fa fa-refresh"/><span>Cotisations</span></button>
+            <button class="quick_action" t-on-click="openTreasury"><i class="fa fa-bank"/><span>Trésorerie</span></button>
+          </div>
+        </section>
+
+        <section class="dash_grid top_grid">
+          <article class="dash_panel members_panel interactive_panel" role="button" tabindex="0" t-on-click="openMembers" t-on-keydown="(ev) => this.onInteractiveKeydown(ev, () => this.openMembers())"><div class="panel_title"><h2>Statut des membres</h2><span>Données actuelles</span></div>
+            <div class="donut_wrap"><div class="donut members_donut" t-att-style="'background:conic-gradient(var(--blue) 0 ' + memberPercent + '%, var(--green) ' + memberPercent + '% 100%)'"><div><strong t-esc="state.data.members.total || 0"/><small>Total</small></div></div>
+              <ul class="legend"><li><i class="blue"/> Membres actifs <b><t t-esc="memberPercent"/>% (<t t-esc="state.data.members.active || 0"/>)</b></li><li><i class="green"/> Autres statuts <b><t t-esc="100 - memberPercent"/>% (<t t-esc="(state.data.members.total || 0) - (state.data.members.active || 0)"/>)</b></li></ul>
+            </div>
+          </article>
+          <article class="dash_panel chart_panel"><div class="panel_title"><h2>Évolution des cotisations</h2><label class="panel_select"><select t-on-change="onMonthsChange"><option value="3">3 derniers mois</option><option value="6" selected="selected">6 derniers mois</option><option value="12">12 derniers mois</option></select><i class="fa fa-angle-down"/></label></div><div class="chart_key clickable_chart" role="button" tabindex="0" t-on-click="openSubscriptions" t-on-keydown="(ev) => this.onInteractiveKeydown(ev, () => this.openSubscriptions())"><i class="blue"/> Montant collecté <i class="green"/> Nombre de cotisations</div>
+            <div class="bar_chart"><div class="grid_lines"/><t t-foreach="chartBars" t-as="bar" t-key="bar.month"><div class="bar_col" t-att-title="formatAmount(bar.amount) + ' ' + state.data.currency.symbol + ' · ' + bar.count + ' paiement(s)'"><div class="bar" t-att-style="'height:' + bar.height + '%'"/><span t-esc="bar.month"/></div></t></div>
+          </article>
+          <article class="dash_panel"><div class="panel_title"><h2>Prochains événements</h2><button t-on-click="openMeetings">Voir tout</button></div><div class="event_list"><t t-if="state.data.upcoming_meetings.length"><t t-foreach="state.data.upcoming_meetings" t-as="meeting" t-key="meeting.id"><div class="event_row" t-on-click="() => this.openMeeting(meeting.id)"><span class="event_icon"><i class="fa fa-calendar"/></span><div><strong t-esc="meeting.title"/><small><t t-esc="meeting.date"/> <i class="fa fa-circle"/> <t t-esc="meeting.time || 'À confirmer'"/></small></div><em>À venir</em></div></t></t><t t-else=""><div class="empty">Aucun événement programmé</div></t></div></article>
+        </section>
+
+        <section class="dash_grid middle_grid">
+          <article class="dash_panel"><div class="panel_title"><h2>Situation financière</h2><span>Données validées</span></div><div class="finance_values"><div><i class="fa fa-money green_text"/><small>Total encaissé</small><strong><t t-esc="formatAmount(state.data.payments.total)"/> <em t-esc="state.data.currency.symbol"/></strong></div><div><i class="fa fa-line-chart red_text"/><small>Total dépenses</small><strong><t t-esc="formatAmount(state.data.expenses.total)"/> <em t-esc="state.data.currency.symbol"/></strong></div><div><i class="fa fa-balance-scale blue_text"/><small>Solde disponible</small><strong><t t-esc="formatAmount(state.data.treasury.balance)"/> <em t-esc="state.data.currency.symbol"/></strong></div></div><div class="progress_label"><span>Membres actifs</span><b t-esc="memberPercent + '%'"/></div><div class="progress"><i t-att-style="'width:' + memberPercent + '%'"/></div><div class="progress_label"><span>Cotisations en attente</span><b t-esc="state.data.subscriptions.pending || 0"/></div></article>
+          <article class="dash_panel interactive_panel" role="button" tabindex="0" t-on-click="openExpenses" t-on-keydown="(ev) => this.onInteractiveKeydown(ev, () => this.openExpenses())"><div class="panel_title"><h2>Répartition des dépenses</h2><span>Dépenses validées</span></div><div class="donut_wrap"><div class="donut expense_donut" t-att-style="'background:conic-gradient(var(--orange) 0 ' + expensePrimaryPercent + '%, #e6ebf4 ' + expensePrimaryPercent + '% 100%)'"><div><strong t-esc="formatAmount(state.data.expenses.total)"/><small t-esc="state.data.currency.symbol"/></div></div><ul class="legend"><t t-foreach="state.data.expenses.breakdown" t-as="expense" t-key="expense.name"><li><i class="orange"/> <t t-esc="expense.name"/><b><t t-esc="expense.percentage"/>%</b></li></t><li t-if="!state.data.expenses.breakdown.length">Aucune dépense validée</li></ul></div></article>
+          <article class="dash_panel penalty_panel"><div class="panel_title"><h2>Pénalités &amp; discipline</h2><button t-on-click="openPenalties">Voir tout</button></div><div class="penalty_summary"><div><span class="penalty_icon"><i class="fa fa-gavel"/></span><small>Sanctions à traiter</small><strong t-esc="state.data.penalties.pending || 0"/></div><div><span class="penalty_icon money"><i class="fa fa-money"/></span><small>Reste à recouvrer</small><strong><t t-esc="formatAmount(state.data.penalties.amount_remaining)"/> <em t-esc="state.data.currency.symbol"/></strong></div></div><div class="penalty_recent"><t t-if="state.data.penalties.recent.length"><t t-foreach="state.data.penalties.recent.slice(0, 2)" t-as="penalty" t-key="penalty.id"><button t-on-click="() => this.openPenalty(penalty.id)"><span><strong t-esc="penalty.member"/><small><t t-esc="penalty.type"/> · <t t-esc="penalty.date"/></small></span><em t-att-class="'penalty_state ' + penalty.state_code" t-esc="penalty.state"/></button></t></t><t t-else=""><div class="empty">Aucune pénalité enregistrée</div></t></div></article>
+        </section>
+
+        <section class="dash_grid bottom_grid">
+          <article class="dash_panel"><div class="panel_title"><h2>Membres récemment inscrits</h2><button t-on-click="openMembers">Voir tout</button></div><div class="table"><div class="tr th"><span>Nom</span><span>Statut</span><span>Date d'inscription</span></div><t t-foreach="state.data.recent_members" t-as="member" t-key="member.id"><div class="tr clickable_row" role="button" tabindex="0" t-on-click="() => this.openMember(member.id)" t-on-keydown="(ev) => this.onInteractiveKeydown(ev, () => this.openMember(member.id))"><span class="person"><i class="fa fa-user-circle"/> <t t-esc="member.name"/></span><span class="badge" t-esc="member.state"/><span t-esc="member.date"/></div></t><div t-if="!state.data.recent_members.length" class="empty">Aucun membre récent</div></div></article>
+          <article class="dash_panel"><div class="panel_title"><h2>Encaissements récents</h2><button t-on-click="openPayments">Voir tout</button></div><div class="table"><div class="tr th"><span>Membre</span><span>Montant</span><span>Date</span></div><t t-foreach="state.data.recent_payments" t-as="payment" t-key="payment.id"><div class="tr clickable_row" role="button" tabindex="0" t-on-click="() => this.openPayment(payment.id)" t-on-keydown="(ev) => this.onInteractiveKeydown(ev, () => this.openPayment(payment.id))"><span t-esc="payment.member || payment.name"/><span><b t-esc="formatAmount(payment.amount)"/> <small t-esc="state.data.currency.symbol"/></span><span t-esc="payment.date"/></div></t><div t-if="!state.data.recent_payments.length" class="empty">Aucun encaissement récent</div></div></article>
+
+          <article class="dash_panel alerts"><div class="panel_title"><h2>Alertes &amp; notifications</h2></div><div t-on-click="openPenalties" class="clickable" role="button" tabindex="0" t-on-keydown="(ev) => this.onInteractiveKeydown(ev, () => this.openPenalties())"><i class="fa fa-gavel"/><span><strong>Pénalités à traiter</strong><small><t t-esc="state.data.penalties.pending || 0"/> sanctions nécessitent un suivi.</small></span></div><div t-on-click="openMeetings" class="clickable" role="button" tabindex="0" t-on-keydown="(ev) => this.onInteractiveKeydown(ev, () => this.openMeetings())"><i class="fa fa-calendar-times-o orange_text"/><span><strong>Réunions à préparer</strong><small><t t-esc="state.data.meetings.upcoming || 0"/> réunions prochainement.</small></span></div><div t-on-click="openMembers" class="clickable" role="button" tabindex="0" t-on-keydown="(ev) => this.onInteractiveKeydown(ev, () => this.openMembers())"><i class="fa fa-info-circle blue_text"/><span><strong>Registre des membres</strong><small><t t-esc="state.data.members.total || 0"/> fiches membres enregistrées.</small></span></div></article>
+        </section>
+        <footer><span>© 2026 <t t-esc="state.data.company.name"/>. Tous droits réservés.</span><span>Tableau de bord mis à jour aujourd'hui <button t-on-click="loadDashboard"><i class="fa fa-refresh"/></button></span><span>Développé avec <b>♥</b> pour votre impact positif</span></footer>
+      </t>
+    </div>
+  </t>
+</templates>

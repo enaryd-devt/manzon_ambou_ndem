@@ -1,0 +1,404 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<odoo>
+
+    <!-- ========================================================= -->
+    <!-- RECHERCHE                                                 -->
+    <!-- ========================================================= -->
+
+    <record id="view_association_fund_search" model="ir.ui.view">
+
+        <field name="name">association.fund.search</field>
+
+        <field name="model">association.fund</field>
+
+        <field name="arch" type="xml">
+
+            <search string="Rechercher un compte financier">
+
+                <field name="name"/>
+
+                <field name="code"/>
+
+                <field name="institution_name"/>
+
+                <field name="account_number"/>
+
+                <field name="responsible_id"/>
+
+                <field name="company_id"/>
+
+                <separator/>
+
+                <filter
+                    name="filter_bank"
+                    string="Comptes bancaires"
+                    domain="[('fund_type', '=', 'bank')]"/>
+
+                <filter
+                    name="filter_cash"
+                    string="Caisses"
+                    domain="[('fund_type', '=', 'cash')]"/>
+
+                <filter
+                    name="filter_mobile_money"
+                    string="Mobile Money"
+                    domain="[('fund_type', '=', 'mobile_money')]"/>
+
+                <filter
+                    name="filter_active"
+                    string="Actifs"
+                    domain="[('active', '=', True)]"/>
+
+                <filter
+                    name="filter_archived"
+                    string="Archivés"
+                    domain="[('active', '=', False)]"/>
+
+                <group expand="0" string="Regrouper par">
+
+                    <filter
+                        name="group_fund_type"
+                        string="Type de compte"
+                        context="{'group_by': 'fund_type'}"/>
+
+                    <filter
+                        name="group_company"
+                        string="Filiale"
+                        context="{'group_by': 'company_id'}"/>
+
+                    <filter
+                        name="group_responsible"
+                        string="Responsable"
+                        context="{'group_by': 'responsible_id'}"/>
+
+                </group>
+
+            </search>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- LISTE                                                     -->
+    <!-- ========================================================= -->
+
+    <record id="view_association_fund_list" model="ir.ui.view">
+
+        <field name="name">association.fund.list</field>
+
+        <field name="model">association.fund</field>
+
+        <field name="arch" type="xml">
+
+            <list
+                string="Comptes financiers"
+                decoration-muted="not active">
+
+                <field name="sequence" widget="handle"/>
+
+                <field name="code"/>
+
+                <field name="name"/>
+
+                <field
+                    name="fund_type"
+                    widget="badge"
+                    decoration-info="fund_type == 'bank'"
+                    decoration-warning="fund_type == 'cash'"
+                    decoration-success="fund_type == 'mobile_money'"/>
+
+                <field name="institution_name"/>
+
+                <field name="account_number" optional="show"/>
+
+                <field name="responsible_id" optional="show"/>
+
+                <field name="company_id" groups="base.group_multi_company"/>
+
+                <field
+                    name="total_in"
+                    sum="Total des entrées"/>
+
+                <field
+                    name="total_out"
+                    sum="Total des sorties"/>
+
+                <field
+                    name="current_balance"
+                    sum="Solde global"/>
+
+                <field name="currency_id" column_invisible="True"/>
+
+                <field name="active" optional="hide"/>
+
+            </list>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- FORMULAIRE                                                -->
+    <!-- ========================================================= -->
+
+    <record id="view_association_fund_form" model="ir.ui.view">
+
+        <field name="name">association.fund.form</field>
+
+        <field name="model">association.fund</field>
+
+        <field name="arch" type="xml">
+
+            <form string="Compte financier">
+
+                <sheet>
+
+                    <!-- ================================================= -->
+                    <!-- BOUTONS STATISTIQUES                              -->
+                    <!-- ================================================= -->
+
+                    <div class="oe_button_box" name="button_box">
+
+                        <button
+                            class="oe_stat_button"
+                            type="object"
+                            name="action_view_transactions"
+                            icon="fa-exchange">
+
+                            <field
+                                name="transaction_count"
+                                widget="statinfo"
+                                string="Mouvements"/>
+
+                        </button>
+
+                    </div>
+
+
+                    <!-- ================================================= -->
+                    <!-- TITRE                                             -->
+                    <!-- ================================================= -->
+
+                    <widget
+                        name="web_ribbon"
+                        title="Archivé"
+                        bg_color="text-bg-danger"
+                        invisible="active"/>
+
+                    <div class="oe_title">
+
+                        <label for="name"/>
+
+                        <h1>
+
+                            <field
+                                name="name"
+                                placeholder="Ex. Compte bancaire principal"/>
+
+                        </h1>
+
+                        <div class="d-flex align-items-center gap-2">
+
+                            <span
+                                class="badge rounded-pill text-bg-light border"
+                                style="white-space: normal;">
+
+                                <field name="code" readonly="1"/>
+
+                            </span>
+
+                            <field
+                                name="fund_type"
+                                widget="badge"
+                                decoration-info="fund_type == 'bank'"
+                                decoration-warning="fund_type == 'cash'"
+                                decoration-success="fund_type == 'mobile_money'"/>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- ================================================= -->
+                    <!-- INFORMATIONS                                      -->
+                    <!-- ================================================= -->
+
+                    <group>
+
+                        <group string="Compte">
+
+                            <field name="fund_type"/>
+
+                            <field name="institution_name"/>
+
+                            <field
+                                name="account_number"
+                                invisible="fund_type == 'cash'"/>
+
+                            <field
+                                name="account_holder"
+                                invisible="fund_type == 'cash'"/>
+
+                        </group>
+
+                        <group string="Organisation">
+
+                            <field name="currency_id" readonly="1"/>
+
+                            <field
+                                name="responsible_id"
+                                domain="[('active', '=', True)]"
+                                options="{'no_create_edit': True}"/>
+
+                            <field name="active"/>
+
+                        </group>
+
+                    </group>
+
+
+                    <!-- ================================================= -->
+                    <!-- SITUATION FINANCIÈRE                              -->
+                    <!-- ================================================= -->
+
+                    <group string="Situation financière">
+
+                        <group>
+
+                            <field name="initial_balance"/>
+
+                            <field
+                                name="total_in"
+                                readonly="1"/>
+
+                        </group>
+
+                        <group>
+
+                            <field
+                                name="total_out"
+                                readonly="1"/>
+
+                            <field
+                                name="current_balance"
+                                readonly="1"
+                                class="fw-bold"/>
+
+                        </group>
+
+                    </group>
+
+
+                    <!-- ================================================= -->
+                    <!-- ONGLETS                                           -->
+                    <!-- ================================================= -->
+
+                    <notebook>
+
+                        <page string="Mouvements" name="transactions">
+
+                            <field
+                                name="transaction_ids"
+                                readonly="1">
+
+                                <list
+                                    decoration-success="transaction_type == 'in' and state == 'validated'"
+                                    decoration-danger="transaction_type == 'out' and state == 'validated'"
+                                    decoration-muted="state == 'cancelled'">
+
+                                    <field name="transaction_date"/>
+
+                                    <field name="name"/>
+
+                                    <field name="description"/>
+
+                                    <field
+                                        name="transaction_type"
+                                        widget="badge"
+                                        decoration-success="transaction_type == 'in'"
+                                        decoration-danger="transaction_type == 'out'"/>
+
+                                    <field name="amount"/>
+
+                                    <field
+                                        name="state"
+                                        widget="badge"
+                                        decoration-muted="state == 'draft'"
+                                        decoration-success="state == 'validated'"
+                                        decoration-danger="state == 'cancelled'"/>
+
+                                </list>
+
+                            </field>
+
+                        </page>
+
+                        <page string="Description" name="description">
+
+                            <field
+                                name="description"
+                                placeholder="Description du compte financier..."/>
+
+                        </page>
+
+                        <page string="Notes internes" name="notes">
+
+                            <field
+                                name="note"
+                                placeholder="Notes internes..."/>
+
+                        </page>
+
+                    </notebook>
+
+                </sheet>
+
+                <chatter/>
+
+            </form>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- ACTION                                                    -->
+    <!-- ========================================================= -->
+
+    <record id="action_association_fund" model="ir.actions.act_window">
+
+        <field name="name">Comptes financiers</field>
+
+        <field name="res_model">association.fund</field>
+
+        <field name="view_mode">list,form</field>
+
+        <field
+            name="search_view_id"
+            ref="view_association_fund_search"/>
+
+        <field
+            name="context"
+            eval="{'search_default_filter_active': 1}"/>
+
+        <field name="help" type="html">
+
+            <p class="o_view_nocontent_smiling_face">
+                Créez votre premier compte financier
+            </p>
+
+            <p>
+                Gérez les comptes bancaires, les caisses et les comptes
+                Mobile Money utilisés pour conserver les fonds de l'association.
+            </p>
+
+        </field>
+
+    </record>
+
+</odoo>

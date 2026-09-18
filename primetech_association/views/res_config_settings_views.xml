@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <record id="view_association_settings_form" model="ir.ui.view">
+        <field name="name">association.settings.form</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app string="Association" name="primetech_association">
+                    <block title="Identification" name="association_identity">
+                        <setting string="Nom de l'association"
+                                 help="Nom affiché dans les documents et les espaces de gestion.">
+                            <field name="association_name" placeholder="Nom de l'association"/>
+                        </setting>
+                        <setting string="Numérotation automatique des membres">
+                            <field name="automatic_member_number"/>
+                            <div class="content-group" invisible="not automatic_member_number">
+                                <label for="membership_prefix"/>
+                                <field name="membership_prefix"/>
+                            </div>
+                        </setting>
+                        <setting string="Photo obligatoire pour les membres">
+                            <field name="require_member_photo"/>
+                        </setting>
+                    </block>
+                    <block title="Cotisations et cartes" name="association_finance">
+                        <setting string="Montant de cotisation par défaut">
+                            <field name="subscription_default_amount"/>
+                        </setting>
+                        <setting string="Autoriser les paiements partiels">
+                            <field name="allow_partial_payment"/>
+                        </setting>
+                        <setting string="Durée de validité des cartes"
+                                 help="Durée exprimée en mois.">
+                            <field name="membership_card_validity"/>
+                        </setting>
+                    </block>
+                    <block title="Réunions et règlement des cycles" name="association_settlement">
+                        <setting string="Compte de règlement par défaut"
+                                 help="Compte proposé pour recevoir le reliquat à la finalisation d'un cycle.">
+                            <field name="settlement_fund_id" domain="[('active', '=', True)]"/>
+                        </setting>
+                        <setting string="Traitement du reliquat">
+                            <field name="settlement_policy"/>
+                        </setting>
+                        <setting string="Règlement obligatoire avant clôture de réunion">
+                            <field name="require_session_settlement"/>
+                        </setting>
+                        <setting string="Tolérance de règlement"
+                                 help="Écart maximal accepté pour considérer une caisse comme soldée.">
+                            <field name="settlement_tolerance"/>
+                        </setting>
+                    </block>
+                    <block title="Comptes membres et excédents" name="association_member_accounts">
+                        <setting string="Paiement depuis le compte membre">
+                            <field name="allow_member_account_payment"/>
+                        </setting>
+                        <setting string="Moment du débit du compte membre"
+                                 invisible="not allow_member_account_payment">
+                            <field name="member_account_debit_timing"/>
+                        </setting>
+                        <setting string="Traitement par défaut des surplus">
+                            <field name="surplus_policy"/>
+                        </setting>
+                    </block>
+                    <block title="Documents et références" name="association_documents">
+                        <setting string="Préfixe des références de paiement">
+                            <field name="payment_reference_prefix"/>
+                        </setting>
+                        <setting string="Pied de page des rapports">
+                            <field name="report_footer" placeholder="Mention à afficher sur les rapports PDF..."/>
+                        </setting>
+                    </block>
+                    <block title="Modes de paiement" name="association_payment_methods">
+                        <setting string="Modes proposés dans les encaissements"
+                                 help="Activez uniquement les moyens de paiement acceptés par l'association.">
+                            <div class="content-group">
+                                <field name="payment_method_cash"/><label for="payment_method_cash" class="me-3"/>
+                                <field name="payment_method_bank"/><label for="payment_method_bank" class="me-3"/>
+                                <field name="payment_method_cheque"/><label for="payment_method_cheque" class="me-3"/>
+                                <field name="payment_method_mobile_money"/><label for="payment_method_mobile_money" class="me-3"/>
+                                <field name="payment_method_other"/><label for="payment_method_other"/>
+                            </div>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+
+        </field>
+    </record>
+
+    <record id="action_association_settings"
+            model="ir.actions.act_window">
+
+        <field name="name">Paramètres</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">inline</field>
+
+    </record>
+
+</odoo>

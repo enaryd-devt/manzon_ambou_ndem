@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>PrimeTech Association Management</title>
+    <style>
+        body {
+            margin: 0;
+            color: #172033;
+            background: #ffffff;
+            font-family: Arial, Helvetica, sans-serif;
+            line-height: 1.6;
+        }
+        .module-page {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+        .hero {
+            padding: 32px 0 26px;
+            border-bottom: 1px solid #dbe3ef;
+        }
+        .hero img {
+            width: 100%;
+            max-height: 260px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-bottom: 24px;
+        }
+        h1 {
+            margin: 0 0 12px;
+            color: #0f3557;
+            font-size: 34px;
+            line-height: 1.2;
+        }
+        h2 {
+            margin: 34px 0 14px;
+            color: #0f3557;
+            font-size: 24px;
+        }
+        h3 {
+            margin: 22px 0 8px;
+            color: #1f4e78;
+            font-size: 18px;
+        }
+        p {
+            margin: 0 0 12px;
+        }
+        .lead {
+            max-width: 860px;
+            color: #44546a;
+            font-size: 17px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 16px;
+            margin-top: 18px;
+        }
+        .card {
+            border: 1px solid #dbe3ef;
+            border-radius: 8px;
+            padding: 18px;
+            background: #f8fafc;
+        }
+        .card strong {
+            display: block;
+            margin-bottom: 6px;
+            color: #0f3557;
+        }
+        ul, ol {
+            margin: 10px 0 0 22px;
+            padding: 0;
+        }
+        li {
+            margin-bottom: 7px;
+        }
+        .roles {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 14px;
+            font-size: 14px;
+        }
+        .roles th,
+        .roles td {
+            border: 1px solid #dbe3ef;
+            padding: 10px 12px;
+            text-align: left;
+            vertical-align: top;
+        }
+        .roles th {
+            color: #0f3557;
+            background: #eef5fb;
+        }
+        .note {
+            margin-top: 18px;
+            padding: 14px 16px;
+            border-left: 4px solid #1f4e78;
+            background: #f1f7fb;
+            color: #26384d;
+        }
+        @media (max-width: 820px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            h1 {
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="module-page">
+        <section class="hero">
+            <img src="banner.png" alt="PrimeTech Association Management"/>
+            <h1>PrimeTech Association Management</h1>
+            <p class="lead">
+                Une application Odoo complète pour administrer une association :
+                membres, bureaux exécutifs, cotisations, encaissements, réunions,
+                présences, sanctions, procès-verbaux, comptes membres et trésorerie.
+            </p>
+        </section>
+
+        <section>
+            <h2>Ce que le module apporte</h2>
+            <div class="grid">
+                <div class="card">
+                    <strong>Gestion des adhérents</strong>
+                    Fiches membres, catégories, fonctions, compétences, statuts,
+                    photos, coordonnées et cartes de membre.
+                </div>
+                <div class="card">
+                    <strong>Cotisations et paiements</strong>
+                    Cycles de cotisation, générations de lignes, encaissements,
+                    paiements partiels, surplus et comptes membres.
+                </div>
+                <div class="card">
+                    <strong>Réunions structurées</strong>
+                    Convocations, liste d'appel, quorum, cotisations en séance,
+                    résolutions, incidents et procès-verbaux.
+                </div>
+                <div class="card">
+                    <strong>Discipline et sanctions</strong>
+                    Incidents, sanctions financières, suspensions, actions
+                    correctives, validation et levée des sanctions.
+                </div>
+                <div class="card">
+                    <strong>Trésorerie</strong>
+                    Comptes financiers, mouvements, dons, recettes, dépenses et
+                    historique complet des opérations.
+                </div>
+                <div class="card">
+                    <strong>Tableau de bord et rapports</strong>
+                    Indicateurs clés, cartes de membre, relevés, rapports de
+                    cotisation et procès-verbaux imprimables.
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Comment utiliser le module</h2>
+            <ol>
+                <li>Ouvrir <strong>Associations &gt; Configuration</strong> et renseigner les paramètres généraux : nom, numérotation, règles de cotisation, surplus, comptes de règlement et rapports.</li>
+                <li>Attribuer les groupes d'accès aux utilisateurs selon leur responsabilité réelle dans l'association.</li>
+                <li>Créer les membres depuis <strong>Adhérents &gt; Membres</strong>, puis compléter leurs fonctions, catégories, coordonnées et photos.</li>
+                <li>Créer le bureau exécutif depuis <strong>Vie associative &gt; Bureau exécutif</strong>.</li>
+                <li>Créer une cotisation, générer les membres concernés, confirmer puis démarrer le cycle.</li>
+                <li>Encaisser les paiements depuis les cotisations, les réunions, les comptes membres ou le menu Encaissements.</li>
+                <li>Créer une réunion, préparer la convocation, générer la liste d'appel et suivre les présences.</li>
+                <li>Traiter en réunion les cotisations, les résolutions, les incidents disciplinaires et les sanctions.</li>
+                <li>Préparer, approuver puis imprimer le procès-verbal lorsque les présences et décisions sont finalisées.</li>
+                <li>Consulter les rapports et relevés pour suivre les membres, la discipline, les finances et les cotisations.</li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>Groupes d'accès</h2>
+            <table class="roles">
+                <thead>
+                    <tr>
+                        <th>Groupe</th>
+                        <th>Utilisation recommandée</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Administrateur Association</td>
+                        <td>Configuration, droits, paramètres, supervision complète et accès total au module.</td>
+                    </tr>
+                    <tr>
+                        <td>Responsable Association</td>
+                        <td>Gestion opérationnelle complète des membres, réunions, finances et documents.</td>
+                    </tr>
+                    <tr>
+                        <td>Utilisateur Association</td>
+                        <td>Consultation des informations autorisées sans accès aux actions sensibles.</td>
+                    </tr>
+                    <tr>
+                        <td>Président de réunion</td>
+                        <td>Convocation, ouverture et clôture de séance, résolutions, sanctions et approbation du procès-verbal.</td>
+                    </tr>
+                    <tr>
+                        <td>Secrétaire de réunion</td>
+                        <td>Ordre du jour, liste d'appel, résolutions et préparation du procès-verbal.</td>
+                    </tr>
+                    <tr>
+                        <td>Trésorier de réunion</td>
+                        <td>Cotisations, encaissements, paiements, comptes membres et opérations liées à la trésorerie de séance.</td>
+                    </tr>
+                    <tr>
+                        <td>Censeur de réunion</td>
+                        <td>Contrôle des présences, incidents et sanctions disciplinaires.</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="note">
+                Les menus, vues et boutons sont filtrés selon les groupes d'accès.
+                Un utilisateur ne voit que les fonctionnalités correspondant à son rôle.
+            </div>
+        </section>
+
+        <section>
+            <h2>Bonnes pratiques</h2>
+            <ul>
+                <li>Créer les comptes de trésorerie avant les premiers encaissements.</li>
+                <li>Définir les rôles utilisateurs avant la mise en production.</li>
+                <li>Clôturer les cycles de cotisation dès que les décisions de répartition sont prises.</li>
+                <li>Valider ou annuler les incidents avant de préparer le procès-verbal.</li>
+                <li>Utiliser les rapports pour contrôler régulièrement les soldes, présences, sanctions et cotisations.</li>
+            </ul>
+        </section>
+    </main>
+</body>
+</html>

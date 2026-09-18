@@ -1,0 +1,319 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<odoo>
+
+    <!-- ========================================================= -->
+    <!-- RECHERCHE                                                 -->
+    <!-- ========================================================= -->
+
+    <record id="view_association_fund_transaction_search" model="ir.ui.view">
+
+        <field name="name">association.fund.transaction.search</field>
+
+        <field name="model">association.fund.transaction</field>
+
+        <field name="arch" type="xml">
+
+            <search string="Rechercher un mouvement financier">
+
+                <field name="name"/>
+
+                <field name="description"/>
+
+                <field name="fund_id"/>
+
+                <field name="origin_reference"/>
+
+                <field name="company_id"/>
+
+                <separator/>
+
+                <filter
+                    name="filter_in"
+                    string="Entrées"
+                    domain="[('transaction_type', '=', 'in')]"/>
+
+                <filter
+                    name="filter_out"
+                    string="Sorties"
+                    domain="[('transaction_type', '=', 'out')]"/>
+
+                <filter
+                    name="filter_draft"
+                    string="Brouillons"
+                    domain="[('state', '=', 'draft')]"/>
+
+                <filter
+                    name="filter_validated"
+                    string="Validés"
+                    domain="[('state', '=', 'validated')]"/>
+
+                <filter
+                    name="filter_cancelled"
+                    string="Annulés"
+                    domain="[('state', '=', 'cancelled')]"/>
+
+                <separator/>
+
+                <filter
+                    name="filter_transaction_date"
+                    string="Date"
+                    date="transaction_date"/>
+
+                <group expand="0" string="Regrouper par">
+
+                    <filter
+                        name="group_fund"
+                        string="Compte financier"
+                        context="{'group_by': 'fund_id'}"/>
+
+                    <filter
+                        name="group_type"
+                        string="Type"
+                        context="{'group_by': 'transaction_type'}"/>
+
+                    <filter
+                        name="group_state"
+                        string="Statut"
+                        context="{'group_by': 'state'}"/>
+
+                    <filter
+                        name="group_company"
+                        string="Filiale"
+                        context="{'group_by': 'company_id'}"/>
+
+                    <filter
+                        name="group_month"
+                        string="Mois"
+                        context="{'group_by': 'transaction_date:month'}"/>
+
+                </group>
+
+            </search>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- LISTE                                                     -->
+    <!-- ========================================================= -->
+
+    <record id="view_association_fund_transaction_list" model="ir.ui.view">
+
+        <field name="name">association.fund.transaction.list</field>
+
+        <field name="model">association.fund.transaction</field>
+
+        <field name="arch" type="xml">
+
+            <list
+                string="Mouvements financiers"
+                decoration-success="transaction_type == 'in' and state == 'validated'"
+                decoration-danger="transaction_type == 'out' and state == 'validated'"
+                decoration-muted="state == 'cancelled'">
+
+                <field name="transaction_date"/>
+
+                <field name="name"/>
+
+                <field name="fund_id"/>
+
+                <field name="description"/>
+
+                <field
+                    name="transaction_type"
+                    widget="badge"
+                    decoration-success="transaction_type == 'in'"
+                    decoration-danger="transaction_type == 'out'"/>
+
+                <field
+                    name="amount"
+                    sum="Total"/>
+
+                <field name="origin_reference" optional="show"/>
+
+                <field name="company_id" groups="base.group_multi_company"/>
+
+                <field
+                    name="state"
+                    widget="badge"
+                    decoration-muted="state == 'draft'"
+                    decoration-success="state == 'validated'"
+                    decoration-danger="state == 'cancelled'"/>
+
+                <field name="currency_id" column_invisible="True"/>
+
+            </list>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- FORMULAIRE                                                -->
+    <!-- ========================================================= -->
+
+    <record id="view_association_fund_transaction_form" model="ir.ui.view">
+
+        <field name="name">association.fund.transaction.form</field>
+
+        <field name="model">association.fund.transaction</field>
+
+        <field name="arch" type="xml">
+
+            <form string="Mouvement financier">
+
+                <header>
+
+                    <button
+                        name="action_validate"
+                        type="object"
+                        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Valider"
+                        class="btn-primary"
+                        invisible="state != 'draft'"/>
+
+                    <button
+                        name="action_cancel"
+                        type="object"
+                        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Annuler"
+                        invisible="state == 'cancelled'"/>
+
+                    <button
+                        name="action_reset_draft"
+                        type="object"
+                        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Remettre en brouillon"
+                        invisible="state != 'cancelled'"/>
+
+                    <field
+                        name="state"
+                        widget="statusbar"
+                        statusbar_visible="draft,validated,cancelled"/>
+
+                </header>
+
+                <sheet>
+
+                    <div class="oe_title">
+
+                        <label for="description"/>
+
+                        <h1>
+
+                            <field
+                                name="description"
+                                placeholder="Libellé du mouvement..."/>
+
+                        </h1>
+
+                        <div>
+
+                            <span
+                                class="badge rounded-pill text-bg-light border"
+                                style="white-space: normal;">
+
+                                <field name="name" readonly="1"/>
+
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                    <group>
+
+                        <group string="Mouvement">
+
+                            <field
+                                name="company_id"
+                                readonly="state != 'draft'"/>
+
+                            <field
+                                name="fund_id"
+                                readonly="state != 'draft'"/>
+
+                            <field
+                                name="transaction_date"
+                                readonly="state != 'draft'"/>
+
+                        </group>
+
+                        <group string="Montant">
+
+                            <field
+                                name="transaction_type"
+                                widget="radio"
+                                readonly="state != 'draft'"/>
+
+                            <field
+                                name="amount"
+                                readonly="state != 'draft'"/>
+
+                            <field name="currency_id" readonly="1"/>
+
+                        </group>
+
+                    </group>
+
+                    <group
+                        string="Document d'origine"
+                        invisible="not origin_reference">
+
+                        <field name="origin_reference"/>
+
+                        <field name="origin_model" invisible="1"/>
+
+                        <field name="origin_res_id" invisible="1"/>
+
+                    </group>
+
+                    <notebook>
+
+                        <page string="Notes internes">
+
+                            <field
+                                name="note"
+                                readonly="state == 'validated'"
+                                placeholder="Notes relatives au mouvement..."/>
+
+                        </page>
+
+                    </notebook>
+
+                </sheet>
+
+                <chatter/>
+
+            </form>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- ACTION                                                    -->
+    <!-- ========================================================= -->
+
+    <record
+        id="action_association_fund_transaction"
+        model="ir.actions.act_window">
+
+        <field name="name">Mouvements financiers</field>
+
+        <field name="res_model">association.fund.transaction</field>
+
+        <field name="view_mode">list,form</field>
+
+        <field
+            name="search_view_id"
+            ref="view_association_fund_transaction_search"/>
+
+    </record>
+
+</odoo>

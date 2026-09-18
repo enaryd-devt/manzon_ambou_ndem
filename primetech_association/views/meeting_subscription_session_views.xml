@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_association_meeting_subscription_session_tree" model="ir.ui.view">
+        <field name="name">association.meeting.subscription.session.list</field>
+        <field name="model">association.meeting.subscription.session</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="meeting_id"/>
+                <field name="subscription_id"/>
+                <field name="period_id"/>
+                <field name="collected_amount"/>
+                <field name="pending_count"/>
+                <field name="paid_count"/>
+                <field name="state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_association_meeting_subscription_session_form" model="ir.ui.view">
+        <field name="name">association.meeting.subscription.session.form</field>
+        <field name="model">association.meeting.subscription.session</field>
+        <field name="arch" type="xml">
+            <form string="Session de cotisation">
+                <header>
+                    <button name="action_start_collection" type="object" string="Démarrer l'encaissement" class="btn-primary" invisible="state != 'draft'" groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"/>
+                    <button name="action_start_next_cycle" type="object" string="Démarrer le cycle suivant" class="btn-secondary" invisible="state != 'draft' or period_id" confirm="Le nouveau cycle sera démarré pour cette cotisation dans cette nouvelle réunion." groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"/>
+                    <button name="action_generate_members" type="object" string="Générer les membres" invisible="state not in ('draft', 'collecting')" groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"/>
+                    <button name="action_collect_all" type="object" string="Encaisser les montants saisis" class="btn-primary" invisible="state != 'collecting'" groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"/>
+                    <button name="action_open_settlement" type="object" string="Décider et clôturer" class="btn-primary" invisible="state not in ('collecting', 'decision')" groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"/>
+                    <button name="action_print_report" type="object" string="Imprimer le rapport PDF" icon="fa-print" invisible="state != 'closed'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,collecting,decision,closed"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1>Session de cotisation en réunion</h1></div>
+                    <group>
+                        <group>
+                            <field name="meeting_id" readonly="state != 'draft'"/>
+                            <field name="subscription_id" readonly="state != 'draft'"/>
+                            <field name="period_id" readonly="state != 'draft'"/>
+                        </group>
+                        <group string="Situation">
+                            <field name="collected_amount" readonly="1"/>
+                            <field name="expected_amount" readonly="1"/>
+                            <field name="pending_count" readonly="1"/>
+                            <field name="paid_count" readonly="1"/>
+                            <field name="closed_by_id" invisible="state != 'closed'"/>
+                            <field name="closed_at" invisible="state != 'closed'"/>
+                            <field name="payment_count" invisible="state != 'closed'"/>
+                            <field name="payment_total" invisible="state != 'closed'"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Encaissements">
+                            <field name="collection_ids" readonly="state in ('closed', 'cancelled')">
+                                <list editable="bottom" create="0" delete="0">
+                                    <field name="member_id"/>
+                                    <field name="amount_due"/>
+                                    <field name="initial_due_amount" optional="hide"/>
+                                    <field name="balance"/>
+                                    <field name="frozen_amount_paid" invisible="state != 'closed'"/>
+                                    <field name="frozen_balance" invisible="state != 'closed'"/>
+                                    <field name="frozen_payment_state" widget="badge" invisible="state != 'closed'"/>
+                                    <field name="amount"/>
+                                    <field name="payment_method"/>
+                                    <field name="state" widget="badge"/>
+                                    <button name="action_collect" type="object" string="Encaisser" icon="fa-check" invisible="state != 'pending'" groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"/>
+                                    <button name="action_pay_from_member_account" type="object" string="Compte membre" icon="fa-credit-card" invisible="state != 'pending'" groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Encaissements validés" name="validated_payments" invisible="state != 'closed'">
+                            <div class="alert alert-success" role="alert">
+                                Les encaissements validés sont chargés automatiquement à la clôture. Utilisez le bouton « Imprimer le rapport » pour les exporter au format PDF.
+                            </div>
+                            <group>
+                                <field name="payment_count" readonly="1"/>
+                                <field name="payment_total" readonly="1"/>
+                            </group>
+                            <field name="payment_ids" readonly="1">
+                                <list create="0" delete="0">
+                                    <field name="name" string="N° paiement"/>
+                                    <field name="payment_date"/>
+                                    <field name="member_id"/>
+                                    <field name="amount"/>
+                                    <field name="payment_method"/>
+                                    <field name="payment_reference" optional="show"/>
+                                    <field name="state" widget="badge"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Décision" invisible="state not in ('decision', 'closed')">
+                            <field name="allocation_ids" readonly="1">
+                                <list create="0" delete="0">
+                                    <field name="beneficiary_id"/>
+                                    <field name="amount"/>
+                                    <field name="allocation_method"/>
+                                    <field name="state" widget="badge"/>
+                                </list>
+                            </field>
+                            <field name="closure_note" placeholder="Décision, bénéficiaires et observations de clôture..." readonly="state == 'closed'"/>
+                            <p class="text-muted">La clôture ouvre la décision d'attribution ou de versement du reliquat. La session est ensuite verrouillée.</p>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_association_meeting_form_subscription_sessions" model="ir.ui.view">
+        <field name="name">association.meeting.form.subscription.sessions</field>
+        <field name="model">association.meeting</field>
+        <field name="inherit_id" ref="primetech_association.view_association_meeting_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Sessions de cotisation" name="subscription_sessions" groups="base.group_no_one">
+                    <div class="alert alert-info" role="alert">
+                        Une session correspond à une cotisation et à un cycle. Le même cycle ne peut être ajouté qu'une seule fois dans cette réunion.
+                    </div>
+                    <field name="subscription_session_ids" readonly="state == 'closed'">
+                        <list editable="bottom">
+                            <field name="sequence" widget="handle"/>
+                            <field name="subscription_id"/>
+                            <field name="period_id"/>
+                            <field name="collected_amount" readonly="1"/>
+                            <field name="pending_count" readonly="1"/>
+                            <field name="paid_count" readonly="1"/>
+                            <field name="state" widget="badge"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

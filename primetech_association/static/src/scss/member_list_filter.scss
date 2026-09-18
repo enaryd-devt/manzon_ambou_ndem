@@ -1,0 +1,41 @@
+.pt-member-filter-scope {
+    .o_field_x2many {
+        margin-top: 0;
+    }
+}
+
+.pt-member-list-searchbar {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    max-width: 430px;
+    min-height: 34px;
+    margin: 4px 0 6px;
+    padding: 5px 10px;
+    gap: 8px;
+    border: 1px solid #d8dee6;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.pt-member-filter-scope.border .pt-member-list-searchbar {
+    margin-right: 8px;
+    margin-left: 8px;
+}
+
+.pt-member-list-searchbar .fa {
+    flex: 0 0 auto;
+    color: #64748b;
+}
+
+.pt-member-list-search {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+}
+
+.pt-member-filter-hidden {
+    display: none !important;
+}

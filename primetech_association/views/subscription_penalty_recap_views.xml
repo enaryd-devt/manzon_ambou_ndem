@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <record id="view_subscription_penalty_recap_search" model="ir.ui.view">
+        <field name="name">association.subscription.penalty.recap.search</field>
+        <field name="model">association.subscription.penalty.recap</field>
+        <field name="arch" type="xml">
+            <search string="Pénalités de cotisation">
+                <field name="member_id"/>
+                <field name="member_code"/>
+                <field name="subscription_id"/>
+                <field name="subscription_period_id"/>
+
+                <filter
+                    name="filter_not_paid"
+                    string="Non payé"
+                    domain="[('payment_state', '=', 'not_paid')]"/>
+
+                <filter
+                    name="filter_partial"
+                    string="Partiel"
+                    domain="[('payment_state', '=', 'partial')]"/>
+
+                <filter
+                    name="filter_paid"
+                    string="Payé"
+                    domain="[('payment_state', '=', 'paid')]"/>
+
+                <separator/>
+
+                <filter
+                    name="filter_running"
+                    string="Cycles en cours"
+                    domain="[('period_state', '=', 'running')]"/>
+
+                <filter
+                    name="filter_closed"
+                    string="Cycles terminés"
+                    domain="[('period_state', '=', 'closed')]"/>
+
+                <group expand="0" string="Regrouper par">
+                    <filter
+                        name="group_member"
+                        string="Membre"
+                        context="{'group_by': 'member_id'}"/>
+
+                    <filter
+                        name="group_subscription"
+                        string="Cotisation"
+                        context="{'group_by': 'subscription_id'}"/>
+
+                    <filter
+                        name="group_payment_state"
+                        string="État pénalité"
+                        context="{'group_by': 'payment_state'}"/>
+
+                    <filter
+                        name="group_period_state"
+                        string="Statut du cycle"
+                        context="{'group_by': 'period_state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_subscription_penalty_recap_list" model="ir.ui.view">
+        <field name="name">association.subscription.penalty.recap.list</field>
+        <field name="model">association.subscription.penalty.recap</field>
+        <field name="arch" type="xml">
+            <list
+                string="Pénalités de cotisation"
+                create="0"
+                edit="0"
+                delete="0"
+                decoration-danger="payment_state == 'not_paid'"
+                decoration-warning="payment_state == 'partial'"
+                decoration-success="payment_state == 'paid'">
+
+                <field name="member_code" string="Code"/>
+                <field name="member_id"/>
+                <field name="subscription_id"/>
+                <field name="subscription_period_id"/>
+                <field name="period_state" widget="badge"/>
+
+                <field
+                    name="penalty_due_amount"
+                    sum="Pénalités dues"/>
+
+                <field
+                    name="penalty_paid_amount"
+                    sum="Pénalités payées"/>
+
+                <field
+                    name="penalty_balance_amount"
+                    sum="Reste pénalités"/>
+
+                <field
+                    name="payment_state"
+                    widget="badge"
+                    decoration-danger="payment_state == 'not_paid'"
+                    decoration-warning="payment_state == 'partial'"
+                    decoration-success="payment_state == 'paid'"/>
+
+                <field name="last_payment_date"/>
+
+                <field
+                    name="company_id"
+                    groups="base.group_multi_company"
+                    optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_subscription_penalty_recap_form" model="ir.ui.view">
+        <field name="name">association.subscription.penalty.recap.form</field>
+        <field name="model">association.subscription.penalty.recap</field>
+        <field name="arch" type="xml">
+            <form string="Pénalité de cotisation" create="0" edit="0" delete="0">
+                <sheet>
+                    <group>
+                        <field name="member_id"/>
+                        <field name="member_code"/>
+                        <field name="subscription_id"/>
+                        <field name="subscription_period_id"/>
+                        <field name="period_state" widget="badge"/>
+                    </group>
+
+                    <group string="Pénalité">
+                        <field name="penalty_due_amount"/>
+                        <field name="penalty_paid_amount"/>
+                        <field name="penalty_balance_amount"/>
+                        <field name="payment_state" widget="badge"/>
+                        <field name="last_payment_date"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_subscription_penalty_recap" model="ir.actions.act_window">
+        <field name="name">Pénalités de cotisation</field>
+        <field name="res_model">association.subscription.penalty.recap</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_subscription_penalty_recap_search"/>
+        <field name="domain">[('active', '=', True)]</field>
+        <field name="context">
+            {
+                'search_default_group_payment_state': 1,
+                'create': False,
+                'edit': False,
+                'delete': False
+            }
+        </field>
+    </record>
+
+    <record id="action_subscription_penalty_recap_server" model="ir.actions.server">
+        <field name="name">Pénalités de cotisation</field>
+        <field name="model_id" ref="model_association_subscription_penalty_recap"/>
+        <field name="state">code</field>
+        <field name="code">
+action = env['association.subscription.penalty.recap'].action_open_global()
+        </field>
+    </record>
+
+</odoo>

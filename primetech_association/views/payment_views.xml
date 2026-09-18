@@ -1,0 +1,742 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<odoo>
+
+    <!-- ========================================================= -->
+    <!-- VUE RECHERCHE                                             -->
+    <!-- ========================================================= -->
+
+    <record id="view_payment_search" model="ir.ui.view">
+        <field name="name">association.payment.search</field>
+        <field name="model">association.payment</field>
+        <field name="arch" type="xml">
+
+            <search string="Rechercher un paiement">
+
+                <field name="name"/>
+                <field name="member_id"/>
+                <field name="member_code"/>
+                <field name="payment_date"/>
+                <field name="payment_method"/>
+                <field name="payment_reference"/>
+                <field name="company_id"/>
+
+                <separator/>
+
+                <filter name="filter_draft" string="Brouillons" domain="[('state', '=', 'draft')]"/>
+
+                <filter name="filter_confirmed" string="Confirmés" domain="[('state', '=', 'confirmed')]"/>
+
+                <filter name="filter_cancelled" string="Annulés" domain="[('state', '=', 'cancelled')]"/>
+
+                <separator/>
+
+                <filter name="filter_cash" string="Espèces" domain="[('payment_method', '=', 'cash')]"/>
+
+                <filter name="filter_bank" string="Virements bancaires" domain="[('payment_method', '=', 'bank')]"/>
+
+                <filter name="filter_cheque" string="Chèques" domain="[('payment_method', '=', 'cheque')]"/>
+
+                <filter name="filter_mobile_money" string="Mobile Money" domain="[('payment_method', '=', 'mobile_money')]"/>
+
+                <separator/>
+
+                <group expand="0" string="Regrouper par">
+
+                    <filter name="group_member" string="Membre" context="{'group_by': 'member_id'}"/>
+
+                    <filter name="group_payment_method" string="Mode de paiement" context="{'group_by': 'payment_method'}"/>
+
+                    <filter name="group_state" string="Statut" context="{'group_by': 'state'}"/>
+
+                    <filter name="group_payment_date" string="Mois de paiement" context="{'group_by': 'payment_date:month'}"/>
+
+                    <filter name="group_company" string="Filiale" context="{'group_by': 'company_id'}"/>
+
+                </group>
+
+            </search>
+
+        </field>
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- VUE LISTE                                                 -->
+    <!-- ========================================================= -->
+
+    <record id="view_payment_list" model="ir.ui.view">
+        <field name="name">association.payment.list</field>
+        <field name="model">association.payment</field>
+        <field name="arch" type="xml">
+
+            <list string="Paiements" decoration-info="state == 'draft'" decoration-success="state == 'confirmed'" decoration-muted="state == 'cancelled'">
+
+                <field name="name"/>
+
+                <field name="payment_date" string="Date"/>
+
+                <field name="member_code" string="Code membre" optional="show"/>
+
+                <field name="member_id" string="Membre"/>
+
+                <field name="payment_method" widget="badge"/>
+
+                <field name="payment_reference" optional="show"/>
+
+                <field name="amount" sum="Total paiements"/>
+
+                <field name="allocated_amount" sum="Total affecté"/>
+
+                <field name="remaining_amount" sum="Total non affecté"/>
+
+                <field name="line_count" string="Affectations" optional="hide"/>
+
+                <field name="state" widget="badge"/>
+
+                <field name="company_id" string="Filiale" groups="base.group_multi_company" optional="hide"/>
+
+            </list>
+
+        </field>
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- VUE FORMULAIRE                                            -->
+    <!-- ========================================================= -->
+    <record id="view_payment_form" model="ir.ui.view">
+
+        <field name="name">association.payment.form</field>
+
+        <field name="model">association.payment</field>
+
+        <field name="arch" type="xml">
+
+            <form string="Paiement">
+
+                <!-- ================================================= -->
+                <!-- HEADER                                            -->
+                <!-- ================================================= -->
+
+                <header>
+
+                    <button name="action_collect" string="Encaisser" type="object" class="oe_highlight" groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin" invisible="state != 'draft'"/>
+
+                    <button name="action_confirm" string="Valider" type="object" class="oe_highlight" groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin" invisible="state != 'collected'"/>
+
+                    <button name="action_cancel" string="Annuler" type="object" class="btn-secondary" groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin" invisible="state in ('confirmed', 'cancelled')"/>
+
+                    <field name="state" widget="statusbar" statusbar_visible="draft,collected,confirmed,cancelled"/>
+
+                </header>
+
+
+                <!-- ================================================= -->
+                <!-- SHEET                                             -->
+                <!-- ================================================= -->
+
+                <sheet>
+
+                    <!-- ============================================= -->
+                    <!-- TECHNIQUE                                     -->
+                    <!-- ============================================= -->
+
+                    <field name="currency_id" invisible="1"/>
+
+
+                    <!-- ============================================= -->
+                    <!-- TITRE                                         -->
+                    <!-- ============================================= -->
+
+                    <div class="oe_title">
+
+                        <label for="name" string="Paiement"/>
+
+                        <h1>
+
+                            <field name="name" readonly="1"/>
+
+                        </h1>
+
+                    </div>
+
+
+                    <!-- ============================================= -->
+                    <!-- SAISIE PRINCIPALE                             -->
+                    <!-- ============================================= -->
+
+                    <div class="border rounded-3 p-4 mb-4" style="border-width: 2px !important;">
+
+                        <div class="mb-4">
+
+                            <h3 class="mb-1">
+
+                                <i class="fa fa-money me-2"/>
+
+                                Saisie du paiement
+
+                            </h3>
+
+                            <span class="text-muted">
+
+                                Informations nécessaires à
+                                l'encaissement.
+
+                            </span>
+
+                        </div>
+
+
+                        <!-- ========================================= -->
+                        <!-- MEMBRE / DATE                             -->
+                        <!-- ========================================= -->
+
+                        <group>
+
+                            <group string="Membre">
+
+                                <field name="member_id" string="Membre" required="1" readonly="state != 'draft'" options="{                                         'no_create': True,                                         'no_create_edit': True                                     }"/>
+
+                                <field name="member_code" string="Code" readonly="1"/>
+
+                            </group>
+
+
+                            <group string="Paiement">
+
+                                <field name="payment_date" string="Date" required="1" readonly="state != 'draft'"/>
+
+                                <div class="rounded-3 p-3" style="border: 3px solid var(--o-brand-primary); background: rgba(113, 75, 103, 0.06);">
+
+                                    <div class="fw-bold text-uppercase mb-1" style="color: var(--o-brand-primary); letter-spacing: 0.8px;">
+                                        MONTANT REÇU
+                                    </div>
+
+                                    <div class="fs-2 fw-bold">
+                                        <field name="amount" widget="monetary" options="{'currency_field': 'currency_id'}" required="1" readonly="state != 'draft'"/>
+                                    </div>
+
+                                    <div class="text-muted small mt-1">
+                                        Montant effectivement remis par le membre
+                                    </div>
+
+                                </div>
+
+                            </group>
+
+                        </group>
+
+
+                        <!-- ========================================= -->
+                        <!-- ORIGINE                                   -->
+                        <!-- ========================================= -->
+
+                        <separator string="Origine du paiement"/>
+
+
+                        <group>
+
+                            <group>
+
+                                <field name="payment_source" string="Origine" required="1" readonly="state != 'draft'"/>
+
+                            </group>
+
+                        </group>
+
+
+                        <!-- ========================================= -->
+                        <!-- VERSEMENT EXTERNE                         -->
+                        <!-- ========================================= -->
+
+                        <div invisible="                                 payment_source != 'external'                             ">
+
+                            <group>
+
+                                <group string="Réception">
+
+                                    <field name="payment_method" string="Mode de paiement" required="                                             payment_source == 'external'                                         " readonly="state != 'draft'"/>
+
+                                </group>
+
+
+                                <group string="Référence">
+
+                                    <field name="payment_reference" string="Référence" readonly="state != 'draft'" placeholder="                                             Banque, Mobile Money,                                             chèque...                                         "/>
+
+                                    <field name="company_id" string="Filiale" readonly="state != 'draft'" groups="base.group_multi_company"/>
+
+                                </group>
+
+                            </group>
+
+                        </div>
+
+
+                        <!-- ========================================= -->
+                        <!-- COMPTE MEMBRE                             -->
+                        <!-- ========================================= -->
+
+                        <div invisible="                                 payment_source != 'member_account'                             ">
+
+                            <group>
+
+                                <group string="Compte membre">
+
+                                    <field name="member_account_id" string="Compte membre" required="                                             payment_source                                             == 'member_account'                                         " readonly="state != 'draft'" options="{                                             'no_create': True,                                             'no_create_edit': True,                                             'no_open': True                                         }"/>
+
+                                </group>
+
+
+                                <group string="Solde">
+
+                                    <field name="member_account_balance" string="Solde disponible" widget="monetary" options="{                                             'currency_field':                                             'currency_id'                                         }" readonly="1"/>
+
+                                </group>
+
+                            </group>
+
+
+                            <div class="alert alert-warning" role="alert">
+
+                                Le montant sera prélevé sur
+                                le compte personnel du membre.
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- ========================================= -->
+                        <!-- AFFECTATION                               -->
+                        <!-- ========================================= -->
+
+                        <separator string="Affectation"/>
+
+                        <div class="d-flex align-items-center justify-content-between gap-3 rounded-3 p-3 mb-3" style="border: 2px solid var(--o-brand-primary); background: rgba(113, 75, 103, 0.04);">
+
+                            <div>
+                                <div class="fw-bold" style="font-size: 17px;">
+                                    Affecter ce paiement à des cotisations ?
+                                </div>
+                                <div class="text-muted small mt-1">
+                                    Activez cette option pour répartir le montant reçu sur les cotisations du membre.
+                                </div>
+                            </div>
+
+                            <field name="has_allocations" widget="boolean_toggle" readonly="state != 'draft' or payment_source == 'member_account'"/>
+
+                        </div>
+
+                        <div class="rounded-3 p-4 mt-3" style="border: 2px solid var(--o-brand-primary);" invisible="has_allocations or payment_source != 'external'">
+
+                            <div class="d-flex align-items-center gap-3 mb-3">
+                                <i class="fa fa-bank" style="font-size: 26px; color: var(--o-brand-primary);"/>
+                                <div>
+                                    <strong>Destination du versement</strong>
+                                    <div class="text-muted small">
+                                        Aucune cotisation n'est affectée. Choisissez le compte financier qui reçoit le montant.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <group>
+                                <group>
+                                    <field name="receipt_account_id" string="Compte de versement" required="payment_source == 'external' and not has_allocations" readonly="state != 'draft'" options="{'no_create': True, 'no_create_edit': True}"/>
+                                </group>
+                                <group>
+                                    <field name="receipt_account_type" string="Type de compte" readonly="1" invisible="not receipt_account_id"/>
+                                    <field name="receipt_account_balance" string="Solde actuel" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1" invisible="not receipt_account_id"/>
+                                </group>
+                            </group>
+
+                        </div>
+                    </div>
+
+
+                    <!-- ============================================= -->
+                    <!-- AFFECTATIONS                                  -->
+                    <!-- ============================================= -->
+
+                    <div class="border rounded-3 p-4 mb-4" style="border-width: 2px !important;" invisible="not has_allocations">
+
+                        <h3>
+
+                            <i class="fa fa-list-alt me-2"/>
+
+                            Cotisations à régler
+
+                        </h3>
+
+
+                        <div class="alert alert-info" role="alert">
+
+                            Seules les cotisations du membre
+                            avec un cycle en cours ou terminé
+                            et un solde restant sont proposées.
+
+                        </div>
+
+
+                        <!-- ========================================= -->
+                        <!-- ONE2MANY                                  -->
+                        <!-- ========================================= -->
+
+                        <field name="line_ids" nolabel="1" readonly="state != 'draft'">
+
+                            <list editable="bottom" create="1" delete="1">
+
+                                <field name="sequence" widget="handle"/>
+
+                                <field name="eligible_subscription_ids" column_invisible="1"/>
+
+                                <field name="eligible_period_ids" column_invisible="1"/>
+
+                                <field name="subscription_line_id" column_invisible="1"/>
+
+                                <field name="subscription_id" string="Cotisation" required="1" options="{                                         'no_create': True,                                         'no_create_edit': True,                                         'no_open': True                                     }"/>
+
+                                <field name="subscription_period_id" string="Cycle disponible" required="1" options="{'no_create': True, 'no_create_edit': True, 'no_open': True}"/>
+
+                                <field name="amount_due" string="Montant dû" readonly="1"/>
+
+                                <field name="amount_already_paid" string="Déjà payé" readonly="1"/>
+
+                                <field name="balance_before_payment" string="Reste à payer" readonly="1"/>
+
+                                <field name="amount_paid" string="Montant affecté" sum="Total affecté"/>
+
+                                <field name="contribution_paid_amount" string="Part cotisation" readonly="1" optional="show" sum="Cotisation"/>
+
+                                <field name="penalty_paid_amount" string="Part pénalité" readonly="1" optional="show" sum="Pénalité"/>
+
+                                <field name="penalty_due_amount" string="Pénalité due" readonly="1" optional="hide"/>
+
+                                <field name="balance_after_payment" string="Reste après" readonly="1"/>
+
+                                <field name="penalty_amount" string="Pénalité" optional="show"/>
+
+                                <field name="allocation_state" string="État" widget="badge" readonly="1" decoration-muted="                                         allocation_state == 'draft'                                     " decoration-warning="                                         allocation_state == 'partial'                                     " decoration-success="                                         allocation_state == 'confirmed'                                     " decoration-danger="                                         allocation_state == 'cancelled'                                     "/>
+
+                            </list>
+
+                        </field>
+
+                        <!-- ========================================= -->
+                        <!-- FIN ONE2MANY                              -->
+                        <!-- ========================================= -->
+
+                    </div>
+
+
+                    <!-- ============================================= -->
+                    <!-- SYNTHÈSE                                      -->
+                    <!-- ============================================= -->
+
+                    <div class="border rounded-3 p-4 mb-4" style="border-width: 2px !important;" invisible="not has_allocations">
+
+                        <h3 class="mb-3 fw-bold">
+                            <i class="fa fa-calculator me-2" style="color: var(--o-brand-primary);"/>
+                            Synthèse du paiement
+                        </h3>
+
+                        <div class="row g-3">
+
+                            <div class="col-12 col-lg-4">
+                                <div class="border rounded-3 p-3 h-100" style="border-top: 5px solid var(--o-brand-primary) !important;">
+                                    <div class="text-muted small fw-bold text-uppercase">Montant reçu</div>
+                                    <div class="fs-3 fw-bold mt-2">
+                                        <field name="amount" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
+                                    </div>
+                                    <div class="text-muted small mt-1">Total remis par le membre</div>
+                                </div>
+                            </div>
+
+                            <div class="col-12 col-lg-4">
+                                <div class="border rounded-3 p-3 h-100" style="border-top: 5px solid #198754 !important;">
+                                    <div class="text-muted small fw-bold text-uppercase">Montant affecté</div>
+                                    <div class="fs-3 fw-bold mt-2">
+                                        <field name="allocated_amount" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
+                                    </div>
+                                    <div class="text-muted small mt-1">Affecté aux cotisations</div>
+                                </div>
+                            </div>
+
+                            <div class="col-12 col-lg-4">
+                                <div class="border rounded-3 p-3 h-100" style="border-top: 5px solid #f59f00 !important;">
+                                    <div class="text-muted small fw-bold text-uppercase">Reste à orienter</div>
+                                    <div class="fs-3 fw-bold mt-2">
+                                        <field name="remaining_amount" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
+                                    </div>
+                                    <div class="text-muted small mt-1">Montant non encore affecté</div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div class="d-flex align-items-center gap-3 rounded-3 p-3 mt-3" style="border: 2px solid #f59f00; background: rgba(245, 159, 0, 0.08);" invisible="remaining_amount &lt;= 0">
+                            <i class="fa fa-exclamation-circle" style="font-size: 25px; color: #f59f00;"/>
+                            <div class="flex-grow-1">
+                                <strong>Un reste doit être traité</strong>
+                                <div class="small">Après validation, choisissez la destination du montant restant.</div>
+                            </div>
+                            <div class="fs-4 fw-bold">
+                                <field name="remaining_amount" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-light border mt-3 mb-0" invisible="refund_amount == 0">
+                            <i class="fa fa-undo me-1"/>
+                            Montant remboursé :
+                            <strong>
+                                <field name="refund_amount" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
+                            </strong>
+                        </div>
+
+                    </div>
+
+
+                    <!-- ============================================= -->
+                    <!-- INFORMATIONS COMPLÉMENTAIRES                  -->
+                    <!-- ============================================= -->
+
+                    <notebook>
+
+                        <page string="Informations complémentaires">
+
+                            <group>
+
+                                <group string="Membre">
+
+                                    <field name="function_id" readonly="1"/>
+
+                                </group>
+
+
+                                <group string="Organisation">
+
+                                    <field name="company_id" readonly="                                             state != 'draft'                                         " groups="                                             base.group_multi_company                                         "/>
+
+                                </group>
+
+                            </group>
+
+
+                            <field name="description" placeholder="                                     Description du paiement...                                 "/>
+
+                        </page>
+
+
+                        <page string="Notes internes">
+
+                            <field name="note" placeholder="                                     Ajouter une note interne...                                 "/>
+
+                        </page>
+
+                    </notebook>
+
+                </sheet>
+
+
+                <!-- ================================================= -->
+                <!-- CHATTER                                           -->
+                <!-- ================================================= -->
+
+                <chatter/>
+
+            </form>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- VUE KANBAN                                                -->
+    <!-- ========================================================= -->
+
+    <record id="view_payment_kanban" model="ir.ui.view">
+        <field name="name">association.payment.kanban</field>
+        <field name="model">association.payment</field>
+        <field name="arch" type="xml">
+
+            <kanban default_group_by="state" class="o_kanban_small_column">
+
+                <field name="name"/>
+                <field name="member_id"/>
+                <field name="member_code"/>
+                <field name="member_image_128"/>
+                <field name="payment_date"/>
+                <field name="payment_method"/>
+                <field name="amount"/>
+                <field name="allocated_amount"/>
+                <field name="remaining_amount"/>
+                <field name="currency_id"/>
+                <field name="state"/>
+                <field name="color"/>
+
+                <templates>
+
+                    <t t-name="card">
+
+                        <div class="oe_kanban_global_click">
+
+                            <!-- MEMBRE -->
+
+                            <div class="d-flex align-items-start mb-3">
+
+                                <div class="me-3" style="width: 64px; min-width: 64px;">
+
+                                    <field name="member_image_128" widget="image" options="{'size': [64, 64]}" style="width: 64px !important; height: 64px !important; object-fit: cover; border-radius: 50%;"/>
+
+                                </div>
+
+
+                                <div class="flex-grow-1">
+
+                                    <strong class="fs-5">
+
+                                        <field name="member_id"/>
+
+                                    </strong>
+
+                                    <div class="text-muted small">
+
+                                        <i class="fa fa-id-card-o me-1"/>
+
+                                        <field name="member_code"/>
+
+                                    </div>
+
+                                </div>
+
+
+                                <field name="state" widget="badge"/>
+
+                            </div>
+
+
+                            <!-- RÉFÉRENCE -->
+
+                            <div class="small mb-2">
+
+                                <i class="fa fa-hashtag me-2"/>
+
+                                <field name="name"/>
+
+                            </div>
+
+
+                            <!-- DATE -->
+
+                            <div class="small mb-2">
+
+                                <i class="fa fa-calendar me-2"/>
+
+                                <field name="payment_date"/>
+
+                            </div>
+
+
+                            <!-- MODE -->
+
+                            <div class="mb-3">
+
+                                <field name="payment_method" widget="badge"/>
+
+                            </div>
+
+
+                            <!-- TOTAUX -->
+
+                            <div class="border-top pt-3">
+
+                                <div class="d-flex justify-content-between mb-1">
+
+                                    <span class="text-muted">
+                                        Montant
+                                    </span>
+
+                                    <strong>
+
+                                        <field name="amount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+
+                                    </strong>
+
+                                </div>
+
+
+                                <div class="d-flex justify-content-between mb-1">
+
+                                    <span class="text-muted">
+                                        Affecté
+                                    </span>
+
+                                    <strong>
+
+                                        <field name="allocated_amount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+
+                                    </strong>
+
+                                </div>
+
+
+                                <div class="d-flex justify-content-between">
+
+                                    <span class="text-muted">
+                                        Non affecté
+                                    </span>
+
+                                    <strong>
+
+                                        <field name="remaining_amount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+
+                                    </strong>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </t>
+
+                </templates>
+
+            </kanban>
+
+        </field>
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- ACTION                                                    -->
+    <!-- ========================================================= -->
+
+    <record id="action_payment" model="ir.actions.act_window">
+
+        <field name="name">Paiements</field>
+
+        <field name="res_model">association.payment</field>
+
+        <field name="view_mode">list,kanban,form</field>
+
+        <field name="search_view_id" ref="view_payment_search"/>
+
+        <field name="help" type="html">
+
+            <p class="o_view_nocontent_smiling_face">
+                Enregistrez votre premier paiement
+            </p>
+
+            <p>
+                Enregistrez les paiements des membres,
+                affectez-les aux cotisations et suivez
+                automatiquement les soldes.
+            </p>
+
+        </field>
+
+    </record>
+
+</odoo>

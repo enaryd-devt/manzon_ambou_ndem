@@ -1,0 +1,1844 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <!-- ========================================================= -->
+    <!-- SITUATION DES COTISATIONS D'UN MEMBRE                     -->
+    <!-- ========================================================= -->
+
+    <record id="view_member_subscription_cycle_report_search" model="ir.ui.view">
+        <field name="name">association.member.subscription.cycle.report.search</field>
+        <field name="model">association.member.subscription.cycle.report</field>
+        <field name="arch" type="xml">
+
+            <search string="Situation des cotisations">
+
+                <field name="member_id"/>
+                <field name="subscription_id"/>
+                <field name="subscription_period_id"/>
+                <field name="subscription_line_id"/>
+
+                <filter
+                    name="filter_not_paid"
+                    string="Non payé"
+                    domain="[('payment_state', '=', 'not_paid')]"/>
+
+                <filter
+                    name="filter_partial"
+                    string="Partiel"
+                    domain="[('payment_state', '=', 'partial')]"/>
+
+                <filter
+                    name="filter_paid"
+                    string="Payé"
+                    domain="[('payment_state', '=', 'paid')]"/>
+
+                <separator/>
+
+                <filter
+                    name="filter_running"
+                    string="Cycles en cours"
+                    domain="[('period_state', '=', 'running')]"/>
+
+                <filter
+                    name="filter_closed"
+                    string="Cycles terminés"
+                    domain="[('period_state', '=', 'closed')]"/>
+
+                <group expand="0" string="Regrouper par">
+
+                    <filter
+                        name="group_subscription"
+                        string="Cotisation"
+                        context="{'group_by': 'subscription_id'}"/>
+
+                    <filter
+                        name="group_payment_state"
+                        string="État du paiement"
+                        context="{'group_by': 'payment_state'}"/>
+
+                    <filter
+                        name="group_period_state"
+                        string="Statut du cycle"
+                        context="{'group_by': 'period_state'}"/>
+
+                </group>
+
+            </search>
+
+        </field>
+    </record>
+
+    <record id="view_member_subscription_cycle_report_list" model="ir.ui.view">
+        <field name="name">association.member.subscription.cycle.report.list</field>
+        <field name="model">association.member.subscription.cycle.report</field>
+        <field name="arch" type="xml">
+
+            <list
+                string="Cotisations du membre"
+                create="0"
+                edit="0"
+                delete="0"
+                decoration-danger="payment_state == 'not_paid'"
+                decoration-warning="payment_state == 'partial'"
+                decoration-success="payment_state == 'paid'">
+
+                <field name="subscription_id"/>
+
+                <field name="subscription_period_id"/>
+
+                <field
+                    name="subscription_line_id"
+                    column_invisible="1"/>
+
+                <field
+                    name="period_state"
+                    widget="badge"/>
+
+                <field
+                    name="amount_due"
+                    string="Montant cotisation"
+                    sum="Total cotisations"/>
+
+                <field
+                    name="amount_paid"
+                    string="Montant payé"
+                    sum="Total payé"/>
+
+                <field
+                    name="balance"
+                    string="Reste à payer"
+                    sum="Reste à payer"/>
+
+                <field
+                    name="payment_state"
+                    widget="badge"
+                    decoration-danger="payment_state == 'not_paid'"
+                    decoration-warning="payment_state == 'partial'"
+                    decoration-success="payment_state == 'paid'"/>
+
+                <field name="last_payment_date"/>
+
+                <button
+                    name="action_register_payment"
+                    type="object"
+                    string="Régler"
+                    icon="fa-money"
+                    class="btn-primary"
+                    groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                    invisible="balance &lt;= 0"/>
+
+                <field
+                    name="company_id"
+                    groups="base.group_multi_company"
+                    optional="hide"/>
+
+            </list>
+
+        </field>
+    </record>
+
+    <record id="view_member_subscription_cycle_report_form" model="ir.ui.view">
+        <field name="name">association.member.subscription.cycle.report.form</field>
+        <field name="model">association.member.subscription.cycle.report</field>
+        <field name="arch" type="xml">
+
+            <form string="Situation de cotisation" create="0" edit="0" delete="0">
+
+                <header>
+                    <button
+                        name="action_register_payment"
+                        type="object"
+                        string="Régler cette cotisation"
+                        icon="fa-money"
+                        class="btn-primary"
+                        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        invisible="balance &lt;= 0"/>
+                </header>
+
+                <sheet>
+
+                    <group>
+
+                        <field name="member_id"/>
+                        <field name="member_code"/>
+                        <field name="subscription_id"/>
+                        <field name="subscription_period_id"/>
+                        <field name="subscription_line_id"/>
+                        <field name="period_state" widget="badge"/>
+
+                    </group>
+
+                    <group>
+
+                        <field name="amount_due" string="Montant cotisation"/>
+                        <field name="amount_paid" string="Montant payé"/>
+                        <field name="balance" string="Reste à payer"/>
+                        <field name="payment_state" widget="badge"/>
+                        <field name="last_payment_date"/>
+
+                    </group>
+
+                </sheet>
+
+            </form>
+
+        </field>
+    </record>
+
+    <!-- ========================================================= -->
+    <!-- VUE RECHERCHE                                             -->
+    <!-- ========================================================= -->
+
+    <record id="view_subscription_search" model="ir.ui.view">
+        <field name="name">association.subscription.search</field>
+        <field name="model">association.subscription</field>
+        <field name="arch" type="xml">
+
+            <search string="Rechercher une cotisation">
+
+                <field name="name"/>
+                <field name="code"/>
+                <field name="subscription_type"/>
+                <field name="date"/>
+                <field name="due_date"/>
+
+                <separator/>
+
+                <filter
+                    name="filter_draft"
+                    string="Brouillons"
+                    domain="[('state', '=', 'draft')]"/>
+
+                <filter
+                    name="filter_confirmed"
+                    string="Confirmées"
+                    domain="[('state', '=', 'confirmed')]"/>
+
+                <filter
+                    name="filter_running"
+                    string="En cours"
+                    domain="[('state', '=', 'running')]"/>
+
+                <filter
+                    name="filter_closed"
+                    string="Clôturées"
+                    domain="[('state', '=', 'closed')]"/>
+
+                <filter
+                    name="filter_cancelled"
+                    string="Annulées"
+                    domain="[('state', '=', 'cancelled')]"/>
+
+                <separator/>
+
+                <filter
+                    name="filter_overdue"
+                    string="Échéance dépassée"
+                    domain="[
+                        ('due_date', '&lt;', context_today()),
+                        ('state', '=', 'running')
+                    ]"/>
+
+                <separator/>
+
+                <filter
+                    name="filter_monthly"
+                    string="Mensuelles"
+                    domain="[('subscription_type', '=', 'monthly')]"/>
+
+                <filter
+                    name="filter_annual"
+                    string="Annuelles"
+                    domain="[('subscription_type', '=', 'annual')]"/>
+
+                <group expand="0" string="Regrouper par">
+
+                    <filter
+                        name="group_subscription_type"
+                        string="Type"
+                        context="{'group_by': 'subscription_type'}"/>
+
+                    <filter
+                        name="group_state"
+                        string="Statut"
+                        context="{'group_by': 'state'}"/>
+
+                    <filter
+                        name="group_date"
+                        string="Date"
+                        context="{'group_by': 'date:month'}"/>
+
+                    <filter
+                        name="group_company"
+                        string="Société"
+                        context="{'group_by': 'company_id'}"/>
+
+                </group>
+
+            </search>
+
+        </field>
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- VUE LISTE                                                 -->
+    <!-- ========================================================= -->
+
+    <record id="view_subscription_list" model="ir.ui.view">
+        <field name="name">association.subscription.list</field>
+        <field name="model">association.subscription</field>
+        <field name="arch" type="xml">
+
+            <list
+                string="Cotisations"
+                decoration-info="state == 'draft'"
+                decoration-primary="state == 'confirmed'"
+                decoration-warning="state == 'running'"
+                decoration-success="state == 'closed'"
+                decoration-muted="state == 'cancelled'">
+
+                <field name="code"/>
+
+                <field name="name"/>
+
+                <field
+                    name="subscription_type"
+                    widget="badge"/>
+
+                <field name="date"/>
+
+                <field name="due_date"/>
+
+                <field
+                    name="line_count"
+                    string="Membres"/>
+
+                <field
+                    name="total_amount_due"
+                    sum="Total attendu"/>
+
+                <field
+                    name="total_amount_paid"
+                    sum="Total payé"/>
+
+                <field
+                    name="total_balance"
+                    sum="Reste total"/>
+
+                <field
+                    name="progress_percent"
+                    widget="progressbar"
+                    string="Recouvrement"/>
+
+                <field
+                    name="state"
+                    widget="badge"/>
+
+                <field
+                    name="company_id"
+                    groups="base.group_multi_company"
+                    optional="hide"/>
+
+            </list>
+
+        </field>
+    </record>
+
+    <!-- ========================================================= -->
+    <!-- VUE FORMULAIRE                                            -->
+    <!-- ========================================================= -->
+
+    <record id="view_subscription_form" model="ir.ui.view">
+
+        <field name="name">association.subscription.form</field>
+
+        <field name="model">association.subscription</field>
+
+        <field name="arch" type="xml">
+
+            <form string="Cotisation">
+
+                <!-- ================================================= -->
+                <!-- HEADER                                            -->
+                <!-- ================================================= -->
+
+                <header>
+
+                    <button
+                        name="action_generate_members"
+                        string="Générer les membres"
+                        type="object"
+                        class="btn-secondary"
+                        icon="fa-users"
+                        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        invisible="state != 'draft'"/>
+
+                    <button
+                        name="action_confirm"
+                        string="Confirmer"
+                        type="object"
+                        class="btn-primary"
+                        icon="fa-check"
+                        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        invisible="state != 'draft'"/>
+
+                    <button
+                        name="action_start"
+                        string="Démarrer"
+                        type="object"
+                        class="btn-primary"
+                        icon="fa-play"
+                        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        invisible="state != 'confirmed'"/>
+
+                    <button
+                        name="action_close"
+                        string="Clôturer"
+                        type="object"
+                        class="btn-primary"
+                        icon="fa-lock"
+                        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        invisible="state != 'running'"/>
+
+                    <button
+                        name="action_lock_due_penalties"
+                        string="Verrouiller les pénalités"
+                        type="object"
+                        class="btn-secondary"
+                        icon="fa-lock"
+                        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        confirm="Les pénalités arrivées à échéance seront ajoutées définitivement aux montants dus. Continuer ?"
+                        invisible="state != 'running' or not penalty_enabled"/>
+
+                        <button
+                            name="action_close_current_period"
+                            string="Terminer le cycle"
+                            type="object"
+                            class="btn-secondary"
+                            icon="fa-check-circle"
+                            groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                            invisible="state != 'running' or not current_period_id"
+                            confirm="Voulez-vous lancer la procédure de clôture du cycle courant ?"
+                        />
+
+                        <button
+                            name="action_open_next_period"
+                            string="Cycle suivant"
+                            type="object"
+                            class="btn-primary"
+                            icon="fa-forward"
+                            groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                            invisible="state != 'running' or current_period_id"
+                            confirm="Voulez-vous ouvrir le cycle suivant ?"
+                        />
+
+                    <button
+                        name="action_cancel"
+                        string="Annuler"
+                        type="object"
+                        class="btn-secondary"
+                        icon="fa-times"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        invisible="state in ('closed', 'cancelled')"/>
+
+                    <button
+                        name="action_reset_draft"
+                        string="Remettre en brouillon"
+                        type="object"
+                        class="btn-secondary"
+                        icon="fa-undo"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        invisible="state not in ('confirmed', 'cancelled')"/>
+
+                    <field
+                        name="state"
+                        widget="statusbar"
+                        statusbar_visible="draft,confirmed,running,closed"/>
+
+                </header>
+
+                <!-- ================================================= -->
+                <!-- SHEET                                             -->
+                <!-- ================================================= -->
+
+                <sheet>
+
+                    <!-- ================================================= -->
+                    <!-- SMART BUTTONS                                     -->
+                    <!-- ================================================= -->
+
+                    <div
+                        class="oe_button_box"
+                        name="button_box"
+                    >
+
+                        <button
+                            class="oe_stat_button"
+                            icon="fa-users"
+                            type="object"
+                            name="action_generate_members"
+                            groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                            invisible="state != 'draft'"
+                        >
+
+                            <field
+                                name="line_count"
+                                widget="statinfo"
+                                string="Membres"
+                            />
+
+                        </button>
+
+                    </div>
+
+                    <div class="oe_button_box" name="button_box">
+
+                        <button
+                            class="oe_stat_button"
+                            type="object"
+                            name="action_view_payments"
+                            icon="fa-money"
+                            groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin">
+
+                            <field
+                                name="payment_count"
+                                widget="statinfo"
+                                string="Paiements"/>
+
+                        </button>
+
+                    </div>
+
+                    <!-- ================================================= -->
+                    <!-- TITRE                                             -->
+                    <!-- ================================================= -->
+
+                    <div class="oe_title">
+
+                        <label
+                            for="name"
+                            class="o_form_label"
+                        />
+
+                        <h1>
+
+                            <field
+                                name="name"
+                                placeholder="Ex. Cotisation mensuelle - Janvier 2026"
+                            />
+
+                        </h1>
+
+                        <div
+                            class="d-flex align-items-center gap-2 flex-wrap mt-2"
+                        >
+
+                            <div
+                                class="d-inline-flex align-items-center rounded-pill text-bg-light border px-2 py-1"
+                                style="white-space: nowrap;"
+                            >
+
+                                <i
+                                    class="fa fa-hashtag me-1"
+                                    title="Référence"
+                                />
+
+                                <field
+                                    name="code"
+                                    readonly="1"
+                                    nolabel="1"
+                                    class="oe_inline"
+                                />
+
+                            </div>
+
+                            <field
+                                name="subscription_type"
+                                widget="badge"
+                                readonly="state != 'draft'"
+                            />
+
+                        </div>
+
+                    </div>
+                        <!-- ========================================================= -->
+                        <!-- SYNTHÈSE MÉTIER DE LA COTISATION                          -->
+                        <!-- ========================================================= -->
+
+                        <div class="row g-2 mt-2 mb-2">
+
+                            <!-- ===================================================== -->
+                            <!-- MONTANT PAR MEMBRE                                    -->
+                            <!-- ===================================================== -->
+
+                            <div class="col-lg-3 col-md-6">
+
+                                <div
+                                    class="h-100 rounded border px-3 py-3"
+                                    style="
+                                        background:
+                                            linear-gradient(
+                                                135deg,
+                                                rgba(113, 75, 103, 0.10),
+                                                rgba(113, 75, 103, 0.02)
+                                            );
+                                        border-left:
+                                            4px solid
+                                            var(--o-brand-primary) !important;
+                                    ">
+
+                                    <div
+                                        class="d-flex
+                                            justify-content-between
+                                            align-items-start">
+
+                                        <div class="flex-grow-1">
+
+                                            <div
+                                                class="text-uppercase
+                                                    text-muted
+                                                    fw-semibold"
+                                                style="
+                                                    font-size: 10px;
+                                                    letter-spacing: .7px;
+                                                ">
+
+                                                MONTANT PAR MEMBRE
+
+                                            </div>
+
+                                            <div
+                                                class="fw-bold mt-1"
+                                                style="
+                                                    color: var(--o-brand-primary);
+                                                    font-size: 27px;
+                                                    line-height: 1.15;
+                                                    white-space: nowrap;
+                                                ">
+
+                                                <field
+                                                    name="amount"
+                                                    widget="monetary"
+                                                    options="{
+                                                        'currency_field':
+                                                            'currency_id'
+                                                    }"
+                                                    readonly="state != 'draft'"/>
+
+                                            </div>
+
+                                            <div
+                                                class="text-muted mt-1"
+                                                style="font-size: 11px;">
+
+                                                Cotisation individuelle
+
+                                            </div>
+
+                                        </div>
+
+                                        <div
+                                            class="d-flex
+                                                align-items-center
+                                                justify-content-center
+                                                rounded-circle"
+                                            style="
+                                                width: 40px;
+                                                height: 40px;
+                                                min-width: 40px;
+                                                background:
+                                                    rgba(113, 75, 103, 0.10);
+                                                color:
+                                                    var(--o-brand-primary);
+                                                font-size: 18px;
+                                            ">
+
+                                            <i
+                                                class="fa fa-money"
+                                                title="Montant par membre"/>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
+                            <!-- ===================================================== -->
+                            <!-- RÈGLE DE PÉNALITÉ                                     -->
+                            <!-- ===================================================== -->
+
+                            <div class="col-lg-3 col-md-6" invisible="not penalty_enabled">
+
+                                <div
+                                    class="h-100 rounded border px-3 py-3"
+                                    style="
+                                        background:
+                                            linear-gradient(
+                                                135deg,
+                                                rgba(245, 158, 11, 0.10),
+                                                rgba(245, 158, 11, 0.02)
+                                            );
+                                        border-left:
+                                            4px solid #f59e0b !important;
+                                    ">
+
+                                    <div
+                                        class="d-flex
+                                            justify-content-between
+                                            align-items-start">
+
+                                        <div class="flex-grow-1">
+
+                                            <div
+                                                class="text-uppercase
+                                                    text-muted
+                                                    fw-semibold"
+                                                style="
+                                                    font-size: 10px;
+                                                    letter-spacing: .7px;
+                                                ">
+
+                                                PÉNALITÉ DE RETARD
+
+                                            </div>
+<!-- PÉNALITÉ FIXE -->
+
+                                            <div
+                                                invisible="
+                                                    not penalty_enabled
+                                                    or penalty_type != 'fixed'
+                                                "
+                                                class="mt-1">
+
+                                                <div
+                                                    class="fw-bold"
+                                                    style="
+                                                        color: #b45309;
+                                                        font-size: 23px;
+                                                        line-height: 1.15;
+                                                        white-space: nowrap;
+                                                    ">
+
+                                                    <field
+                                                        name="penalty_amount"
+                                                        widget="monetary"
+                                                        options="{
+                                                            'currency_field':
+                                                                'currency_id'
+                                                        }"/>
+
+                                                </div>
+
+                                                <div
+                                                    class="text-muted mt-1"
+                                                    style="font-size: 11px;">
+
+                                                    Pénalité fixe après
+
+                                                    <strong>
+                                                        <field
+                                                            name="penalty_grace_days"/>
+                                                    </strong>
+
+                                                    jour(s)
+
+                                                </div>
+
+                                            </div>
+
+
+                                            <!-- PÉNALITÉ POURCENTAGE -->
+
+                                            <div
+                                                invisible="
+                                                    not penalty_enabled
+                                                    or penalty_type != 'percentage'
+                                                "
+                                                class="mt-1">
+
+                                                <div
+                                                    class="fw-bold"
+                                                    style="
+                                                        color: #b45309;
+                                                        font-size: 23px;
+                                                        line-height: 1.15;
+                                                        white-space: nowrap;
+                                                    ">
+
+                                                    <field
+                                                        name="penalty_rate"/>
+
+                                                    %
+
+                                                </div>
+
+                                                <div
+                                                    class="text-muted mt-1"
+                                                    style="font-size: 11px;">
+
+                                                    Du montant après
+
+                                                    <strong>
+                                                        <field
+                                                            name="penalty_grace_days"/>
+                                                    </strong>
+
+                                                    jour(s)
+
+                                                </div>
+
+                                            </div>
+
+                                        </div>
+
+
+                                        <div
+                                            class="d-flex
+                                                align-items-center
+                                                justify-content-center
+                                                rounded-circle"
+                                            style="
+                                                width: 40px;
+                                                height: 40px;
+                                                min-width: 40px;
+                                                background:
+                                                    rgba(245, 158, 11, 0.14);
+                                                color: #b45309;
+                                                font-size: 18px;
+                                            ">
+
+                                            <i
+                                                class="fa fa-exclamation-triangle"
+                                                title="Pénalité de retard"/>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
+                            <!-- ===================================================== -->
+                            <!-- SYNTHÈSE FINANCIÈRE                                   -->
+                            <!-- ===================================================== -->
+
+                            <div class="col-lg-6 col-md-12">
+
+                                <div class="h-100 rounded border px-3 py-2">
+
+                                    <div class="row g-1">
+
+                                        <!-- ATTENDU -->
+
+                                        <div class="col-4">
+
+                                            <div class="py-1">
+
+                                                <div
+                                                    class="text-muted
+                                                        text-uppercase"
+                                                    style="font-size: 10px;">
+
+                                                    Attendu
+
+                                                </div>
+
+                                                <div
+                                                    class="fw-bold mt-1"
+                                                    style="
+                                                        font-size: 17px;
+                                                        white-space: nowrap;
+                                                    ">
+
+                                                    <field
+                                                        name="total_amount_due"
+                                                        widget="monetary"
+                                                        options="{
+                                                            'currency_field':
+                                                                'currency_id'
+                                                        }"/>
+
+                                                </div>
+
+                                            </div>
+
+                                        </div>
+
+
+                                        <!-- PAYÉ -->
+
+                                        <div class="col-4">
+
+                                            <div
+                                                class="py-1 px-2"
+                                                style="
+                                                    border-left:
+                                                        1px solid
+                                                        var(--border-color, #dee2e6);
+                                                ">
+
+                                                <div
+                                                    class="text-muted
+                                                        text-uppercase"
+                                                    style="font-size: 10px;">
+
+                                                    Payé
+
+                                                </div>
+
+                                                <div
+                                                    class="fw-bold mt-1"
+                                                    style="
+                                                        font-size: 17px;
+                                                        white-space: nowrap;
+                                                    ">
+
+                                                    <field
+                                                        name="total_amount_paid"
+                                                        widget="monetary"
+                                                        options="{
+                                                            'currency_field':
+                                                                'currency_id'
+                                                        }"/>
+
+                                                </div>
+
+                                            </div>
+
+                                        </div>
+
+
+                                        <!-- RESTE -->
+
+                                        <div class="col-4">
+
+                                            <div
+                                                class="py-1 px-2"
+                                                style="
+                                                    border-left:
+                                                        1px solid
+                                                        var(--border-color, #dee2e6);
+                                                ">
+
+                                                <div
+                                                    class="text-muted
+                                                        text-uppercase"
+                                                    style="font-size: 10px;">
+
+                                                    Reste
+
+                                                </div>
+
+                                                <div
+                                                    class="fw-bold mt-1"
+                                                    style="
+                                                        font-size: 17px;
+                                                        white-space: nowrap;
+                                                    ">
+
+                                                    <field
+                                                        name="total_balance"
+                                                        widget="monetary"
+                                                        options="{
+                                                            'currency_field':
+                                                                'currency_id'
+                                                        }"/>
+
+                                                </div>
+
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+
+
+                                    <!-- RECOUVREMENT -->
+
+                                    <div class="border-top mt-1 pt-2">
+
+                                        <div
+                                            class="d-flex
+                                                align-items-center
+                                                gap-2">
+
+                                            <span
+                                                class="text-muted
+                                                    text-uppercase"
+                                                style="
+                                                    font-size: 10px;
+                                                    white-space: nowrap;
+                                                ">
+
+                                                <i
+                                                    class="fa fa-line-chart me-1"/>
+
+                                                Recouvrement
+
+                                            </span>
+
+                                            <div class="flex-grow-1">
+
+                                                <field
+                                                    name="progress_percent"
+                                                    widget="progressbar"/>
+
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- ========================================================= -->
+                        <!-- SITUATION DES MEMBRES                                     -->
+                        <!-- ========================================================= -->
+
+                        <div
+                            class="d-flex
+                                flex-wrap
+                                align-items-center
+                                gap-2
+                                mb-2">
+
+                            <span
+                                class="badge
+                                    rounded-pill
+                                    text-bg-light
+                                    border
+                                    px-3
+                                    py-2">
+
+                                <i class="fa fa-users me-1"/>
+
+                                <field
+                                    name="line_count"
+                                    readonly="1"/>
+
+                                membres
+
+                            </span>
+
+
+                            <span
+                                class="badge
+                                    rounded-pill
+                                    text-bg-light
+                                    border
+                                    px-3
+                                    py-2">
+
+                                <i class="fa fa-check-circle me-1"/>
+
+                                <field
+                                    name="paid_member_count"
+                                    readonly="1"/>
+
+                                payés
+
+                            </span>
+
+
+                            <span
+                                class="badge
+                                    rounded-pill
+                                    text-bg-light
+                                    border
+                                    px-3
+                                    py-2">
+
+                                <i class="fa fa-adjust me-1"/>
+
+                                <field
+                                    name="partial_member_count"
+                                    readonly="1"/>
+
+                                partiels
+
+                            </span>
+
+
+                            <span
+                                class="badge
+                                    rounded-pill
+                                    text-bg-light
+                                    border
+                                    px-3
+                                    py-2">
+
+                                <i class="fa fa-clock-o me-1"/>
+
+                                <field
+                                    name="unpaid_member_count"
+                                    readonly="1"/>
+
+                                non payés
+
+                            </span>
+
+                        </div>
+
+
+                        <!-- ========================================================= -->
+                        <!-- CONFIGURATION                                             -->
+                        <!-- ========================================================= -->
+
+                        <group>
+
+                            <!-- ===================================================== -->
+                            <!-- COTISATION                                            -->
+                            <!-- ===================================================== -->
+
+                            <group string="Cotisation">
+
+                                <field
+                                    name="subscription_type"
+                                    string="Type"
+                                    readonly="state != 'draft'"/>
+
+                                <field
+                                    name="receipt_account_id"
+                                    string="Compte de versement à la clôture"
+                                    domain="[
+                                        ('company_id', '=', company_id),
+                                        ('active', '=', True)
+                                    ]"
+                                    options="{
+                                        'no_create': True,
+                                        'no_create_edit': True
+                                    }"
+                                    readonly="state != 'draft'"
+                                    help="Compte proposé à la clôture du cycle si un reliquat doit être versé en trésorerie. Aucun encaissement individuel n'y est enregistré."/>
+
+                                <field
+                                    name="penalty_enabled"
+                                    string="Appliquer les pénalités"
+                                    widget="boolean_toggle"/>
+
+                            </group>
+
+
+                            <!-- ===================================================== -->
+                            <!-- CYCLE                                                 -->
+                            <!-- ===================================================== -->
+
+                            <group string="Cycle">
+
+                                <field
+                                    name="period_start_date"
+                                    string="Début"
+                                    readonly="state != 'draft'"/>
+
+                                <field
+                                    name="period_end_date"
+                                    string="Fin"
+                                    readonly="state != 'draft'"/>
+
+                                <field
+                                    name="due_date"
+                                    string="Échéance"
+                                    readonly="state != 'draft'"/>
+
+                                <field name="due_timing"
+                                       string="Règle d'échéance"
+                                       readonly="state != 'draft'"/>
+
+                                <field name="due_days_after_start"
+                                       invisible="due_timing != 'custom_days'"
+                                       required="due_timing == 'custom_days'"
+                                       readonly="state != 'draft'"/>
+
+                            </group>
+
+                        </group>
+
+
+                        <!-- ========================================================= -->
+                        <!-- RÈGLE DE PÉNALITÉ                                         -->
+                        <!-- ========================================================= -->
+
+                        <div
+                            invisible="not penalty_enabled"
+                            class="rounded border px-3 py-2 mb-2"
+                            style="
+                                background:
+                                    rgba(245, 158, 11, 0.04);
+                                border-left:
+                                    3px solid #f59e0b !important;
+                            ">
+
+                            <div
+                                class="d-flex
+                                    align-items-center
+                                    justify-content-between
+                                    mb-2">
+
+                                <div>
+
+                                    <span class="fw-semibold">
+
+                                        <i
+                                            class="fa fa-exclamation-triangle me-1"
+                                            style="color: #b45309;"/>
+
+                                        Règle de pénalité
+
+                                    </span>
+
+                                    <span
+                                        class="text-muted ms-2"
+                                        style="font-size: 11px;">
+
+                                        Appliquée aux paiements en retard
+
+                                    </span>
+
+                                </div>
+
+                            </div>
+
+
+                            <group>
+
+                                <group>
+
+                                    <field
+                                        name="penalty_grace_days"
+                                        string="Délai de grâce"/>
+
+                                    <field
+                                        name="penalty_account_id"
+                                        string="Compte des pénalités"
+                                        options="{'no_create': True, 'no_create_edit': True}"/>
+
+                                    <field
+                                        name="penalty_type"
+                                        string="Mode de calcul"/>
+
+                                    <field
+                                        name="penalty_distribution"
+                                        string="Répartition"/>
+
+                                </group>
+
+
+                                <group>
+
+                                    <field
+                                        name="penalty_amount"
+                                        string="Montant fixe"
+                                        widget="monetary"
+                                        options="{
+                                            'currency_field': 'currency_id'
+                                        }"
+                                        invisible="
+                                            penalty_type != 'fixed'
+                                        "/>
+
+                                    <field
+                                        name="penalty_rate"
+                                        string="Taux (%)"
+                                        invisible="
+                                            penalty_type != 'percentage'
+                                        "/>
+
+                                </group>
+
+                            </group>
+
+                        </div>
+
+
+                        <!-- ========================================================= -->
+                        <!-- DESCRIPTION                                               -->
+                        <!-- ========================================================= -->
+
+                        <group string="Description">
+
+                            <field
+                                name="description"
+                                nolabel="1"
+                                placeholder="
+                                    Objet ou note relative à la cotisation...
+                                "/>
+
+                        </group>
+
+                    <!-- ================================================= -->
+                    <!-- NOTEBOOK                                          -->
+                    <!-- ================================================= -->
+
+                    <notebook>
+
+                        <!-- ================================================= -->
+                        <!-- MEMBRES                                           -->
+                        <!-- ================================================= -->
+
+                        <page
+                            string="Membres"
+                            name="subscription_members">
+
+                            <div class="pt-member-filter-scope">
+
+                                <div class="pt-member-list-searchbar">
+                                    <i class="fa fa-search"/>
+                                    <input
+                                        type="search"
+                                        class="pt-member-list-search"
+                                        placeholder="Rechercher un membre..."/>
+                                </div>
+
+                                <field
+                                    name="line_ids"
+                                    readonly="state in ('closed', 'cancelled')">
+
+                                    <list
+                                        editable="bottom"
+                                        decoration-success="payment_state == 'paid'"
+                                        decoration-warning="payment_state == 'partial'"
+                                        decoration-danger="payment_state == 'not_paid'">
+
+                                    <field
+                                        name="sequence"
+                                        widget="handle"/>
+
+                                    <field
+                                        name="image_128"
+                                        widget="image"
+                                        options="{'size': [40, 40]}"
+                                        width="50"/>
+
+                                    <field
+                                        name="member_code"
+                                        string="Code"/>
+
+                                    <field
+                                        name="member_id"
+                                        string="Membre"/>
+
+                                    <field
+                                        name="penalty_grace_days_remaining"
+                                        string="Grâce restante"
+                                        readonly="1"
+                                        column_invisible="not parent.penalty_enabled"
+                                        optional="show"/>
+
+                                    <field
+                                        name="function_id"
+                                        string="Fonction"
+                                        optional="show"/>
+
+                                    <field
+                                        name="phone"
+                                        string="Téléphone"
+                                        optional="hide"/>
+
+                                    <!-- ===================================================== -->
+                                    <!-- PAIEMENT                                              -->
+                                    <!-- ===================================================== -->
+
+                                    <field
+                                        name="amount_due"
+                                        string="Montant dû"
+                                        widget="monetary"
+                                        options="{'currency_field': 'currency_id'}"
+                                        readonly="1"
+                                        optional="show"/>
+
+                                    <field
+                                        name="penalty_amount"
+                                        string="Pénalité"
+                                        widget="monetary"
+                                        options="{'currency_field': 'currency_id'}"
+                                        readonly="1"
+                                        column_invisible="not parent.penalty_enabled"
+                                        optional="show"/>
+
+                                    <field
+                                        name="amount_paid"
+                                        string="Déjà payé"
+                                        widget="monetary"
+                                        options="{'currency_field': 'currency_id'}"
+                                        readonly="1"
+                                        optional="show"/>
+
+                                    <field
+                                        name="balance"
+                                        string="Reste"
+                                        widget="monetary"
+                                        options="{'currency_field': 'currency_id'}"
+                                        readonly="1"
+                                        optional="show"/>
+
+                                    <field
+                                        name="payment_state"
+                                        string="État"
+                                        widget="badge"
+                                        readonly="1"
+                                        decoration-success="payment_state == 'paid'"
+                                        decoration-warning="payment_state == 'partial'"
+                                        decoration-danger="payment_state == 'not_paid'"/>
+
+                                    <!-- ===================================================== -->
+                                    <!-- OUVRIR L'ASSISTANT DE PAIEMENT                        -->
+                                    <!-- ===================================================== -->
+
+                                    <button
+                                        name="action_create_payment"
+                                        type="object"
+                                        string="Payer"
+                                        icon="fa-money"
+                                        class="btn-primary"
+                                        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                                        invisible="
+                                            payment_state == 'paid'
+                                            or balance &lt;= 0
+                                        "/>
+
+                                    <!-- ===================================================== -->
+                                    <!-- PAYER DEPUIS LE COMPTE MEMBRE                         -->
+                                    <!-- ===================================================== -->
+
+                                    <button
+                                        name="action_pay_from_member_account"
+                                        type="object"
+                                        string="Compte membre"
+                                        icon="fa-university"
+                                        class="btn-secondary"
+                                        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                                        invisible="
+                                            payment_state == 'paid'
+                                            or balance &lt;= 0
+                                        "/>
+
+                                    <field
+                                        name="currency_id"
+                                        column_invisible="1"/>
+
+                                    </list>
+
+                                </field>
+
+                            </div>
+
+                        </page>
+
+                        <!-- ================================================= -->
+                        <!-- ANALYSE                                           -->
+                        <!-- ================================================= -->
+
+                        <page
+                            string="Analyse"
+                            name="subscription_analysis"
+                            >
+
+                            <div class="row mt-3">
+
+                                <!-- MEMBRES À JOUR -->
+
+                                <div class="col-lg-4 col-md-6 mb-3">
+
+                                    <div
+                                        class="border rounded p-4 text-center h-100"
+                                    >
+
+                                        <i
+                                            class="fa fa-check-circle fa-2x mb-2"
+                                            title="Membres à jour"
+                                        />
+
+                                        <div class="fs-2 fw-bold">
+
+                                            <field
+                                                name="paid_member_count"
+                                            />
+
+                                        </div>
+
+                                        <div class="text-muted">
+
+                                            Membres à jour
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                                <!-- PAIEMENTS PARTIELS -->
+
+                                <div class="col-lg-4 col-md-6 mb-3">
+
+                                    <div
+                                        class="border rounded p-4 text-center h-100"
+                                    >
+
+                                        <i
+                                            class="fa fa-adjust fa-2x mb-2"
+                                            title="Paiements partiels"
+                                        />
+
+                                        <div class="fs-2 fw-bold">
+
+                                            <field
+                                                name="partial_member_count"
+                                            />
+
+                                        </div>
+
+                                        <div class="text-muted">
+
+                                            Paiements partiels
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                                <!-- NON PAYÉS -->
+
+                                <div class="col-lg-4 col-md-6 mb-3">
+
+                                    <div
+                                        class="border rounded p-4 text-center h-100"
+                                    >
+
+                                        <i
+                                            class="fa fa-exclamation-circle fa-2x mb-2"
+                                            title="Membres non payés"
+                                        />
+
+                                        <div class="fs-2 fw-bold">
+
+                                            <field
+                                                name="unpaid_member_count"
+                                            />
+
+                                        </div>
+
+                                        <div class="text-muted">
+
+                                            Membres non payés
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </page>
+
+                        <page
+                            string="Historique des cycles"
+                            name="subscription_history">
+
+                            <field
+                                name="period_ids"
+                                nolabel="1"
+                                readonly="1">
+
+                                <list
+                                    string="Historique des cycles"
+                                    create="0"
+                                    delete="0"
+                                    default_order="id desc">
+
+                                    <field
+                                        name="name"
+                                        string="Cycle"
+                                    />
+
+                                    <field
+                                        name="collected_amount"
+                                        widget="monetary"
+                                        string="Cagnotte"
+                                        sum="Total collecté"
+                                    />
+
+                                    <field
+                                        name="allocated_amount"
+                                        widget="monetary"
+                                        string="Attribué"
+                                        sum="Total attribué"
+                                    />
+
+                                    <field
+                                        name="available_amount"
+                                        widget="monetary"
+                                        string="Disponible"
+                                    />
+
+                                    <field
+                                        name="beneficiary_count"
+                                        string="Bénéficiaires"
+                                    />
+
+                                    <field
+                                        name="currency_id"
+                                        column_invisible="1"
+                                    />
+
+                                    <field name="period_start_date" string="Début"/>
+                                    <field name="period_end_date" string="Fin"/>
+                                    <field name="due_date" string="Échéance"/>
+                                    <field name="penalty_deadline" string="Date limite avant pénalité" readonly="1" column_invisible="not parent.penalty_enabled" optional="show"/>
+                                    <field name="penalty_grace_days_remaining" string="Grâce restante" readonly="1" column_invisible="not parent.penalty_enabled" optional="show"/>
+                                    <field name="member_count" string="Membres" readonly="1" optional="show"/>
+                                    <field name="paid_member_count" string="Payés" readonly="1" optional="show"/>
+                                    <field name="partial_member_count" string="Partiels" readonly="1" optional="show"/>
+                                    <field name="unpaid_member_count" string="Non payés" readonly="1" optional="show"/>
+                                    <field name="recovery_rate" string="Recouvrement" widget="progressbar" readonly="1" optional="show"/>
+                                    <field name="state" string="Statut" widget="badge" readonly="1"
+                                           decoration-info="state == 'draft'"
+                                           decoration-warning="state == 'running'"
+                                           decoration-success="state == 'closed'"
+                                           decoration-muted="state == 'cancelled'"/>
+
+                                </list>
+
+                            </field>
+
+                        </page>
+
+                        <!-- ================================================= -->
+                        <!-- NOTES                                             -->
+                        <!-- ================================================= -->
+
+                        <page
+                            string="Notes internes"
+                            name="subscription_notes"
+                            >
+
+                            <field
+                                name="note"
+                                placeholder="Ajouter une note interne..."
+                            />
+
+                        </page>
+
+                    </notebook>
+
+                </sheet>
+
+                <!-- ================================================= -->
+                <!-- CHATTER                                           -->
+                <!-- ================================================= -->
+
+                <chatter/>
+
+            </form>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- VUE KANBAN                                                -->
+    <!-- ========================================================= -->
+
+    <record id="view_subscription_kanban" model="ir.ui.view">
+        <field name="name">association.subscription.kanban</field>
+        <field name="model">association.subscription</field>
+        <field name="arch" type="xml">
+
+            <kanban
+                default_group_by="state"
+                class="o_kanban_small_column">
+
+                <field name="name"/>
+                <field name="code"/>
+                <field name="subscription_type"/>
+                <field name="date"/>
+                <field name="due_date"/>
+                <field name="line_count"/>
+                <field name="total_amount_due"/>
+                <field name="total_amount_paid"/>
+                <field name="total_balance"/>
+                <field name="progress_percent"/>
+                <field name="currency_id"/>
+                <field name="state"/>
+                <field name="color"/>
+
+                <templates>
+
+                    <t t-name="card">
+
+                        <div class="oe_kanban_global_click">
+
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+
+                                <strong class="fs-5">
+
+                                    <field name="name"/>
+
+                                </strong>
+
+                                <field
+                                    name="state"
+                                    widget="badge"/>
+
+                            </div>
+
+
+                            <div class="text-muted small mb-3">
+
+                                <i class="fa fa-hashtag me-1"/>
+
+                                <field name="code"/>
+
+                            </div>
+
+
+                            <div class="mb-2">
+
+                                <field
+                                    name="subscription_type"
+                                    widget="badge"/>
+
+                            </div>
+
+
+                            <div class="small mb-1">
+
+                                <i class="fa fa-users me-2"/>
+
+                                <field name="line_count"/>
+
+                                <span> membre(s)</span>
+
+                            </div>
+
+
+                            <div class="small mb-1">
+
+                                <i class="fa fa-calendar me-2"/>
+
+                                <field name="date"/>
+
+                            </div>
+
+
+                            <div class="small mb-3">
+
+                                <i class="fa fa-calendar-check-o me-2"/>
+
+                                <field name="due_date"/>
+
+                            </div>
+
+
+                            <div class="border-top pt-3">
+
+                                <div class="d-flex justify-content-between">
+
+                                    <span class="text-muted">
+                                        Attendu
+                                    </span>
+
+                                    <strong>
+
+                                        <field
+                                            name="total_amount_due"
+                                            widget="monetary"
+                                            options="{'currency_field': 'currency_id'}"/>
+
+                                    </strong>
+
+                                </div>
+
+
+                                <div class="d-flex justify-content-between">
+
+                                    <span class="text-muted">
+                                        Payé
+                                    </span>
+
+                                    <strong>
+
+                                        <field
+                                            name="total_amount_paid"
+                                            widget="monetary"
+                                            options="{'currency_field': 'currency_id'}"/>
+
+                                    </strong>
+
+                                </div>
+
+
+                                <div class="mt-3">
+
+                                    <field
+                                        name="progress_percent"
+                                        widget="progressbar"/>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </t>
+
+                </templates>
+
+            </kanban>
+
+        </field>
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- ACTION                                                    -->
+    <!-- ========================================================= -->
+
+    <record id="action_subscription" model="ir.actions.act_window">
+
+        <field name="name">Cotisations</field>
+
+        <field name="res_model">association.subscription</field>
+
+        <field name="view_mode">list,kanban,form</field>
+
+        <field
+            name="search_view_id"
+            ref="view_subscription_search"/>
+
+        <field
+            name="context">
+            {
+                'search_default_filter_running': 0
+            }
+        </field>
+
+        <field name="help" type="html">
+
+            <p class="o_view_nocontent_smiling_face">
+                Créez votre première cotisation
+            </p>
+
+            <p>
+                Gérez les cotisations, les membres concernés,
+                les montants attendus et le suivi du recouvrement.
+            </p>
+
+        </field>
+
+    </record>
+
+</odoo>

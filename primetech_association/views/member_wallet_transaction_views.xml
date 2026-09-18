@@ -1,0 +1,535 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<odoo>
+
+    <!-- =========================================================
+         VUE LISTE
+    ========================================================== -->
+
+    <record
+        id="view_association_member_wallet_transaction_list"
+        model="ir.ui.view">
+
+        <field name="name">association.member.wallet.transaction.list</field>
+
+        <field name="model">association.member.wallet.transaction</field>
+
+        <field name="arch" type="xml">
+
+            <list
+                string="Mouvements du compte membre"
+                create="0"
+                delete="0"
+                default_order="transaction_date asc, id asc"
+                decoration-muted="state == 'cancelled'">
+
+                <field
+                    name="transaction_date"
+                    string="Date"/>
+
+                <field
+                    name="name"
+                    string="Référence"/>
+
+                <field
+                    name="transaction_type"
+                    string="Type"
+                    widget="badge"
+                    decoration-success="
+                        transaction_type == 'credit'
+                    "
+                    decoration-danger="
+                        transaction_type == 'debit'
+                    "/>
+
+                <field
+                    name="origin_type"
+                    string="Origine"
+                    widget="badge"/>
+
+                <field
+                    name="description"
+                    string="Description"/>
+
+                <field
+                    name="amount"
+                    string="Montant"
+                    widget="monetary"
+                    options="{
+                        'currency_field': 'currency_id'
+                    }"/>
+
+                <field
+                    name="signed_amount"
+                    string="Mouvement"
+                    widget="monetary"
+                    options="{
+                        'currency_field': 'currency_id'
+                    }"
+                    sum="SOLDE DU COMPTE"/>
+
+                <field
+                    name="currency_id"
+                    column_invisible="True"/>
+
+                <field
+                    name="state"
+                    string="Statut"
+                    widget="badge"
+                    decoration-warning="
+                        state == 'draft'
+                    "
+                    decoration-success="
+                        state == 'confirmed'
+                    "
+                    decoration-danger="
+                        state == 'cancelled'
+                    "/>
+
+            </list>
+
+        </field>
+
+    </record>
+
+
+    <!-- =========================================================
+         VUE FORMULAIRE
+    ========================================================== -->
+
+    <record
+        id="view_association_member_wallet_transaction_form"
+        model="ir.ui.view"
+    >
+
+        <field name="name">association.member.wallet.transaction.form</field>
+
+        <field name="model">association.member.wallet.transaction</field>
+
+        <field name="arch" type="xml">
+
+            <form string="Mouvement du compte membre">
+
+                <!-- =================================================
+                     HEADER
+                ================================================== -->
+
+                <header>
+
+                    <button
+                        name="action_confirm"
+                        type="object"
+                        string="Confirmer"
+                        icon="fa-check"
+                        class="btn-primary"
+                        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        invisible="state != 'draft'"
+                    />
+
+                    <button
+                        name="action_cancel"
+                        type="object"
+                        string="Annuler"
+                        icon="fa-ban"
+                        class="btn-secondary"
+                        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        invisible="state != 'confirmed'"
+                    />
+
+                    <field
+                        name="state"
+                        widget="statusbar"
+                        statusbar_visible="draft,confirmed,cancelled"
+                    />
+
+                </header>
+
+
+                <!-- =================================================
+                     SHEET
+                ================================================== -->
+
+                <sheet>
+
+                    <!-- =================================================
+                         TITRE
+                    ================================================== -->
+
+                    <div class="oe_title">
+
+                        <label
+                            for="name"
+                            string="Référence"
+                        />
+
+                        <h1>
+
+                            <field
+                                name="name"
+                                readonly="1"
+                            />
+
+                        </h1>
+
+                    </div>
+
+
+                    <!-- =================================================
+                         INFORMATIONS PRINCIPALES
+                    ================================================== -->
+
+                    <group>
+
+                        <group string="Compte membre">
+
+                            <field
+                                name="wallet_id"
+                                readonly="state != 'draft'"
+                            />
+
+                            <field
+                                name="member_id"
+                                readonly="1"
+                            />
+
+                            <field
+                                name="company_id"
+                                readonly="1"
+                                groups="base.group_multi_company"
+                            />
+
+                        </group>
+
+
+                        <group string="Mouvement">
+
+                            <field
+                                name="transaction_type"
+                                widget="radio"
+                                readonly="state != 'draft'"
+                            />
+
+                            <field
+                                name="amount"
+                                readonly="state != 'draft'"
+                            />
+
+                            <field
+                                name="currency_id"
+                                invisible="1"
+                            />
+
+                            <field
+                                name="transaction_date"
+                                readonly="state != 'draft'"
+                            />
+
+                        </group>
+
+                    </group>
+
+
+                    <!-- =================================================
+                         ORIGINE
+                    ================================================== -->
+
+                    <group string="Origine du mouvement">
+
+                        <group>
+
+                            <field
+                                name="origin_type"
+                                readonly="state != 'draft'"
+                            />
+
+                            <field
+                                name="payment_id"
+                                readonly="state != 'draft'"
+                                invisible="origin_type not in ['payment_surplus', 'subscription_payment', 'refund']"
+                            />
+
+                            <field
+                                name="meeting_id"
+                                readonly="state != 'draft'"
+                            />
+
+                        </group>
+
+
+                        <group>
+
+                            <field
+                                name="description"
+                                readonly="state != 'draft'"
+                                placeholder="Description du mouvement..."
+                            />
+
+                        </group>
+
+                    </group>
+
+
+                    <!-- =================================================
+                         CHATTER
+                    ================================================== -->
+
+                    <div class="oe_chatter">
+
+                        <field name="message_follower_ids"/>
+
+                        <field name="activity_ids"/>
+
+                        <field name="message_ids"/>
+
+                    </div>
+
+                </sheet>
+
+            </form>
+
+        </field>
+
+    </record>
+
+
+    <!-- =========================================================
+         VUE RECHERCHE
+    ========================================================== -->
+
+    <record
+        id="view_association_member_wallet_transaction_search"
+        model="ir.ui.view"
+    >
+
+        <field name="name">association.member.wallet.transaction.search</field>
+
+        <field name="model">association.member.wallet.transaction</field>
+
+        <field name="arch" type="xml">
+
+            <search string="Rechercher un mouvement">
+
+                <field
+                    name="name"
+                    string="Référence"
+                />
+
+                <field
+                    name="member_id"
+                    string="Membre"
+                />
+
+                <field
+                    name="wallet_id"
+                    string="Compte membre"
+                />
+
+                <field
+                    name="description"
+                    string="Description"
+                />
+
+                <field
+                    name="payment_id"
+                    string="Paiement"
+                />
+
+                <field
+                    name="meeting_id"
+                    string="Réunion"
+                />
+
+
+                <!-- =================================================
+                     FILTRES TYPE
+                ================================================== -->
+
+                <separator/>
+
+                <filter
+                    name="filter_credit"
+                    string="Crédits"
+                    domain="[('transaction_type', '=', 'credit')]"
+                />
+
+                <filter
+                    name="filter_debit"
+                    string="Débits"
+                    domain="[('transaction_type', '=', 'debit')]"
+                />
+
+
+                <!-- =================================================
+                     FILTRES ÉTAT
+                ================================================== -->
+
+                <separator/>
+
+                <filter
+                    name="filter_draft"
+                    string="Brouillons"
+                    domain="[('state', '=', 'draft')]"
+                />
+
+                <filter
+                    name="filter_confirmed"
+                    string="Confirmés"
+                    domain="[('state', '=', 'confirmed')]"
+                />
+
+                <filter
+                    name="filter_cancelled"
+                    string="Annulés"
+                    domain="[('state', '=', 'cancelled')]"
+                />
+
+
+                <!-- =================================================
+                     FILTRES ORIGINE
+                ================================================== -->
+
+                <separator/>
+
+                <filter
+                    name="filter_payment_surplus"
+                    string="Surplus de paiement"
+                    domain="[('origin_type', '=', 'payment_surplus')]"
+                />
+
+                <filter
+                    name="filter_subscription_payment"
+                    string="Paiement de cotisation"
+                    domain="[('origin_type', '=', 'subscription_payment')]"
+                />
+
+                <filter
+                    name="filter_refund"
+                    string="Remboursements"
+                    domain="[('origin_type', '=', 'refund')]"
+                />
+
+                <filter
+                    name="filter_manual"
+                    string="Opérations manuelles"
+                    domain="[('origin_type', '=', 'manual')]"
+                />
+
+
+                <!-- =================================================
+                     DATE
+                ================================================== -->
+
+                <separator/>
+
+                <filter
+                    name="filter_transaction_date"
+                    string="Date"
+                    date="transaction_date"
+                />
+
+
+                <!-- =================================================
+                     REGROUPEMENTS
+                ================================================== -->
+
+                <group expand="0" string="Regrouper par">
+
+                    <filter
+                        name="group_member"
+                        string="Membre"
+                        context="{'group_by': 'member_id'}"
+                    />
+
+                    <filter
+                        name="group_wallet"
+                        string="Compte membre"
+                        context="{'group_by': 'wallet_id'}"
+                    />
+
+                    <filter
+                        name="group_transaction_type"
+                        string="Type"
+                        context="{'group_by': 'transaction_type'}"
+                    />
+
+                    <filter
+                        name="group_origin"
+                        string="Origine"
+                        context="{'group_by': 'origin_type'}"
+                    />
+
+                    <filter
+                        name="group_state"
+                        string="Statut"
+                        context="{'group_by': 'state'}"
+                    />
+
+                    <filter
+                        name="group_transaction_date"
+                        string="Date"
+                        context="{'group_by': 'transaction_date:month'}"
+                    />
+
+                    <filter
+                        name="group_company"
+                        string="Filiale"
+                        context="{'group_by': 'company_id'}"
+                        groups="base.group_multi_company"
+                    />
+
+                </group>
+
+            </search>
+
+        </field>
+
+    </record>
+
+
+    <!-- =========================================================
+         ACTION
+    ========================================================== -->
+
+    <record
+        id="action_association_member_wallet_transaction"
+        model="ir.actions.act_window"
+    >
+
+        <field name="name">Mouvements des comptes membres</field>
+
+        <field name="res_model">association.member.wallet.transaction</field>
+
+        <field name="view_mode">list,form</field>
+
+        <field
+            name="search_view_id"
+            ref="view_association_member_wallet_transaction_search"
+        />
+
+        <field name="context">
+            {
+                'search_default_filter_confirmed': 1
+            }
+        </field>
+
+        <field name="help" type="html">
+
+            <p class="o_view_nocontent_smiling_face">
+
+                Aucun mouvement de compte membre.
+
+            </p>
+
+            <p>
+
+                Les crédits et débits générés par les encaissements,
+                les surplus de paiement et les règlements de cotisation
+                apparaîtront automatiquement ici.
+
+            </p>
+
+        </field>
+
+    </record>
+
+</odoo>

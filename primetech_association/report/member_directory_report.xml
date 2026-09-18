@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="action_report_member_directory" model="ir.actions.report">
+        <field name="name">Répertoire des membres</field>
+        <field name="model">association.member</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">primetech_association.report_member_directory_document</field>
+        <field name="report_file">primetech_association.report_member_directory_document</field>
+        <field name="binding_model_id" ref="model_association_member"/>
+        <field name="binding_type">report</field>
+        <field name="print_report_name">'Répertoire des membres'</field>
+    </record>
+
+    <template id="report_member_directory_document">
+        <t t-call="web.html_container">
+            <t t-call="web.external_layout">
+                <div class="page" style="font-family: Arial, sans-serif; color:#172033;">
+                    <div style="padding:12px 16px; border-left:5px solid #0f766e; background:#f0fdfa; margin-bottom:18px;">
+                        <h2 style="margin:0; color:#0f766e;">Répertoire des membres</h2>
+                        <div style="margin-top:5px; color:#64748b;"><span t-esc="env.company.name"/> · <span t-esc="time.strftime('%d/%m/%Y')"/></div>
+                    </div>
+                    <table class="table table-sm" style="width:100%; border-collapse:collapse; font-size:9pt;">
+                        <thead><tr style="background:#172033; color:#fff;">
+                            <th style="padding:8px;">N°</th><th style="padding:8px;">Membre</th><th style="padding:8px;">Fonction</th><th style="padding:8px;">Téléphone</th><th style="padding:8px;">E-mail</th><th style="padding:8px;">Statut</th>
+                        </tr></thead>
+                        <tbody>
+                            <t t-foreach="docs" t-as="member"><tr style="border-bottom:1px solid #dbe4ee;">
+                                <td style="padding:7px;"><span t-field="member.member_code"/></td>
+                                <td style="padding:7px; font-weight:600;"><span t-field="member.name"/></td>
+                                <td style="padding:7px;"><span t-if="member.function_id" t-field="member.function_id.name"/><span t-else="">Membre</span></td>
+                                <td style="padding:7px;"><span t-field="member.phone"/></td>
+                                <td style="padding:7px;"><span t-field="member.email"/></td>
+                                <td style="padding:7px;"><span t-field="member.state"/></td>
+                            </tr></t>
+                        </tbody>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

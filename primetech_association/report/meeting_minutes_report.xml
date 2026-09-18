@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<odoo>
+
+    <!-- ========================================================= -->
+    <!-- FORMAT PAPIER DU PROCÈS-VERBAL                            -->
+    <!-- ========================================================= -->
+
+    <record
+        id="paperformat_meeting_minutes"
+        model="report.paperformat">
+
+        <field name="name">Procès-verbal de réunion A4</field>
+
+        <field name="default" eval="False"/>
+
+        <field name="format">A4</field>
+
+        <field name="orientation">Portrait</field>
+
+        <field name="margin_top">18</field>
+
+        <field name="margin_bottom">18</field>
+
+        <field name="margin_left">18</field>
+
+        <field name="margin_right">18</field>
+
+        <field name="header_line" eval="False"/>
+
+        <field name="header_spacing">8</field>
+
+        <field name="dpi">96</field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- ACTION RAPPORT                                            -->
+    <!-- ========================================================= -->
+
+    <record
+        id="action_report_meeting_minutes"
+        model="ir.actions.report">
+
+        <field name="name">Procès-verbal</field>
+
+        <field name="model">association.meeting</field>
+
+        <field name="report_type">qweb-pdf</field>
+
+        <field name="report_name">primetech_association.report_meeting_minutes_document</field>
+
+        <field name="report_file">primetech_association.report_meeting_minutes_document</field>
+
+        <field
+            name="binding_model_id"
+            ref="model_association_meeting"
+        />
+
+        <field name="binding_type">report</field>
+
+        <field
+            name="paperformat_id"
+            ref="paperformat_meeting_minutes"
+        />
+
+        <field name="print_report_name">'PV - %s' % (object.name or 'Réunion')</field>
+
+    </record>
+
+</odoo>

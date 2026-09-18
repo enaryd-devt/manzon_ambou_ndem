@@ -1,0 +1,694 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<odoo>
+
+    <!-- ========================================================= -->
+    <!-- VUE RECHERCHE                                             -->
+    <!-- ========================================================= -->
+
+    <record
+        id="view_association_subscription_period_search"
+        model="ir.ui.view">
+
+        <field name="name">association.subscription.period.search</field>
+
+        <field name="model">association.subscription.period</field>
+
+        <field name="arch" type="xml">
+
+            <search string="Rechercher un cycle">
+
+                <field name="name"/>
+
+                <field name="subscription_id"/>
+
+                <field name="subscription_type"/>
+
+                <field name="period_start_date"/>
+
+                <field name="period_end_date"/>
+
+                <field name="due_date"/>
+
+                <field name="state"/>
+
+                <field name="company_id"/>
+
+                <separator/>
+
+                <filter
+                    name="filter_draft"
+                    string="Brouillons"
+                    domain="[('state', '=', 'draft')]"/>
+
+                <filter
+                    name="filter_running"
+                    string="En cours"
+                    domain="[('state', '=', 'running')]"/>
+
+                <filter
+                    name="filter_closed"
+                    string="Terminés"
+                    domain="[('state', '=', 'closed')]"/>
+
+                <filter
+                    name="filter_cancelled"
+                    string="Annulés"
+                    domain="[('state', '=', 'cancelled')]"/>
+
+                <separator/>
+
+       
+
+                <group expand="0" string="Regrouper par">
+
+                    <filter
+                        name="group_subscription"
+                        string="Cotisation"
+                        context="{'group_by': 'subscription_id'}"/>
+
+                    <filter
+                        name="group_subscription_type"
+                        string="Type de cotisation"
+                        context="{'group_by': 'subscription_type'}"/>
+
+                    <filter
+                        name="group_state"
+                        string="Statut"
+                        context="{'group_by': 'state'}"/>
+
+                    <filter
+                        name="group_start_date"
+                        string="Date de début"
+                        context="{'group_by': 'period_start_date'}"/>
+
+                    <filter
+                        name="group_company"
+                        string="Filiale"
+                        context="{'group_by': 'company_id'}"/>
+
+                </group>
+
+            </search>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- VUE LISTE                                                 -->
+    <!-- ========================================================= -->
+
+    <record
+        id="view_association_subscription_period_list"
+        model="ir.ui.view">
+
+        <field name="name">association.subscription.period.list</field>
+
+        <field name="model">association.subscription.period</field>
+
+        <field name="arch" type="xml">
+
+            <list
+                string="Cycles de cotisation"
+                create="0"
+                delete="0"
+                default_order="sequence desc, id desc"
+                decoration-info="state == 'draft'"
+                decoration-success="state == 'running'"
+                decoration-muted="state == 'closed'"
+                decoration-danger="state == 'cancelled'">
+
+                <field
+                    name="sequence"
+                    string="N°"/>
+
+                <field
+                    name="name"
+                    string="Cycle"/>
+
+                <field
+                    name="subscription_id"
+                    string="Cotisation"/>
+
+                <field
+                    name="subscription_type"
+                    string="Type"
+                    optional="show"/>
+
+                <field
+                    name="period_start_date"
+                    string="Début"/>
+
+                <field
+                    name="period_end_date"
+                    string="Fin"/>
+
+                <field
+                    name="due_date"
+                    string="Échéance"
+                    optional="show"/>
+
+                <field
+                    name="member_count"
+                    string="Membres"/>
+
+                <field
+                    name="paid_member_count"
+                    string="Payés"/>
+
+                <field
+                    name="partial_member_count"
+                    string="Partiels"
+                    optional="show"/>
+
+                <field
+                    name="unpaid_member_count"
+                    string="Non payés"/>
+
+                <field
+                    name="expected_amount"
+                    string="Attendu"
+                    sum="Total attendu"/>
+
+                <field
+                    name="collected_amount"
+                    string="Collecté"
+                    sum="Total collecté"/>
+
+                <field
+                    name="penalty_collected_amount"
+                    string="Pénalités reversées"
+                    sum="Total pénalités"
+                    optional="show"/>
+
+                <field
+                    name="allocated_amount"
+                    string="Attribué"
+                    sum="Total attribué"/>
+
+                <field
+                    name="available_amount"
+                    string="Disponible"
+                    sum="Total disponible"/>
+
+                <field
+                    name="beneficiary_count"
+                    string="Bénéficiaires"/>
+
+                <field
+                    name="recovery_rate"
+                    string="Recouvrement"
+                    widget="percentage"
+                    optional="show"/>
+
+                <field
+                    name="state"
+                    string="Statut"
+                    widget="badge"
+                    decoration-info="state == 'draft'"
+                    decoration-success="state == 'running'"
+                    decoration-muted="state == 'closed'"
+                    decoration-danger="state == 'cancelled'"/>
+
+                <field
+                    name="company_id"
+                    string="Filiale"
+                    optional="hide"
+                    groups="base.group_multi_company"/>
+
+                <field
+                    name="currency_id"
+                    column_invisible="1"/>
+
+            </list>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- VUE FORMULAIRE                                             -->
+    <!-- ========================================================= -->
+
+    <record
+        id="view_association_subscription_period_form"
+        model="ir.ui.view">
+
+        <field name="name">association.subscription.period.form</field>
+
+        <field name="model">association.subscription.period</field>
+
+        <field name="arch" type="xml">
+
+            <form string="Cycle de cotisation">
+
+                <header>
+
+                    <button
+                        name="action_start"
+                        type="object"
+                        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Démarrer le cycle"
+                        class="btn-primary"
+                        icon="fa-play"
+                        invisible="state != 'draft'"/>
+
+                    <button
+                        name="action_close"
+                        type="object"
+                        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Terminer le cycle"
+                        class="btn-primary"
+                        icon="fa-check"
+                        invisible="state != 'running'"/>
+
+                    <button
+                        name="action_cancel"
+                        type="object"
+                        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Annuler"
+                        class="btn-secondary"
+                        icon="fa-ban"
+                        invisible="state not in ['draft', 'running']"/>
+
+                    <field
+                        name="state"
+                        widget="statusbar"
+                        statusbar_visible="draft,running,closed"/>
+
+                </header>
+
+                <sheet>
+
+                    <!-- ========================================== -->
+                    <!-- TITRE                                      -->
+                    <!-- ========================================== -->
+
+                    <div class="oe_title">
+
+                        <label
+                            for="name"
+                            string="Cycle"/>
+
+                        <h1>
+
+                            <field
+                                name="name"
+                                readonly="1"/>
+
+                        </h1>
+
+                    </div>
+
+
+                    <!-- ========================================== -->
+                    <!-- INFORMATIONS                               -->
+                    <!-- ========================================== -->
+
+                    <group>
+
+                        <group string="Cotisation">
+
+                            <field
+                                name="subscription_id"
+                                readonly="state != 'draft'"
+                                options="{
+                                    'no_create': True,
+                                    'no_create_edit': True
+                                }"/>
+
+                            <field
+                                name="subscription_type"
+                                readonly="1"/>
+
+                            <field
+                                name="sequence"
+                                readonly="state != 'draft'"/>
+
+                            <field
+                                name="company_id"
+                                readonly="1"
+                                groups="base.group_multi_company"/>
+
+                        </group>
+
+                        <group string="Période">
+
+                            <field
+                                name="period_start_date"
+                                readonly="state != 'draft'"/>
+
+                            <field
+                                name="period_end_date"
+                                readonly="state != 'draft'"/>
+
+                            <field
+                                name="due_date"
+                                readonly="state != 'draft'"/>
+
+                        </group>
+
+                    </group>
+
+
+                    <!-- ========================================== -->
+                    <!-- STATISTIQUES                               -->
+                    <!-- ========================================== -->
+
+                    <group string="Situation du cycle">
+
+                        <group>
+
+                            <field
+                                name="member_count"
+                                readonly="1"/>
+
+                            <field
+                                name="paid_member_count"
+                                readonly="1"/>
+
+                            <field
+                                name="partial_member_count"
+                                readonly="1"/>
+
+                            <field
+                                name="unpaid_member_count"
+                                readonly="1"/>
+
+                            <field
+                                name="recovery_rate"
+                                widget="percentage"
+                                readonly="1"/>
+
+                        </group>
+
+                        <group>
+
+                            <field
+                                name="expected_amount"
+                                readonly="1"/>
+
+                            <field
+                                name="collected_amount"
+                                readonly="1"/>
+
+                            <field
+                                name="penalty_collected_amount"
+                                readonly="1"/>
+
+                            <field
+                                name="allocated_amount"
+                                readonly="1"/>
+
+                            <field
+                                name="available_amount"
+                                readonly="1"/>
+
+                            <field
+                                name="beneficiary_count"
+                                readonly="1"/>
+
+                        </group>
+
+                    </group>
+
+
+                    <!-- ========================================== -->
+                    <!-- ONGLETS                                    -->
+                    <!-- ========================================== -->
+
+                    <notebook>
+
+                        <!-- ====================================== -->
+                        <!-- MEMBRES DU CYCLE                       -->
+                        <!-- ====================================== -->
+
+                        <page
+                            string="Membres du cycle"
+                            name="cycle_members"
+                            groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin">
+
+                            <field
+                                name="member_cycle_line_ids"
+                                readonly="1"
+                                context="{'subscription_period_report_id': id}">
+
+                                <list
+                                    create="0"
+                                    edit="0"
+                                    delete="0"
+                                    default_order="member_id"
+                                    decoration-danger="cycle_payment_state == 'not_paid'"
+                                    decoration-warning="cycle_payment_state == 'partial'"
+                                    decoration-success="cycle_payment_state == 'paid'">
+
+                                    <field
+                                        name="image_128"
+                                        string=""
+                                        widget="image"
+                                        optional="show"
+                                        options="{'size': [40, 40]}"/>
+
+                                    <field
+                                        name="member_code"
+                                        string="Code"/>
+
+                                    <field
+                                        name="member_id"
+                                        string="Membre"/>
+
+                                    <field
+                                        name="category_id"
+                                        string="Catégorie"
+                                        optional="show"/>
+
+                                    <field
+                                        name="function_id"
+                                        string="Fonction"
+                                        optional="show"/>
+
+                                    <field
+                                        name="cycle_base_amount_due"
+                                        string="Cotisation due"
+                                        sum="Cotisations dues"/>
+
+                                    <field
+                                        name="cycle_contribution_paid_amount"
+                                        string="Cotisation payée"
+                                        sum="Cotisations payées"/>
+
+                                    <field
+                                        name="cycle_subscription_balance_amount"
+                                        string="Reste cotisation"
+                                        sum="Reste cotisations"/>
+
+                                    <field
+                                        name="cycle_penalty_amount"
+                                        string="Pénalité due"
+                                        sum="Total pénalités"
+                                        optional="show"/>
+
+                                    <field
+                                        name="cycle_penalty_paid_amount"
+                                        string="Pénalité payée"
+                                        sum="Pénalités payées"
+                                        optional="show"/>
+
+                                    <field
+                                        name="cycle_penalty_balance_amount"
+                                        string="Reste pénalité"
+                                        sum="Reste pénalités"
+                                        optional="show"/>
+
+                                    <field
+                                        name="cycle_amount_due"
+                                        string="Total dû"
+                                        sum="Total dû"
+                                        optional="hide"/>
+
+                                    <field
+                                        name="cycle_amount_paid"
+                                        string="Total payé"
+                                        sum="Total payé"
+                                        optional="hide"/>
+
+                                    <field
+                                        name="cycle_balance"
+                                        string="Reste total"
+                                        sum="Total restant"/>
+
+                                    <field
+                                        name="cycle_is_late"
+                                        string="Retard"
+                                        widget="boolean_toggle"
+                                        readonly="1"
+                                        optional="show"/>
+
+                                    <field
+                                        name="cycle_late_days"
+                                        string="Jours"
+                                        optional="show"/>
+
+                                    <field
+                                        name="cycle_last_payment_date"
+                                        string="Dernier paiement"
+                                        optional="show"/>
+
+                                    <field
+                                        name="cycle_payment_state"
+                                        string="État"
+                                        widget="badge"
+                                        decoration-danger="cycle_payment_state == 'not_paid'"
+                                        decoration-warning="cycle_payment_state == 'partial'"
+                                        decoration-success="cycle_payment_state == 'paid'"/>
+
+                                    <field
+                                        name="currency_id"
+                                        column_invisible="1"/>
+
+                                </list>
+
+                            </field>
+
+                        </page>
+
+                        <!-- ====================================== -->
+                        <!-- BÉNÉFICIAIRES                          -->
+                        <!-- ====================================== -->
+
+                        <page
+                            string="Bénéficiaires"
+                            name="beneficiaries">
+
+                            <field
+                                name="allocation_ids"
+                                readonly="1">
+
+                                <list
+                                    create="0"
+                                    delete="0"
+                                    default_order="allocation_date desc, id desc"
+                                    decoration-info="state == 'draft'"
+                                    decoration-warning="state == 'confirmed'"
+                                    decoration-success="state == 'paid'"
+                                    decoration-muted="state == 'cancelled'">
+
+                                    <field
+                                        name="beneficiary_image_128"
+                                        string=""
+                                        widget="image"
+                                        optional="show"
+                                        options="{'size': [40, 40]}"/>
+
+                                    <field
+                                        name="beneficiary_id"
+                                        string="Bénéficiaire"/>
+
+                                    <field
+                                        name="allocation_date"
+                                        string="Date"/>
+
+                                    <field
+                                        name="amount"
+                                        string="Montant"
+                                        sum="Total attribué"/>
+
+                                    <field
+                                        name="allocation_method"
+                                        string="Mode"
+                                        optional="show"/>
+
+                                    <field
+                                        name="decision_note"
+                                        string="Décision"
+                                        optional="show"/>
+
+                                    <field
+                                        name="state"
+                                        string="Statut"
+                                        widget="badge"
+                                        decoration-info="state == 'draft'"
+                                        decoration-warning="state == 'confirmed'"
+                                        decoration-success="state == 'paid'"
+                                        decoration-muted="state == 'cancelled'"/>
+
+                                    <field
+                                        name="currency_id"
+                                        column_invisible="1"/>
+
+                                </list>
+
+                            </field>
+
+                        </page>
+
+
+                        <!-- ====================================== -->
+                        <!-- NOTES                                  -->
+                        <!-- ====================================== -->
+
+                        <page
+                            string="Notes"
+                            name="notes">
+
+                            <field
+                                name="note"
+                                placeholder="Notes internes sur le cycle..."/>
+
+                        </page>
+
+                    </notebook>
+
+                </sheet>
+
+                <chatter/>
+
+            </form>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- ACTION                                                     -->
+    <!-- ========================================================= -->
+
+    <record
+        id="action_association_subscription_period"
+        model="ir.actions.act_window">
+
+        <field name="name">Cycles de cotisation</field>
+
+        <field name="res_model">association.subscription.period</field>
+
+        <field name="view_mode">list,form</field>
+
+        <field name="search_view_id"
+               ref="view_association_subscription_period_search"/>
+
+        <field name="context">
+            {
+                'search_default_filter_running': 1
+            }
+        </field>
+
+        <field name="help"
+               type="html">
+
+            <p class="o_view_nocontent_smiling_face">
+                Aucun cycle de cotisation.
+            </p>
+
+            <p>
+                Les cycles sont créés depuis les cotisations.
+            </p>
+
+        </field>
+
+    </record>
+
+</odoo>

@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <record id="action_report_statement" model="ir.actions.report">
+        <field name="name">Rapport association</field>
+        <field name="model">association.statement.report.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">primetech_association.report_statement_document</field>
+        <field name="report_file">primetech_association.report_statement_document</field>
+    </record>
+
+    <template id="report_statement_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="wizard">
+                <t t-call="web.external_layout">
+
+                    <t
+                        t-set="is_account_report"
+                        t-value="wizard.is_account_report()"/>
+
+                    <div
+                        class="page"
+                        style="font-family:Arial;color:#172033;">
+
+                        <div
+                            style="border-left:5px solid #0f766e;background:#f0fdfa;padding:12px 16px;margin-bottom:18px;">
+                            <h2 style="margin:0;">
+                                Rapport / relevé
+                            </h2>
+                            <p style="margin:5px 0 0;">
+                                <span t-field="wizard.report_type"/>
+                                <span t-if="wizard.report_type != 'committee'">
+                                    -
+                                    <span t-field="wizard.date_from"/>
+                                    au
+                                    <span t-field="wizard.date_to"/>
+                                </span>
+                            </p>
+                        </div>
+
+                        <table
+                            class="table table-sm"
+                            style="font-size:9pt;">
+                            <thead>
+                                <tr>
+                                    <th>Date / N°</th>
+                                    <th>Référence / Membre</th>
+                                    <th>Description / Fonction</th>
+
+                                    <t t-if="is_account_report">
+                                        <th class="text-end">Débit</th>
+                                        <th class="text-end">Crédit</th>
+                                        <th class="text-end">Solde</th>
+                                    </t>
+
+                                    <t t-else="">
+                                        <th class="text-end">
+                                            Montant / État
+                                        </th>
+                                    </t>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                <t
+                                    t-foreach="wizard.get_report_lines()"
+                                    t-as="line">
+                                    <tr
+                                        t-att-style="line.get('is_opening') and 'font-weight:600;background:#f8fafc;' or ''">
+                                        <td>
+                                            <span t-esc="line['date']"/>
+                                        </td>
+                                        <td>
+                                            <span t-esc="line['reference']"/>
+                                        </td>
+                                        <td>
+                                            <span t-esc="line['description']"/>
+                                        </td>
+
+                                        <t t-if="is_account_report">
+                                            <td class="text-end">
+                                                <span t-esc="line['debit']"/>
+                                            </td>
+                                            <td class="text-end">
+                                                <span t-esc="line['credit']"/>
+                                            </td>
+                                            <td class="text-end">
+                                                <span t-esc="line['balance']"/>
+                                            </td>
+                                        </t>
+
+                                        <t t-else="">
+                                            <td class="text-end">
+                                                <span t-esc="line['value']"/>
+                                            </td>
+                                        </t>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>

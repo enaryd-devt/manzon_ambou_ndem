@@ -1,0 +1,1229 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ========================================================== -->
+    <!-- SEARCH VIEW -->
+    <!-- ========================================================== -->
+
+    <record id="view_association_member_search" model="ir.ui.view">
+        <field name="name">association.member.search</field>
+        <field name="model">association.member</field>
+        <field name="arch" type="xml">
+
+            <search string="Membres">
+
+                <field
+                    name="name"
+                    string="Membre"
+                    filter_domain="[
+                        '|',
+                        '|',
+                        ('name', 'ilike', self),
+                        ('first_name', 'ilike', self),
+                        ('last_name', 'ilike', self)
+                    ]"/>
+
+                <field name="member_code"/>
+                <field name="phone"/>
+                <field name="mobile"/>
+                <field name="email"/>
+                <field name="function_id"/>
+
+                <separator/>
+
+                <filter
+                    name="filter_active"
+                    string="Actifs"
+                    domain="[('state', '=', 'active')]"/>
+
+                <filter
+                    name="filter_draft"
+                    string="Brouillons"
+                    domain="[('state', '=', 'draft')]"/>
+
+                <filter
+                    name="filter_suspended"
+                    string="Suspendus"
+                    domain="[('state', '=', 'suspended')]"/>
+
+                <filter
+                    name="filter_resigned"
+                    string="Démissionnaires"
+                    domain="[('state', '=', 'resigned')]"/>
+
+                <filter
+                    name="filter_excluded"
+                    string="Exclus"
+                    domain="[('state', '=', 'excluded')]"/>
+
+                <separator/>
+
+                <group expand="0" string="Regrouper par">
+
+                    <filter
+                        name="group_by_function"
+                        string="Fonction"
+                        context="{'group_by': 'function_id'}"/>
+
+                    <filter
+                        name="group_by_state"
+                        string="Statut"
+                        context="{'group_by': 'state'}"/>
+
+                    <filter
+                        name="group_by_company"
+                        string="Société"
+                        context="{'group_by': 'company_id'}"/>
+
+                </group>
+
+            </search>
+
+        </field>
+    </record>
+
+
+    <!-- ========================================================== -->
+    <!-- LIST VIEW -->
+    <!-- ========================================================== -->
+
+    <record id="view_association_member_tree" model="ir.ui.view">
+        <field name="name">association.member.list</field>
+        <field name="model">association.member</field>
+        <field name="arch" type="xml">
+
+            <list
+                string="Membres"
+                default_order="sequence, name"
+                decoration-success="state == 'active'"
+                decoration-warning="state == 'suspended'"
+                decoration-danger="state == 'excluded'"
+                decoration-muted="state == 'resigned' or not active">
+
+                <header>
+                    <button name="action_print_member_directory" type="object"
+                            string="Imprimer la liste" icon="fa-print"/>
+                </header>
+
+                <field name="sequence" widget="handle"/>
+
+                <field
+                    name="image_128"
+                    widget="image"
+                    class="association_member_list_avatar"
+                    string="Photo"
+                    optional="show"
+                    options="{
+                        'preview_image': 'image_128',
+                        'size': [40, 40]
+                    }"
+                />
+
+                <field
+                    name="member_code"
+                    string="N° Membre"/>
+
+                <field
+                    name="name"
+                    string="Membre"/>
+
+                <field
+                    name="function_id"
+                    optional="show"/>
+
+                <field
+                    name="phone"
+                    widget="phone"
+                    optional="show"/>
+
+                <field
+                    name="mobile"
+                    widget="phone"
+                    optional="hide"/>
+
+                <field
+                    name="email"
+                    widget="email"
+                    optional="hide"/>
+
+                <field
+                    name="join_date"
+                    optional="show"/>
+
+                <field
+                    name="state"
+                    widget="badge"
+                    decoration-success="state == 'active'"
+                    decoration-warning="state == 'suspended'"
+                    decoration-danger="state == 'excluded'"
+                    decoration-muted="state == 'draft' or state == 'resigned'"/>
+
+            </list>
+
+        </field>
+    </record>
+
+
+    <!-- ========================================================== -->
+    <!-- FORM VIEW -->
+    <!-- ========================================================== -->
+
+    <record id="view_association_member_form" model="ir.ui.view">
+        <field name="name">association.member.form</field>
+        <field name="model">association.member</field>
+        <field name="arch" type="xml">
+
+            <form string="Membre">
+
+                <!-- ================================================== -->
+                <!-- HEADER -->
+                <!-- ================================================== -->
+
+                <header>
+
+                    <!-- ====================================================== -->
+                    <!-- ACTIVER LE MEMBRE -->
+                    <!-- ====================================================== -->
+
+                    <button
+                        name="action_activate"
+                        type="object"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Activer"
+                        icon="fa-check-circle"
+                        class="btn-primary"
+                        invisible="state != 'draft'"/>
+
+
+                    <!-- ====================================================== -->
+                    <!-- SUSPENDRE -->
+                    <!-- ====================================================== -->
+
+                    <button
+                        name="action_suspend"
+                        type="object"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Suspendre"
+                        icon="fa-pause-circle"
+                        class="btn-secondary"
+                        invisible="state != 'active'"/>
+
+
+                    <!-- ====================================================== -->
+                    <!-- RÉACTIVER -->
+                    <!-- ====================================================== -->
+
+                    <button
+                        name="action_reactivate"
+                        type="object"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Réactiver"
+                        icon="fa-refresh"
+                        class="btn-primary"
+                        invisible="state != 'suspended'"/>
+
+
+                    <!-- ====================================================== -->
+                    <!-- DÉMISSION -->
+                    <!-- ====================================================== -->
+
+                    <button
+                        name="action_resign"
+                        type="object"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Démissionner"
+                        icon="fa-sign-out"
+                        class="btn-secondary"
+                        invisible="state not in ['active', 'suspended']"/>
+
+
+                    <!-- ====================================================== -->
+                    <!-- EXCLURE -->
+                    <!-- ====================================================== -->
+
+                    <button
+                        name="action_exclude"
+                        type="object"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Exclure"
+                        icon="fa-ban"
+                        class="btn-secondary"
+                        invisible="state not in ['active', 'suspended']"/>
+
+
+                    <!-- ====================================================== -->
+                    <!-- REMETTRE EN BROUILLON -->
+                    <!-- ====================================================== -->
+
+                    <button
+                        name="action_reset_draft"
+                        type="object"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Remettre en brouillon"
+                        icon="fa-undo"
+                        class="btn-secondary"
+                        invisible="state not in ['resigned', 'excluded']"/>
+
+
+                    <!-- ====================================================== -->
+                    <!-- STATUS -->
+                    <!-- ====================================================== -->
+
+                    <field
+                        name="state"
+                        widget="statusbar"
+                        statusbar_visible="draft,active,suspended,resigned,excluded"/>
+
+                </header>
+
+
+                <sheet>
+
+                    <!-- ================================================== -->
+                    <!-- TECHNICAL FIELDS -->
+                    <!-- ================================================== -->
+
+                    <field name="active" invisible="1"/>
+                    <field name="color" invisible="1"/>
+                    <field name="sequence" invisible="1"/>
+                    <field name="company_id" invisible="1"/>
+
+
+                    <!-- ================================================== -->
+                    <!-- ARCHIVE RIBBON -->
+                    <!-- ================================================== -->
+
+                    <widget
+                        name="web_ribbon"
+                        title="Archivé"
+                        bg_color="text-bg-danger"
+                        invisible="active"/>
+
+
+                    <!-- ================================================== -->
+                    <!-- SMART BUTTONS -->
+                    <!-- ================================================== -->
+
+                    <div class="oe_button_box" name="button_box">
+
+                        <button
+                            name="action_view_member_account_transactions"
+                            type="object"
+                            class="oe_stat_button"
+                            icon="fa-exchange">
+
+                                <div class="o_field_widget o_stat_info">
+
+                                    <span class="o_stat_value">
+
+                                        <field
+                                            name="balance"
+                                            widget="monetary"
+                                            options="{'currency_field': 'currency_id'}"
+                                            readonly="1"
+                                        />
+
+                                    </span>
+
+                                    <span class="o_stat_text">
+                                        Solde du compte
+                                    </span>
+
+                                </div>
+
+                        </button>
+                        <button
+                            class="oe_stat_button"
+                            icon="fa-credit-card"
+                            type="object"
+                            name="action_view_payments"
+                            groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin">
+
+                            <field
+                                name="payment_count"
+                                widget="statinfo"
+                                string="Paiements"/>
+
+                        </button>
+
+                        <button
+                            class="oe_stat_button"
+                            icon="fa-calendar-check-o"
+                            type="object"
+                            name="action_view_subscriptions"
+                            groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin">
+
+                            <field
+                                name="subscription_count"
+                                widget="statinfo"
+                                string="Cotisations"/>
+
+                        </button>
+
+                        <button
+                            class="oe_stat_button"
+                            icon="fa-money"
+                            type="object"
+                            name="action_view_subscription_penalties"
+                            groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin">
+
+                            <field
+                                name="subscription_penalty_count"
+                                widget="statinfo"
+                                string="Pénalités cotisation"/>
+
+                        </button>
+
+                        <button
+                            class="oe_stat_button"
+                            icon="fa-users"
+                            type="object"
+                            name="action_view_meetings">
+
+                            <field
+                                name="meeting_count"
+                                widget="statinfo"
+                                string="Réunions"/>
+
+                        </button>
+
+                        <button
+                            class="oe_stat_button"
+                            icon="fa-check-circle"
+                            type="object"
+                            name="action_view_attendances">
+
+                            <field
+                                name="attendance_count"
+                                widget="statinfo"
+                                string="Présences"/>
+
+                        </button>
+
+                        <button
+                            class="oe_stat_button"
+                            icon="fa-gift"
+                            type="object"
+                            name="action_view_donations"
+                            groups="primetech_association.group_association_manager,primetech_association.group_association_admin">
+
+                            <field
+                                name="donation_count"
+                                widget="statinfo"
+                                string="Dons"/>
+
+                        </button>
+
+                        <button
+                            class="oe_stat_button"
+                            icon="fa-exclamation-triangle"
+                            type="object"
+                            name="action_view_penalties"
+                            groups="primetech_association.group_association_meeting_president,primetech_association.group_association_meeting_censor,primetech_association.group_association_manager,primetech_association.group_association_admin">
+
+                            <field
+                                name="penalty_count"
+                                widget="statinfo"
+                                string="Sanctions"/>
+
+                        </button>
+
+                    </div>
+
+
+                    <!-- ================================================== -->
+                    <!-- MEMBER HEADER -->
+                    <!-- ================================================== -->
+
+                    <div class="row align-items-start mb-4">
+
+                        <!-- ============================================== -->
+                        <!-- MEMBER INFORMATION -->
+                        <!-- ============================================== -->
+
+                        <div class="col-lg-9 col-md-8 col-12">
+
+                            <div class="oe_title">
+
+                                <div class="d-flex align-items-center mb-2">
+
+                                    <i class="fa fa-user-circle fa-2x me-2 text-muted"/>
+
+                                    <div>
+
+                                        <span class="text-muted">
+                                            Fiche membre
+                                        </span>
+
+                                        <h1 class="mb-0">
+
+                                            <field
+                                                name="name"
+                                                readonly="1"
+                                                placeholder="Nom du membre"/>
+
+                                        </h1>
+
+                                    </div>
+
+                                </div>
+
+
+                                <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+
+                                    <span
+                                        class="badge rounded-pill text-bg-light border d-inline-flex align-items-center"
+                                        style="width: auto; max-width: none;">
+
+                                        <i class="fa fa-id-card-o me-1 flex-shrink-0"/>
+
+                                        <field
+                                            name="member_code"
+                                            readonly="1"
+                                            nolabel="1"
+                                            class="oe_inline"
+                                            style="width: auto !important; max-width: none !important; min-width: 140px;"/>
+
+                                    </span>
+
+
+
+                                    <span
+                                        class="badge rounded-pill text-bg-light border"
+                                        invisible="not function_id">
+
+                                        <i class="fa fa-briefcase me-1"/>
+
+                                        <field name="function_id"/>
+
+                                    </span>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- ============================================== -->
+                        <!-- MEMBER PHOTO -->
+                        <!-- ============================================== -->
+
+                        <div class="col-lg-3 col-md-4 col-12 text-center text-md-end">
+
+                            <div class="d-inline-block">
+
+                                <field
+                                    name="image_1920"
+                                    widget="image"
+                                    class="oe_avatar association_member_form_avatar"
+                                    options="{
+                                        'preview_image': 'image_128',
+                                        'size': [160, 160]
+                                    }"/>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- ================================================== -->
+                    <!-- PRIMARY INFORMATION -->
+                    <!-- ================================================== -->
+
+                    <div class="row g-3 mb-4">
+
+                        <!-- ============================================== -->
+                        <!-- IDENTITY -->
+                        <!-- ============================================== -->
+
+                        <div class="col-lg-6 col-12">
+
+                            <div class="border rounded-3 p-3 h-100">
+
+                                <div class="d-flex align-items-center mb-3">
+
+                                    <i class="fa fa-address-card-o fa-lg me-2 text-muted"/>
+
+                                    <h4 class="mb-0">
+                                        Identité
+                                    </h4>
+
+                                </div>
+
+                                <group>
+
+                                    <field
+                                        name="name"
+                                        placeholder="Nom complet du membre"/>
+
+                                    <field
+                                        name="first_name"
+                                        invisible="1"
+                                        placeholder="Prénom"/>
+
+                                    <field
+                                        name="last_name"
+                                        invisible="1"
+                                        placeholder="Nom"/>
+
+                                    <field name="gender"/>
+
+
+                                    <field name="profession"/>
+
+
+
+                                </group>
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- ============================================== -->
+                        <!-- ASSOCIATION -->
+                        <!-- ============================================== -->
+
+                        <div class="col-lg-6 col-12">
+
+                            <div class="border rounded-3 p-3 h-100">
+
+                                <div class="d-flex align-items-center mb-3">
+
+                                    <i class="fa fa-sitemap fa-lg me-2 text-muted"/>
+
+                                    <h4 class="mb-0">
+                                        Informations associatives
+                                    </h4>
+
+                                </div>
+
+                                <group>
+
+
+                                    <field name="function_id"/>
+
+                                    <field name="join_date"/>
+
+
+
+                                </group>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- ================================================== -->
+                    <!-- NOTEBOOK -->
+                    <!-- ================================================== -->
+
+                    <notebook>
+
+
+                        <!-- ============================================== -->
+                        <!-- CONTACT -->
+                        <!-- ============================================== -->
+
+                        <page
+                            string="Coordonnées"
+                            name="contact">
+
+                            <div class="row g-3">
+
+                                <div class="col-lg-6 col-12">
+
+                                    <div class="border rounded-3 p-3 h-100">
+
+                                        <div class="d-flex align-items-center mb-3">
+
+                                            <i class="fa fa-phone-square fa-lg me-2 text-muted"/>
+
+                                            <h4 class="mb-0">
+                                                Contact
+                                            </h4>
+
+                                        </div>
+
+                                        <group>
+
+                                            <field
+                                                name="phone"
+                                                widget="phone"/>
+
+                                            <field
+                                                name="mobile"
+                                                widget="phone"/>
+
+                                            <field
+                                                name="email"
+                                                widget="email"/>
+
+                                            <field
+                                                name="website"
+                                                widget="url"/>
+
+                                        </group>
+
+                                    </div>
+
+                                </div>
+
+
+                                <div class="col-lg-6 col-12">
+
+                                    <div class="border rounded-3 p-3 h-100">
+
+                                        <div class="d-flex align-items-center mb-3">
+
+                                            <i class="fa fa-map-marker fa-lg me-2 text-muted"/>
+
+                                            <h4 class="mb-0">
+                                                Adresse
+                                            </h4>
+
+                                        </div>
+
+                                        <group>
+
+                                            <field name="street"/>
+
+                                            <field name="street2"/>
+
+                                            <field name="city"/>
+
+                                            <field name="zip"/>
+
+                                            <field name="country_id"/>
+
+                                            <field
+                                                name="state_id"
+                                                domain="[('country_id', '=', country_id)]"/>
+
+                                        </group>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </page>
+
+
+                        <!-- ============================================== -->
+                        <!-- DOCUMENTS -->
+                        <!-- ============================================== -->
+
+                        <page
+                            string="Documents"
+                            name="documents">
+
+                            <div class="row g-3">
+
+                                <div class="col-lg-6 col-12">
+
+                                    <div class="border rounded-3 p-3 h-100">
+
+                                        <div class="d-flex align-items-center mb-3">
+
+                                            <i class="fa fa-id-card fa-lg me-2 text-muted"/>
+
+                                            <h4 class="mb-0">
+                                                Pièce d'identité
+                                            </h4>
+
+                                        </div>
+
+                                        <group>
+
+                                            <field name="id_card_number"/>
+
+                                        </group>
+
+                                    </div>
+
+                                </div>
+
+
+                                <div class="col-lg-6 col-12">
+
+                                    <div class="border rounded-3 p-3 h-100">
+
+                                        <div class="d-flex align-items-center mb-3">
+
+                                            <i class="fa fa-book fa-lg me-2 text-muted"/>
+
+                                            <h4 class="mb-0">
+                                                Passeport
+                                            </h4>
+
+                                        </div>
+
+                                        <group>
+
+                                            <field name="passport_number"/>
+
+                                        </group>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </page>
+
+
+                        <!-- ============================================== -->
+                        <!-- STATISTICS -->
+                        <!-- ============================================== -->
+
+                        <page
+                            string="Statistiques"
+                            name="statistics">
+
+                            <div class="row g-3">
+
+                                <div class="col-lg-6 col-12"
+                                     groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin">
+
+                                    <div class="border rounded-3 p-3 h-100">
+
+                                        <div class="d-flex align-items-center mb-3">
+
+                                            <i class="fa fa-money fa-lg me-2 text-muted"/>
+
+                                            <h4 class="mb-0">
+                                                Finances
+                                            </h4>
+
+                                        </div>
+
+                                        <group>
+
+                                            <field
+                                                name="subscription_count"
+                                                groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                                                readonly="1"/>
+
+                                            <field
+                                                name="payment_count"
+                                                groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                                                readonly="1"/>
+
+                                            <field
+                                                name="subscription_penalty_count"
+                                                groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                                                readonly="1"/>
+
+                                            <field
+                                                name="donation_count"
+                                                groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                                                readonly="1"/>
+
+                                        </group>
+
+                                    </div>
+
+                                </div>
+
+
+                                <div class="col-lg-6 col-12">
+
+                                    <div class="border rounded-3 p-3 h-100">
+
+                                        <div class="d-flex align-items-center mb-3">
+
+                                            <i class="fa fa-line-chart fa-lg me-2 text-muted"/>
+
+                                            <h4 class="mb-0">
+                                                Activités
+                                            </h4>
+
+                                        </div>
+
+                                        <group>
+
+                                            <field
+                                                name="meeting_count"
+                                                readonly="1"/>
+
+                                            <field
+                                                name="attendance_count"
+                                                readonly="1"/>
+
+                                            <field
+                                                name="penalty_count"
+                                                groups="primetech_association.group_association_meeting_president,primetech_association.group_association_meeting_censor,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                                                readonly="1"/>
+
+                                        </group>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </page>
+
+
+                        <!-- ============================================== -->
+                        <!-- NOTES -->
+                        <!-- ============================================== -->
+
+                        <page
+                            string="Notes"
+                            name="notes">
+
+                            <div class="border rounded-3 p-3">
+
+                                <div class="d-flex align-items-center mb-3">
+
+                                    <i class="fa fa-sticky-note-o fa-lg me-2 text-muted"/>
+
+                                    <h4 class="mb-0">
+                                        Notes internes
+                                    </h4>
+
+                                </div>
+
+                                <field
+                                    name="note"
+                                    nolabel="1"
+                                    placeholder="Ajoutez ici les observations et notes internes concernant ce membre..."/>
+
+                            </div>
+
+                        </page>
+
+                    </notebook>
+
+                </sheet>
+
+                <chatter/>
+
+            </form>
+
+        </field>
+    </record>
+
+
+    <!-- ========================================================== -->
+    <!-- KANBAN VIEW -->
+    <!-- ========================================================== -->
+
+    <record id="view_association_member_kanban" model="ir.ui.view">
+        <field name="name">association.member.kanban</field>
+        <field name="model">association.member</field>
+        <field name="arch" type="xml">
+
+            <kanban>
+
+                <field name="id"/>
+                <field name="name"/>
+                <field name="member_code"/>
+                <field name="image_128"/>
+                <field name="function_id"/>
+                <field name="phone"/>
+                <field name="mobile"/>
+                <field name="email"/>
+                <field name="join_date"/>
+                <field name="state"/>
+                <field name="color"/>
+
+                <templates>
+
+                    <t t-name="card">
+
+                        <div class="oe_kanban_global_click">
+
+                            <!-- MEMBER HEADER -->
+
+                            <div class="d-flex align-items-start">
+
+                                <!-- PHOTO MEMBRE -->
+
+                                <div
+                                    class="me-3 flex-shrink-0"
+                                    style="
+                                        width: 90px;
+                                        height: 90px;
+                                        min-width: 90px;
+                                        max-width: 90px;
+                                        overflow: hidden;
+                                        border-radius: 12px;
+                                    ">
+
+                                    <field
+                                        name="image_128"
+                                        widget="image"
+                                        class="w-100 h-100"
+                                        options="{
+                                            'preview_image': 'image_128',
+                                            'size': [90, 90]
+                                        }"
+                                        style="
+                                            width: 90px !important;
+                                            height: 90px !important;
+                                            min-width: 90px !important;
+                                            max-width: 90px !important;
+                                            object-fit: cover;
+                                            border-radius: 12px;
+                                        "/>
+
+                                </div>
+
+
+                                <!-- IDENTIFICATION MEMBRE -->
+
+                                <div
+                                    class="flex-grow-1"
+                                    style="min-width: 0;">
+
+                                    <div class="d-flex justify-content-between align-items-start">
+
+                                        <div
+                                            class="flex-grow-1"
+                                            style="min-width: 0;">
+
+                                            <strong class="fs-5 d-block">
+                                                <field name="name"/>
+                                            </strong>
+
+                                            <div class="text-muted small mt-1">
+
+                                                <i class="fa fa-id-card-o me-1"/>
+
+                                                <field
+                                                    name="member_code"
+                                                    class="oe_inline"/>
+
+                                            </div>
+
+                                        </div>
+
+
+                                        <div class="ms-2 flex-shrink-0">
+
+                                            <field
+                                                name="state"
+                                                widget="badge"/>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
+                            <hr class="my-3"/>
+
+
+                            <!-- MEMBER INFORMATION -->
+
+                            <div class="small">
+
+
+                                <div
+                                    class="mb-2"
+                                    t-if="record.function_id.raw_value">
+
+                                    <i class="fa fa-briefcase me-2 text-muted"/>
+
+                                    <field name="function_id"/>
+
+                                </div>
+
+
+                                <div
+                                    class="mb-2"
+                                    t-if="record.phone.raw_value">
+
+                                    <i class="fa fa-phone me-2 text-muted"/>
+
+                                    <field name="phone"/>
+
+                                </div>
+
+
+                                <div
+                                    class="mb-2"
+                                    t-if="record.email.raw_value">
+
+                                    <i class="fa fa-envelope-o me-2 text-muted"/>
+
+                                    <field name="email"/>
+
+                                </div>
+
+
+                                <div
+                                    t-if="record.join_date.raw_value">
+
+                                    <i class="fa fa-calendar me-2 text-muted"/>
+
+                                    <span>
+                                        Adhésion :
+                                    </span>
+
+                                    <field name="join_date"/>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </t>
+
+                </templates>
+
+            </kanban>
+
+        </field>
+    </record>
+
+
+    <!-- ========================================================== -->
+    <!-- ACTION -->
+    <!-- ========================================================== -->
+
+    <record id="action_association_member" model="ir.actions.act_window">
+
+        <field name="name">Membres</field>
+
+        <field name="res_model">association.member</field>
+
+        <field name="view_mode">list,kanban,form</field>
+
+        <field
+            name="search_view_id"
+            ref="view_association_member_search"/>
+
+        <field name="context">{}</field>
+
+        <field name="help" type="html">
+
+            <p class="o_view_nocontent_smiling_face">
+                Créez votre premier membre
+            </p>
+
+            <p>
+                Gérez les membres, leurs coordonnées,
+                leurs catégories et leurs activités.
+            </p>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================== -->
+    <!-- MASS ACTIONS                                               -->
+    <!-- ========================================================== -->
+
+    <record id="action_member_mass_activate" model="ir.actions.server">
+        <field name="name">Activer / réactiver</field>
+        <field name="model_id" ref="model_association_member"/>
+        <field name="binding_model_id" ref="model_association_member"/>
+        <field name="binding_type">action</field>
+        <field name="binding_view_types">list</field>
+        <field
+            name="groups_id"
+            eval="[
+                (4, ref('primetech_association.group_association_manager')),
+                (4, ref('primetech_association.group_association_admin'))
+            ]"/>
+        <field name="state">code</field>
+        <field name="code">
+records.action_activate()
+action = {'type': 'ir.actions.client', 'tag': 'reload'}
+        </field>
+    </record>
+
+    <record id="action_member_mass_suspend" model="ir.actions.server">
+        <field name="name">Suspendre</field>
+        <field name="model_id" ref="model_association_member"/>
+        <field name="binding_model_id" ref="model_association_member"/>
+        <field name="binding_type">action</field>
+        <field name="binding_view_types">list</field>
+        <field
+            name="groups_id"
+            eval="[
+                (4, ref('primetech_association.group_association_manager')),
+                (4, ref('primetech_association.group_association_admin'))
+            ]"/>
+        <field name="state">code</field>
+        <field name="code">
+records.action_suspend()
+action = {'type': 'ir.actions.client', 'tag': 'reload'}
+        </field>
+    </record>
+
+    <record id="action_member_mass_resign" model="ir.actions.server">
+        <field name="name">Démissionner</field>
+        <field name="model_id" ref="model_association_member"/>
+        <field name="binding_model_id" ref="model_association_member"/>
+        <field name="binding_type">action</field>
+        <field name="binding_view_types">list</field>
+        <field
+            name="groups_id"
+            eval="[
+                (4, ref('primetech_association.group_association_manager')),
+                (4, ref('primetech_association.group_association_admin'))
+            ]"/>
+        <field name="state">code</field>
+        <field name="code">
+records.action_resign()
+action = {'type': 'ir.actions.client', 'tag': 'reload'}
+        </field>
+    </record>
+
+    <record id="action_member_mass_exclude" model="ir.actions.server">
+        <field name="name">Exclure</field>
+        <field name="model_id" ref="model_association_member"/>
+        <field name="binding_model_id" ref="model_association_member"/>
+        <field name="binding_type">action</field>
+        <field name="binding_view_types">list</field>
+        <field
+            name="groups_id"
+            eval="[
+                (4, ref('primetech_association.group_association_manager')),
+                (4, ref('primetech_association.group_association_admin'))
+            ]"/>
+        <field name="state">code</field>
+        <field name="code">
+records.action_exclude()
+action = {'type': 'ir.actions.client', 'tag': 'reload'}
+        </field>
+    </record>
+
+    <record id="action_member_mass_reset_draft" model="ir.actions.server">
+        <field name="name">Remettre en brouillon</field>
+        <field name="model_id" ref="model_association_member"/>
+        <field name="binding_model_id" ref="model_association_member"/>
+        <field name="binding_type">action</field>
+        <field name="binding_view_types">list</field>
+        <field
+            name="groups_id"
+            eval="[
+                (4, ref('primetech_association.group_association_manager')),
+                (4, ref('primetech_association.group_association_admin'))
+            ]"/>
+        <field name="state">code</field>
+        <field name="code">
+records.action_reset_draft()
+action = {'type': 'ir.actions.client', 'tag': 'reload'}
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,755 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ========================================================== -->
+    <!-- VUE RECHERCHE -->
+    <!-- ========================================================== -->
+
+    <record id="view_association_committee_search" model="ir.ui.view">
+        <field name="name">association.committee.search</field>
+        <field name="model">association.committee</field>
+        <field name="arch" type="xml">
+
+            <search string="Bureaux Exécutifs">
+
+                <field name="name"/>
+                <field name="code"/>
+                <field name="start_date"/>
+                <field name="end_date"/>
+
+                <separator/>
+
+                <filter
+                    name="filter_draft"
+                    string="Brouillons"
+                    domain="[('state', '=', 'draft')]"/>
+
+                <filter
+                    name="filter_running"
+                    string="En cours"
+                    domain="[('state', '=', 'running')]"/>
+
+                <filter
+                    name="filter_expired"
+                    string="Expirés"
+                    domain="[('state', '=', 'expired')]"/>
+
+                <filter
+                    name="filter_cancelled"
+                    string="Annulés"
+                    domain="[('state', '=', 'cancelled')]"/>
+
+                <separator/>
+
+                <filter
+                    name="filter_active"
+                    string="Actifs"
+                    domain="[('active', '=', True)]"/>
+
+                <separator/>
+
+                <group expand="0" string="Regrouper par">
+
+                    <filter
+                        name="group_by_state"
+                        string="Statut"
+                        context="{'group_by': 'state'}"/>
+
+                    <filter
+                        name="group_by_start_date"
+                        string="Année de début"
+                        context="{'group_by': 'start_date:year'}"/>
+
+                    <filter
+                        name="group_by_company"
+                        string="Société"
+                        context="{'group_by': 'company_id'}"/>
+
+                </group>
+
+            </search>
+
+        </field>
+    </record>
+
+
+    <!-- ========================================================== -->
+    <!-- VUE LISTE -->
+    <!-- ========================================================== -->
+
+    <record id="view_association_committee_tree" model="ir.ui.view">
+        <field name="name">association.committee.list</field>
+        <field name="model">association.committee</field>
+        <field name="arch" type="xml">
+
+            <list
+                string="Bureaux Exécutifs"
+                default_order="start_date desc"
+                decoration-success="state == 'running'"
+                decoration-warning="state == 'draft'"
+                decoration-muted="state == 'expired'"
+                decoration-danger="state == 'cancelled'">
+
+                <field
+                    name="sequence"
+                    widget="handle"/>
+
+                <field
+                    name="code"
+                    string="Référence"/>
+
+                <field
+                    name="name"
+                    string="Bureau Exécutif"/>
+
+                <field
+                    name="start_date"
+                    string="Début"/>
+
+                <field
+                    name="end_date"
+                    string="Fin"/>
+
+                <field
+                    name="member_count"
+                    string="Membres"/>
+
+                <field
+                    name="signatory_count"
+                    string="Signataires"
+                    optional="show"/>
+
+                <field
+                    name="financial_count"
+                    string="Resp. financiers"
+                    optional="show"/>
+
+                <field
+                    name="state"
+                    string="Statut"
+                    widget="badge"
+                    decoration-warning="state == 'draft'"
+                    decoration-success="state == 'running'"
+                    decoration-muted="state == 'expired'"
+                    decoration-danger="state == 'cancelled'"/>
+
+            </list>
+
+        </field>
+    </record>
+
+
+    <!-- ========================================================== -->
+    <!-- VUE FORMULAIRE -->
+    <!-- ========================================================== -->
+
+    <record id="view_association_committee_form" model="ir.ui.view">
+        <field name="name">association.committee.form</field>
+        <field name="model">association.committee</field>
+        <field name="arch" type="xml">
+
+            <form string="Bureau Exécutif">
+
+                <!-- ================================================== -->
+                <!-- HEADER -->
+                <!-- ================================================== -->
+
+                <header>
+
+                    <button
+                        name="action_start"
+                        type="object"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Démarrer le mandat"
+                        icon="fa-play-circle"
+                        class="btn-primary"
+                        invisible="state != 'draft'"/>
+
+                    <button
+                        name="action_expire"
+                        type="object"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Clôturer le mandat"
+                        icon="fa-check-circle"
+                        class="btn-secondary"
+                        invisible="state != 'running'"/>
+
+                    <button
+                        name="action_cancel"
+                        type="object"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Annuler"
+                        icon="fa-ban"
+                        class="btn-secondary"
+                        invisible="state not in ['draft', 'running']"/>
+
+                    <button
+                        name="action_reset_draft"
+                        type="object"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Remettre en brouillon"
+                        icon="fa-undo"
+                        class="btn-secondary"
+                        invisible="state not in ['expired', 'cancelled']"/>
+
+                    <field
+                        name="state"
+                        widget="statusbar"
+                        statusbar_visible="draft,running,expired,cancelled"/>
+
+                </header>
+
+
+                <sheet>
+
+                    <!-- ================================================== -->
+                    <!-- CHAMPS TECHNIQUES -->
+                    <!-- ================================================== -->
+
+                    <field name="sequence" invisible="1"/>
+                    <field name="color" invisible="1"/>
+                    <field name="active" invisible="1"/>
+
+
+                    <!-- ================================================== -->
+                    <!-- EN-TÊTE DU BUREAU -->
+                    <!-- ================================================== -->
+
+                    <div class="row align-items-start mb-4">
+
+                        <div class="col-lg-8 col-md-8 col-12">
+
+                            <div class="oe_title">
+
+                                <div class="d-flex align-items-center mb-2">
+
+                                    <div
+                                        class="d-flex align-items-center justify-content-center border rounded-circle me-3"
+                                        style="width: 64px; height: 64px; min-width: 64px;">
+
+                                        <i class="fa fa-users fa-2x text-muted" title="Bureau exécutif"/>
+
+                                    </div>
+
+                                    <div class="flex-grow-1">
+
+                                        <span class="text-muted">
+                                            Bureau Exécutif
+                                        </span>
+
+                                        <h1 class="mb-0">
+
+                                            <field
+                                                name="name"
+                                                placeholder="Ex. Bureau Exécutif 2026-2029"/>
+
+                                        </h1>
+
+                                    </div>
+
+                                </div>
+
+
+                                <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+
+                                    <span class="badge rounded-pill text-bg-light border">
+
+                                        <i class="fa fa-hashtag me-1" title="Référence"/>
+
+                                        <field
+                                            name="code"
+                                            readonly="1"
+                                            nolabel="1"
+                                            class="oe_inline"/>
+
+                                    </span>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="col-lg-4 col-md-4 col-12">
+
+                            <div class="rounded-3 border p-3 h-100"
+                                 style="background: linear-gradient(135deg, rgba(25, 135, 84, .10), rgba(25, 135, 84, .025)); border-left: 4px solid #198754 !important;">
+
+                                <div class="d-flex align-items-center mb-3">
+                                    <span class="d-flex align-items-center justify-content-center rounded-circle bg-success-subtle text-success me-2"
+                                          style="width: 34px; height: 34px;">
+                                        <i class="fa fa-calendar" title="Mandat"/>
+                                    </span>
+                                    <div>
+                                        <div class="fw-bold">Période du mandat</div>
+                                        <div class="text-muted small">Validité du bureau exécutif</div>
+                                    </div>
+                                </div>
+
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <label for="start_date" class="form-label text-muted small mb-1">Début</label>
+                                        <field name="start_date" nolabel="1" class="fw-semibold"/>
+                                    </div>
+                                    <div class="col-6">
+                                        <label for="end_date" class="form-label text-muted small mb-1">Fin</label>
+                                        <field name="end_date" nolabel="1" class="fw-semibold"/>
+                                    </div>
+                                </div>
+
+                                <field name="company_id" groups="base.group_multi_company" class="mt-2"/>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- ================================================== -->
+                    <!-- INDICATEURS -->
+                    <!-- ================================================== -->
+
+                    <div class="row g-3 mb-4">
+
+                        <div class="col-lg-4 col-md-4 col-12">
+
+                            <div class="border rounded-3 p-3 h-100">
+
+                                <div class="d-flex align-items-center">
+
+                                    <div
+                                        class="d-flex align-items-center justify-content-center border rounded-circle me-3"
+                                        style="width: 48px; height: 48px; min-width: 48px;">
+
+                                        <i class="fa fa-users fa-lg text-muted" title="Membres"/>
+
+                                    </div>
+
+                                    <div>
+
+                                        <span class="text-muted small d-block">
+                                            Membres du bureau
+                                        </span>
+
+                                        <strong class="fs-3">
+
+                                            <field
+                                                name="member_count"
+                                                nolabel="1"
+                                                readonly="1"/>
+
+                                        </strong>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="col-lg-4 col-md-4 col-12">
+
+                            <div class="border rounded-3 p-3 h-100">
+
+                                <div class="d-flex align-items-center">
+
+                                    <div
+                                        class="d-flex align-items-center justify-content-center border rounded-circle me-3"
+                                        style="width: 48px; height: 48px; min-width: 48px;">
+
+                                        <i class="fa fa-pencil-square-o fa-lg text-muted" title="Signataires"/>
+
+                                    </div>
+
+                                    <div>
+
+                                        <span class="text-muted small d-block">
+                                            Signataires autorisés
+                                        </span>
+
+                                        <strong class="fs-3">
+
+                                            <field
+                                                name="signatory_count"
+                                                nolabel="1"
+                                                readonly="1"/>
+
+                                        </strong>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="col-lg-4 col-md-4 col-12">
+
+                            <div class="border rounded-3 p-3 h-100">
+
+                                <div class="d-flex align-items-center">
+
+                                    <div
+                                        class="d-flex align-items-center justify-content-center border rounded-circle me-3"
+                                        style="width: 48px; height: 48px; min-width: 48px;">
+
+                                        <i class="fa fa-money fa-lg text-muted" title="Responsables financiers"/>
+
+                                    </div>
+
+                                    <div>
+
+                                        <span class="text-muted small d-block">
+                                            Responsables financiers
+                                        </span>
+
+                                        <strong class="fs-3">
+
+                                            <field
+                                                name="financial_count"
+                                                nolabel="1"
+                                                readonly="1"/>
+
+                                        </strong>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- ================================================== -->
+                    <!-- MEMBRES DU BUREAU -->
+                    <!-- ================================================== -->
+
+                    <div class="border rounded-3 p-3 mb-4">
+
+                        <div class="d-flex align-items-center mb-3">
+
+                            <i class="fa fa-sitemap fa-lg me-2 text-muted" title="Composition du bureau"/>
+
+                            <div>
+
+                                <h3 class="mb-0">
+                                    Membres du Bureau Exécutif
+                                </h3>
+
+                                <span class="text-muted small">
+                                    Composition, fonctions et habilitations du bureau
+                                </span>
+
+                            </div>
+
+                        </div>
+
+
+                        <field
+                            name="member_line_ids"
+                            nolabel="1"
+                            readonly="state != 'draft'">
+
+                            <list
+                                string="Membres du Bureau"
+                                editable="bottom"
+                                default_order="sequence, id">
+
+                                <field
+                                    name="sequence"
+                                    widget="handle"/>
+
+                                <field
+                                    name="image_128"
+                                    string="Photo"
+                                    widget="image"
+                                    options="{'size': [48, 48]}"/>
+
+                                <field
+                                    name="member_code"
+                                    string="Code"
+                                    readonly="1"/>
+
+                                <field
+                                    name="member_id"
+                                    string="Membre"
+                                    options="{'no_create': True, 'no_create_edit': True}"/>
+
+                                <field
+                                    name="function_id"
+                                    string="Fonction"/>
+
+                                <field
+                                    name="is_signatory"
+                                    string="Signataire"
+                                    widget="boolean_toggle"/>
+
+                                <field
+                                    name="is_financial"
+                                    string="Finances"
+                                    widget="boolean_toggle"/>
+
+                                <field
+                                    name="note"
+                                    string="Observation"
+                                    optional="hide"/>
+
+                            </list>
+
+                        </field>
+
+                    </div>
+
+
+                    <!-- ================================================== -->
+                    <!-- NOTEBOOK -->
+                    <!-- ================================================== -->
+
+                    <notebook>
+
+                        <page
+                            string="Description"
+                            name="description">
+
+                            <div class="border rounded-3 p-3">
+
+                                <div class="d-flex align-items-center mb-3">
+
+                                    <i class="fa fa-align-left fa-lg me-2 text-muted" title="Description"/>
+
+                                    <h4 class="mb-0">
+                                        Description du Bureau Exécutif
+                                    </h4>
+
+                                </div>
+
+                                <field
+                                    name="description"
+                                    nolabel="1"
+                                    placeholder="Décrivez le mandat, les missions et les objectifs du Bureau Exécutif..."/>
+
+                            </div>
+
+                        </page>
+
+
+                        <page
+                            string="Notes internes"
+                            name="notes">
+
+                            <div class="border rounded-3 p-3">
+
+                                <div class="d-flex align-items-center mb-3">
+
+                                    <i class="fa fa-sticky-note-o fa-lg me-2 text-muted" title="Notes internes"/>
+
+                                    <h4 class="mb-0">
+                                        Notes internes
+                                    </h4>
+
+                                </div>
+
+                                <field
+                                    name="note"
+                                    nolabel="1"
+                                    placeholder="Ajoutez les observations internes..."/>
+
+                            </div>
+
+                        </page>
+
+                    </notebook>
+
+                </sheet>
+
+                <chatter/>
+
+            </form>
+
+        </field>
+    </record>
+
+
+    <!-- ========================================================== -->
+    <!-- VUE KANBAN -->
+    <!-- ========================================================== -->
+
+    <record id="view_association_committee_kanban" model="ir.ui.view">
+        <field name="name">association.committee.kanban</field>
+        <field name="model">association.committee</field>
+        <field name="arch" type="xml">
+
+            <kanban>
+
+                <field name="name"/>
+                <field name="code"/>
+                <field name="start_date"/>
+                <field name="end_date"/>
+                <field name="member_count"/>
+                <field name="signatory_count"/>
+                <field name="financial_count"/>
+                <field name="state"/>
+                <field name="color"/>
+
+                <templates>
+
+                    <t t-name="card">
+
+                        <div class="oe_kanban_global_click">
+
+                            <div class="d-flex justify-content-between align-items-start">
+
+                                <div class="d-flex align-items-center flex-grow-1">
+
+                                    <div
+                                        class="d-flex align-items-center justify-content-center border rounded-circle me-3"
+                                        style="width: 56px; height: 56px; min-width: 56px;">
+
+                                        <i class="fa fa-users fa-2x text-muted" title="Bureau exécutif"/>
+
+                                    </div>
+
+                                    <div class="flex-grow-1">
+
+                                        <strong class="fs-5 d-block">
+                                            <field name="name"/>
+                                        </strong>
+
+                                        <div class="text-muted small">
+
+                                            <i class="fa fa-hashtag me-1" title="Référence"/>
+
+                                            <field name="code"/>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+
+                                <field
+                                    name="state"
+                                    widget="badge"/>
+
+                            </div>
+
+
+                            <hr class="my-3"/>
+
+
+                            <div class="row text-center">
+
+                                <div class="col-4">
+
+                                    <strong class="fs-4 d-block">
+                                        <field name="member_count"/>
+                                    </strong>
+
+                                    <span class="text-muted small">
+                                        Membres
+                                    </span>
+
+                                </div>
+
+
+                                <div class="col-4">
+
+                                    <strong class="fs-4 d-block">
+                                        <field name="signatory_count"/>
+                                    </strong>
+
+                                    <span class="text-muted small">
+                                        Signataires
+                                    </span>
+
+                                </div>
+
+
+                                <div class="col-4">
+
+                                    <strong class="fs-4 d-block">
+                                        <field name="financial_count"/>
+                                    </strong>
+
+                                    <span class="text-muted small">
+                                        Finances
+                                    </span>
+
+                                </div>
+
+                            </div>
+
+
+                            <hr class="my-3"/>
+
+
+                            <div class="text-muted small">
+
+                                <i class="fa fa-calendar me-1" title="Période du mandat"/>
+
+                                <field name="start_date"/>
+
+                                <span class="mx-1">—</span>
+
+                                <field name="end_date"/>
+
+                            </div>
+
+                        </div>
+
+                    </t>
+
+                </templates>
+
+            </kanban>
+
+        </field>
+    </record>
+
+
+    <!-- ========================================================== -->
+    <!-- ACTION -->
+    <!-- ========================================================== -->
+
+    <record id="action_committee" model="ir.actions.act_window">
+
+        <field name="name">Bureau Exécutif</field>
+
+        <field name="res_model">association.committee</field>
+
+        <field name="view_mode">list,kanban,form</field>
+
+        <field
+            name="search_view_id"
+            ref="view_association_committee_search"/>
+
+        <field name="context">
+            {}
+        </field>
+
+        <field name="help" type="html">
+
+            <div class="o_view_nocontent_smiling_face">
+                Créez votre premier Bureau Exécutif
+            </div>
+
+            <p>
+                Gérez la composition du Bureau Exécutif,
+                les fonctions des membres, les mandats
+                et les habilitations.
+            </p>
+
+        </field>
+
+    </record>
+
+</odoo>

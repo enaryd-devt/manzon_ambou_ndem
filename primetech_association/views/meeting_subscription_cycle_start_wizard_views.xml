@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_association_meeting_subscription_cycle_start_wizard_form" model="ir.ui.view">
+        <field name="name">association.meeting.subscription.cycle.start.wizard.form</field>
+        <field name="model">association.meeting.subscription.cycle.start.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Démarrer le cycle suivant">
+                <sheet>
+                    <div class="alert alert-info" role="alert">
+                        Aucun cycle n'est actuellement en cours. Confirmez pour démarrer le cycle suivant de cette cotisation dans cette réunion.
+                    </div>
+                    <group>
+                        <field name="meeting_id"/>
+                        <field name="subscription_id"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_start_next_cycle" type="object" string="Démarrer le nouveau cycle" class="btn-primary" groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"/>
+                    <button string="Annuler" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

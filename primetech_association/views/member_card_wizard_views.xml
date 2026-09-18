@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<odoo>
+
+    <record id="view_association_card_generation_wizard_form" model="ir.ui.view">
+        <field name="name">association.card.generation.wizard.form</field>
+        <field name="model">association.card.generation.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Générer les cartes de membre">
+                <sheet>
+                    <group>
+                        <group string="Membres">
+                            <field name="generation_scope"/>
+                            <field
+                                name="company_id"
+                                options="{'no_create': True}"/>
+                            <field
+                                name="member_ids"
+                                widget="many2many_tags"
+                                domain="[
+                                    ('company_id', '=', company_id),
+                                    ('state', '=', 'active')
+                                ]"
+                                invisible="generation_scope != 'selected'"
+                                required="generation_scope == 'selected'"
+                                options="{
+                                    'no_create': True,
+                                    'no_create_edit': True
+                                }"/>
+                        </group>
+
+                        <group string="Paramètres">
+                            <field name="issue_date"/>
+                            <field name="validity_months"/>
+                            <field name="existing_card_policy"/>
+                            <field name="activate_cards"/>
+                            <field name="print_cards"/>
+                        </group>
+                    </group>
+
+                    <group string="Note interne">
+                        <field
+                            name="note"
+                            nolabel="1"
+                            placeholder="Note optionnelle ajoutée aux cartes générées..."/>
+                    </group>
+                </sheet>
+
+                <footer>
+                    <button
+                        name="action_generate_cards"
+                        type="object"
+                        string="Générer"
+                        icon="fa-id-card-o"
+                        class="btn-primary"/>
+                    <button
+                        string="Annuler"
+                        special="cancel"
+                        class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_card_generation_wizard" model="ir.actions.act_window">
+        <field name="name">Générer les cartes de membre</field>
+        <field name="res_model">association.card.generation.wizard</field>
+        <field name="view_mode">form</field>
+        <field
+            name="view_id"
+            ref="view_association_card_generation_wizard_form"/>
+        <field name="target">new</field>
+        <field name="context">{}</field>
+    </record>
+
+</odoo>

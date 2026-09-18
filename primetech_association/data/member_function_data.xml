@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="member_function_president" model="association.member.function">
+        <field name="name">Président</field>
+    </record>
+
+    <record id="member_function_vice_president" model="association.member.function">
+        <field name="name">Vice-Président</field>
+    </record>
+
+    <record id="member_function_secretary" model="association.member.function">
+        <field name="name">Secrétaire Général</field>
+    </record>
+
+    <record id="member_function_treasurer" model="association.member.function">
+        <field name="name">Trésorier</field>
+    </record>
+
+    <record id="member_function_member" model="association.member.function">
+        <field name="name">Membre</field>
+    </record>
+
+</odoo>

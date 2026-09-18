@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<odoo>
+
+    <!-- Carte de membre A6 imprimee pleine page. -->
+    <template id="report_member_card_document">
+
+        <t t-set="full_width" t-value="True"/>
+        <t t-call="web.html_container">
+            <style type="text/css">
+                @page {
+                    size: 105mm 148mm;
+                    margin: 0;
+                }
+
+                html,
+                body,
+                #wrapwrap,
+                main {
+                    width: 105mm !important;
+                    min-width: 105mm !important;
+                    max-width: 105mm !important;
+                    height: 148mm !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                }
+
+                body.o_body_html,
+                body.o_body_html.container,
+                body.o_body_html.container-fluid {
+                    width: 105mm !important;
+                    min-width: 105mm !important;
+                    max-width: 105mm !important;
+                    margin: 0 !important;
+                    padding-left: 0 !important;
+                    padding-right: 0 !important;
+                    --bs-gutter-x: 0 !important;
+                    background: #ffffff !important;
+                }
+
+                .association_member_card_print_article,
+                .association_member_card_print_page {
+                    width: 105mm !important;
+                    height: 148mm !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    overflow: hidden !important;
+                    background: #ffffff !important;
+                }
+
+                .association_member_card_print_page {
+                    page-break-after: always;
+                }
+
+                .association_member_card_print_article:last-child .association_member_card_print_page {
+                    page-break-after: auto;
+                }
+            </style>
+
+            <t t-foreach="docs" t-as="card">
+                <t t-set="theme" t-value="card.get_member_card_theme()"/>
+
+                <div class="article association_member_card_print_article" t-att-data-oe-model="card and card._name" t-att-data-oe-id="card and card.id" t-att-data-oe-lang="card and card.env.context.get('lang')">
+
+                    <div class="page association_member_card_print_page" style="position: relative; font-family: Arial, Helvetica, sans-serif;">
+                        <div t-att-style="'position: absolute; top: 50%; left: 50%; width: 97mm; height: 140mm; margin-top: 4mm; margin-left: -48.5mm; box-sizing: border-box; overflow: hidden; border: 0.45mm solid ' + theme['accent'] + '; border-radius: 3mm; background: #ffffff;'">
+
+                            <!-- En-tete -->
+                            <div t-att-style="'height: 39mm; padding: 7mm 8mm 0; box-sizing: border-box; background: ' + theme['dark'] + '; color: #ffffff;'">
+                                <div style="display: inline-block; width: 70%; vertical-align: top;">
+                                    <div t-att-style="'font-size: 7pt; font-weight: 700; letter-spacing: 1.3px; color: ' + theme['accent_light'] + '; text-transform: uppercase;'">Association</div>
+                                    <div style="margin-top: 2.5mm; font-size: 12pt; font-weight: 700; line-height: 1.18; color: #ffffff; text-transform: uppercase;">
+                                        <span t-field="card.company_id.name"/>
+                                    </div>
+                                </div>
+                                <div style="display: inline-block; width: 29%; vertical-align: top; text-align: right;">
+                                    <span style="display: inline-block; padding: 2mm 3mm; border-radius: 7mm; background: #263246; font-size: 7pt; font-weight: 700; color: #ffffff; text-transform: uppercase;">Membre</span>
+                                </div>
+                            </div>
+                            <div t-att-style="'position: absolute; top: 33mm; right: 0; width: 15mm; height: 11mm; background: ' + theme['accent'] + ';'"></div>
+
+                            <!-- Identite -->
+                            <div style="position: absolute; top: 30mm; right: 8mm; left: 8mm; height: 37mm; padding: 5mm; box-sizing: border-box; border: 0.35mm solid #d7e1ea; border-radius: 3mm; background: #ffffff; box-shadow: 0 1.5mm 4mm rgba(15, 23, 42, 0.12);">
+                                <div style="display: inline-block; width: 34%; vertical-align: middle; text-align: center;">
+                                    <img t-if="card.image_128" t-att-src="image_data_uri(card.image_128)" t-att-style="'display: block; width: 28mm; height: 28mm; margin: 0 auto; object-fit: cover; object-position: center; border: 0.7mm solid #ffffff; border-radius: 50%; background: #f8fafc; box-shadow: 0 0 0 0.35mm ' + theme['accent'] + ';'"/>
+                                    <div t-if="not card.image_128" t-att-style="'width: 28mm; height: 28mm; margin: 0 auto; border-radius: 50%; background: ' + theme['avatar_bg'] + '; color: ' + theme['accent'] + '; font-size: 7pt; font-weight: 700; line-height: 28mm; text-align: center;'">PHOTO</div>
+                                </div>
+                                <div style="display: inline-block; width: 61%; margin-left: 4%; vertical-align: middle;">
+                                    <div style="font-size: 7pt; font-weight: 700; letter-spacing: 1px; color: #64748b; text-transform: uppercase;">Titulaire</div>
+                                    <div style="margin-top: 1.5mm; font-size: 13.2pt; font-weight: 700; line-height: 1.04; color: #0f172a; text-transform: uppercase;">
+                                        <span t-field="card.member_id.name"/>
+                                    </div>
+                                    <div style="margin-top: 3mm; font-size: 7pt; font-weight: 700; letter-spacing: .8px; color: #64748b; text-transform: uppercase;">Code membre</div>
+                                    <div t-att-style="'margin-top: 1mm; font-size: 10pt; font-weight: 700; color: ' + theme['accent'] + ';'">
+                                        <span t-field="card.member_code"/>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Numero de carte -->
+                            <div t-att-style="'position: absolute; top: 76mm; right: 8mm; left: 8mm; height: 19mm; padding: 4mm 5mm; box-sizing: border-box; border: 0.35mm solid ' + theme['border'] + '; border-radius: 3mm; background: ' + theme['soft'] + ';'">
+                                <div t-att-style="'display: inline-block; width: 43%; vertical-align: middle; font-size: 7pt; font-weight: 700; letter-spacing: .8px; color: ' + theme['accent'] + '; text-transform: uppercase;'">Num&#233;ro de carte</div>
+                                <div style="display: inline-block; width: 56%; vertical-align: middle; text-align: right; font-size: 13pt; font-weight: 700; letter-spacing: .5px; color: #0f172a;">
+                                    <span t-field="card.card_number"/>
+                                </div>
+                            </div>
+
+                            <!-- Informations essentielles -->
+                            <div style="position: absolute; top: 101mm; right: 8mm; left: 8mm; min-height: 13mm;">
+                                <div style="display: inline-block; width: 58%; vertical-align: top;">
+                                    <div style="font-size: 7pt; font-weight: 700; letter-spacing: .8px; color: #64748b; text-transform: uppercase;">Contact</div>
+                                    <div t-if="card.phone" style="margin-top: 1.5mm; font-size: 9pt; font-weight: 700; line-height: 1.25; color: #1e293b;">
+                                        <span t-field="card.phone"/>
+                                    </div>
+                                    <div t-if="card.email" style="margin-top: 1mm; font-size: 7.5pt; line-height: 1.2; color: #475569;">
+                                        <span t-field="card.email"/>
+                                    </div>
+                                    <div t-if="not card.phone and not card.email" style="margin-top: 1.5mm; font-size: 9pt; color: #94a3b8;">Non renseign&#233;</div>
+                                </div>
+                                <div style="display: inline-block; width: 41%; vertical-align: top; text-align: right;">
+                                    <div style="font-size: 7pt; font-weight: 700; letter-spacing: .8px; color: #64748b; text-transform: uppercase;">Fonction</div>
+                                    <div t-if="card.function_id" style="margin-top: 1.5mm; font-size: 10pt; font-weight: 700; line-height: 1.25; color: #1e293b;">
+                                        <span t-field="card.function_id.name"/>
+                                    </div>
+                                    <div t-if="not card.function_id" style="margin-top: 1.5mm; font-size: 9pt; font-weight: 700; color: #1e293b;">Membre</div>
+                                </div>
+                            </div>
+
+                            <!-- Dates et statut -->
+                            <div style="position: absolute; top: 116mm; right: 8mm; left: 8mm; height: 14mm; line-height: 1.35;">
+                                <div style="position: absolute; top: 0; left: 0; width: 28mm; text-align: left;">
+                                    <div style="font-size: 7pt; font-weight: 700; letter-spacing: .9px; color: #64748b; text-transform: uppercase;">&#201;mise le</div>
+                                    <div style="margin-top: 1.8mm; font-size: 11pt; font-weight: 700; color: #0f172a;">
+                                        <span t-field="card.issue_date"/>
+                                    </div>
+                                </div>
+                                <div style="position: absolute; top: 5.2mm; right: 28mm; left: 28mm; text-align: center;">
+                                    <div t-att-style="'font-size: 7.5pt; font-weight: 700; letter-spacing: .7px; color: ' + theme['accent'] + '; text-transform: uppercase; white-space: nowrap;'">
+                                        Membre <span style="color: #94a3b8;">&#8226;</span> <span t-field="card.state"/>
+                                    </div>
+                                </div>
+                                <div style="position: absolute; top: 0; right: 0; width: 30mm; text-align: right;">
+                                    <div style="font-size: 7pt; font-weight: 700; letter-spacing: .9px; color: #64748b; text-transform: uppercase;">Valide jusqu'au</div>
+                                    <div style="margin-top: 1.8mm; font-size: 11pt; font-weight: 700; color: #0f172a;">
+                                        <span t-field="card.expiry_date"/>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Pied -->
+                            <div style="position: absolute; right: 8mm; bottom: 6.5mm; left: 8mm; text-align: center;">
+                                <div style="font-size: 6.8pt; line-height: 1.45; color: #94a3b8;">Carte personnelle et non cessible. &#192; pr&#233;senter pour toute identification.</div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+            </t>
+        </t>
+
+    </template>
+
+</odoo>

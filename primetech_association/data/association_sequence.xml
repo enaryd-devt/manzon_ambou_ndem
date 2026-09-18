@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ========================================================= -->
+    <!-- MEMBER -->
+    <!-- ========================================================= -->
+
+    <record id="seq_association_member" model="ir.sequence">
+        <field name="name">Association Member</field>
+        <field name="code">association.member</field>
+        <field name="prefix">MEM/%(year)s/</field>
+        <field name="padding">5</field>
+        <field name="number_increment">1</field>
+    </record>
+
+    <!-- ========================================================= -->
+    <!-- SUBSCRIPTION -->
+    <!-- ========================================================= -->
+
+    <record id="seq_association_subscription" model="ir.sequence">
+        <field name="name">Association Subscription</field>
+        <field name="code">association.subscription</field>
+        <field name="prefix">SUB/%(year)s/</field>
+        <field name="padding">5</field>
+    </record>
+
+    <!-- ========================================================= -->
+    <!-- PAYMENT -->
+    <!-- ========================================================= -->
+
+    <record id="seq_association_payment" model="ir.sequence">
+        <field name="name">Association Payment</field>
+        <field name="code">association.payment</field>
+        <field name="prefix">PAY/%(year)s/</field>
+        <field name="padding">5</field>
+    </record>
+
+    <!-- ========================================================= -->
+    <!-- DONATION -->
+    <!-- ========================================================= -->
+
+    <record id="seq_association_donation" model="ir.sequence">
+        <field name="name">Association Donation</field>
+        <field name="code">association.donation</field>
+        <field name="prefix">DON/%(year)s/</field>
+        <field name="padding">5</field>
+    </record>
+
+    <!-- ========================================================= -->
+    <!-- EXPENSE -->
+    <!-- ========================================================= -->
+
+    <record id="seq_association_expense" model="ir.sequence">
+        <field name="name">Association Expense</field>
+        <field name="code">association.expense</field>
+        <field name="prefix">EXP/%(year)s/</field>
+        <field name="padding">5</field>
+    </record>
+
+    <!-- ========================================================= -->
+    <!-- INCOME -->
+    <!-- ========================================================= -->
+
+    <record id="seq_association_income" model="ir.sequence">
+        <field name="name">Association Income</field>
+        <field name="code">association.income</field>
+        <field name="prefix">INC/%(year)s/</field>
+        <field name="padding">5</field>
+    </record>
+
+    <record id="seq_association_committee" model="ir.sequence">
+        <field name="name">Bureau Exécutif</field>
+        <field name="code">association.committee</field>
+        <field name="prefix">BE/%(year)s/</field>
+        <field name="padding">4</field>
+        <field name="company_id" eval="False"/>
+    </record>
+
+    <record id="seq_association_card" model="ir.sequence">
+
+        <field name="name">Numéro de carte membre</field>
+        <field name="code">association.card</field>
+        <field name="prefix">CAR/%(year)s/</field>
+        <field name="padding">5</field>
+        <field name="company_id" eval="False"/>
+
+    </record>
+
+        <record id="seq_association_meeting" model="ir.sequence">
+
+        <field name="name">Réunion</field>
+
+        <field name="code">association.meeting</field>
+
+        <field name="prefix">MEET/%(year)s/%(month)s/</field>
+
+        <field name="padding">4</field>
+
+        <field name="company_id" eval="False"/>
+
+    </record>
+
+    <record
+        id="seq_association_penalty"
+        model="ir.sequence">
+
+        <field name="name">Séquence des sanctions</field>
+        <field name="code">association.penalty</field>
+        <field name="prefix">SANC/%(year)s/</field>
+        <field name="padding">5</field>
+        <field name="number_next">1</field>
+        <field name="number_increment">1</field>
+        <field name="company_id" eval="False"/>
+
+    </record>
+
+    <record
+        id="seq_association_meeting_collection"
+        model="ir.sequence">
+        <field name="name">Encaissement réunion</field>
+        <field name="code">association.meeting.collection</field>
+        <field name="prefix">ENC/%(year)s/</field>
+        <field name="padding">5</field>
+        <field name="company_id" eval="False"/>
+
+    </record>
+
+</odoo>

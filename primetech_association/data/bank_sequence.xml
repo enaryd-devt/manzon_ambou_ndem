@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<odoo>
+
+    <!-- ========================================================= -->
+    <!-- COMPTE FINANCIER                                          -->
+    <!-- ========================================================= -->
+
+    <record id="sequence_association_fund" model="ir.sequence">
+
+        <field name="name">Compte financier association</field>
+
+        <field name="code">association.fund</field>
+
+        <field name="prefix">CPT/%(year)s/</field>
+
+        <field name="padding">5</field>
+
+        <field name="company_id" eval="False"/>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- MOUVEMENT FINANCIER                                       -->
+    <!-- ========================================================= -->
+
+    <record
+        id="sequence_association_fund_transaction"
+        model="ir.sequence">
+
+        <field name="name">Mouvement financier association</field>
+
+        <field name="code">association.fund.transaction</field>
+
+        <field name="prefix">MVT/%(year)s/%(month)s/</field>
+
+        <field name="padding">5</field>
+
+        <field name="company_id" eval="False"/>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- COMPTE MEMBRE                                             -->
+    <!-- ========================================================= -->
+
+    <record
+        id="sequence_association_member_account"
+        model="ir.sequence">
+
+        <field name="name">Compte financier membre</field>
+
+        <field name="code">association.member.account</field>
+
+        <field name="prefix">CMT/%(year)s/</field>
+
+        <field name="padding">5</field>
+
+        <field name="company_id" eval="False"/>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- MOUVEMENT COMPTE MEMBRE                                   -->
+    <!-- ========================================================= -->
+
+    <record
+        id="sequence_association_member_account_transaction"
+        model="ir.sequence">
+
+        <field name="name">Mouvement compte membre</field>
+
+        <field name="code">association.member.account.transaction</field>
+
+        <field name="prefix">MCM/%(year)s/%(month)s/</field>
+
+        <field name="padding">5</field>
+
+        <field name="company_id" eval="False"/>
+
+    </record>
+
+</odoo>

@@ -1,0 +1,918 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<odoo>
+
+    <!-- ========================================================= -->
+    <!-- RECHERCHE                                                 -->
+    <!-- ========================================================= -->
+
+    <record id="view_association_card_search" model="ir.ui.view">
+
+        <field name="name">association.card.search</field>
+
+        <field name="model">association.card</field>
+
+        <field name="arch" type="xml">
+
+            <search string="Rechercher une carte">
+
+                <field name="card_number"/>
+
+                <field name="member_id"/>
+
+                <field name="member_code"/>
+
+                <field name="company_id"/>
+
+                <separator/>
+
+                <filter
+                    name="filter_active"
+                    string="Cartes actives"
+                    domain="[('state', '=', 'active')]"/>
+
+                <filter
+                    name="filter_expired"
+                    string="Cartes expirées"
+                    domain="[('state', '=', 'expired')]"/>
+
+                <filter
+                    name="filter_blocked"
+                    string="Cartes bloquées"
+                    domain="[('state', '=', 'blocked')]"/>
+
+                <filter
+                    name="filter_draft"
+                    string="Brouillons"
+                    domain="[('state', '=', 'draft')]"/>
+
+                <filter
+                    name="filter_cancelled"
+                    string="Cartes annulées"
+                    domain="[('state', '=', 'cancelled')]"/>
+
+                <separator/>
+
+                <filter
+                    name="filter_expiry_date"
+                    string="Date d'expiration"
+                    date="expiry_date"/>
+
+                <separator/>
+
+                <group expand="0" string="Regrouper par">
+
+                    <filter
+                        name="group_member"
+                        string="Membre"
+                        context="{'group_by': 'member_id'}"/>
+
+                    <filter
+                        name="group_state"
+                        string="État"
+                        context="{'group_by': 'state'}"/>
+
+                    <filter
+                        name="group_company"
+                        string="Filiale"
+                        context="{'group_by': 'company_id'}"/>
+
+                </group>
+
+            </search>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- LISTE                                                     -->
+    <!-- ========================================================= -->
+
+    <record id="view_association_card_list" model="ir.ui.view">
+
+        <field name="name">association.card.list</field>
+
+        <field name="model">association.card</field>
+
+        <field name="arch" type="xml">
+
+            <list
+                string="Cartes des membres"
+                decoration-success="state == 'active'"
+                decoration-warning="state == 'expired'"
+                decoration-danger="state in ('blocked', 'cancelled')"
+                default_order="issue_date desc, id desc">
+
+                <header>
+                    <button
+                        name="%(action_card_generation_wizard)d"
+                        type="action"
+                        string="Générer des cartes"
+                        icon="fa-id-card-o"
+                        class="btn-primary"
+                        display="always"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"/>
+                </header>
+
+                <field
+                    name="card_number"
+                    string="N° Carte"/>
+
+                <field
+                    name="member_id"
+                    string="Membre"/>
+
+                <field
+                    name="member_code"
+                    string="Code membre"/>
+
+                <field
+                    name="issue_date"
+                    string="Émission"/>
+
+                <field
+                    name="expiry_date"
+                    string="Expiration"/>
+
+                <field
+                    name="remaining_days"
+                    string="Jours restants"
+                    optional="hide"/>
+
+                <field
+                    name="state"
+                    string="État"
+                    widget="badge"
+                    decoration-muted="state == 'draft'"
+                    decoration-success="state == 'active'"
+                    decoration-warning="state == 'expired'"
+                    decoration-danger="state in ('blocked', 'cancelled')"/>
+
+                <field
+                    name="company_id"
+                    string="Filiale"
+                    optional="hide"
+                    groups="base.group_multi_company"/>
+
+            </list>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- KANBAN PROFESSIONNEL - CARTES MEMBRES                      -->
+    <!-- ========================================================= -->
+
+    <record id="view_association_card_kanban" model="ir.ui.view">
+
+        <field name="name">association.card.kanban</field>
+
+        <field name="model">association.card</field>
+
+        <field name="arch" type="xml">
+
+            <kanban
+                class="o_kanban_small_column"
+                default_order="issue_date desc, id desc">
+
+                <header>
+                    <button
+                        name="%(action_card_generation_wizard)d"
+                        type="action"
+                        string="Générer des cartes"
+                        icon="fa-id-card-o"
+                        class="btn-primary"
+                        display="always"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"/>
+                </header>
+
+                <field name="id"/>
+                <field name="card_number"/>
+                <field name="member_id"/>
+                <field name="member_code"/>
+                <field name="image_128"/>
+                <field name="function_id"/>
+                <field name="issue_date"/>
+                <field name="expiry_date"/>
+                <field name="remaining_days"/>
+                <field name="state"/>
+                <field name="is_current_executive_member"/>
+
+                <templates>
+
+                    <t t-name="card">
+
+                        <div t-attf-class="oe_kanban_global_click o_kanban_record association_member_card #{record.is_current_executive_member.raw_value ? 'association_member_card--executive' : 'association_member_card--ordinary'}">
+
+                            <div
+                                class="association_member_card__actions"
+                                groups="primetech_association.group_association_manager,primetech_association.group_association_admin">
+
+                                <button
+                                    name="action_print_member_card"
+                                    type="object"
+                                    class="association_member_card__action"
+                                    icon="fa-print"
+                                    title="Imprimer"
+                                    invisible="state not in ('active', 'expired', 'blocked')"/>
+
+                                <button
+                                    name="action_issue"
+                                    type="object"
+                                    class="association_member_card__action"
+                                    icon="fa-check"
+                                    title="Activer"
+                                    invisible="state != 'draft'"/>
+
+                                <button
+                                    name="action_reactivate"
+                                    type="object"
+                                    class="association_member_card__action"
+                                    icon="fa-undo"
+                                    title="Réactiver"
+                                    invisible="state != 'blocked'"/>
+
+                                <button
+                                    name="action_quick_block"
+                                    type="object"
+                                    class="association_member_card__action"
+                                    icon="fa-ban"
+                                    title="Bloquer"
+                                    invisible="state != 'active'"/>
+
+                                <button
+                                    name="action_expire"
+                                    type="object"
+                                    class="association_member_card__action"
+                                    icon="fa-clock-o"
+                                    title="Marquer expirée"
+                                    invisible="state not in ('active', 'blocked')"/>
+
+                                <button
+                                    name="action_quick_cancel"
+                                    type="object"
+                                    class="association_member_card__action"
+                                    icon="fa-times"
+                                    title="Annuler"
+                                    invisible="state == 'cancelled'"/>
+
+                            </div>
+
+                            <div class="association_member_card__hero">
+                                <div class="association_member_card__glow"></div>
+
+                                <div class="d-flex justify-content-between align-items-start position-relative">
+                                    <div>
+                                        <div class="association_member_card__eyebrow">Carte membre</div>
+                                        <div class="association_member_card__number"><field name="card_number"/></div>
+                                    </div>
+
+                                    <field
+                                        name="state"
+                                        widget="badge"
+                                        decoration-muted="state == 'draft'"
+                                        decoration-success="state == 'active'"
+                                        decoration-warning="state == 'expired'"
+                                        decoration-danger="state in ('blocked', 'cancelled')"/>
+                                </div>
+                            </div>
+
+                            <div class="association_member_card__body">
+                                <div class="association_member_card__identity">
+                                    <div class="association_member_card__avatar">
+                                        <field
+                                            name="image_128"
+                                            widget="image"
+                                            options="{'preview_image': 'image_128'}"/>
+                                    </div>
+
+                                    <div class="association_member_card__member">
+                                        <div class="association_member_card__label">Membre</div>
+                                        <div class="association_member_card__name"><field name="member_id"/></div>
+                                        <div class="association_member_card__code">
+                                            <i class="fa fa-id-card-o" title="Code membre"/>
+                                            <field name="member_code"/>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="association_member_card__role" t-if="record.function_id.raw_value">
+                                    <i class="fa fa-briefcase" title="Fonction"/>
+                                    <field name="function_id"/>
+                                </div>
+
+                                <div class="association_member_card__committee" t-if="record.is_current_executive_member.raw_value">
+                                    <i class="fa fa-star" title="Bureau ex&#233;cutif"/>
+                                    Bureau ex&#233;cutif en cours
+                                </div>
+
+                                <div class="association_member_card__details">
+                                    <div class="association_member_card__detail association_member_card__detail--right">
+                                        <div class="association_member_card__label">Expire le</div>
+                                        <div class="association_member_card__value">
+                                            <i class="fa fa-calendar" title="Date d'expiration"/>
+                                            <field name="expiry_date"/>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="association_member_card__validity" t-if="record.state.raw_value == 'active'">
+                                    <span>Validité restante</span>
+                                    <strong><field name="remaining_days"/> <small>jours</small></strong>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </t>
+
+                </templates>
+
+            </kanban>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- FORMULAIRE                                                 -->
+    <!-- ========================================================= -->
+
+    <record id="view_association_card_form" model="ir.ui.view">
+
+        <field name="name">association.card.form</field>
+
+        <field name="model">association.card</field>
+
+        <field name="arch" type="xml">
+
+            <form string="Carte de membre">
+
+                <!-- ================================================= -->
+                <!-- HEADER                                            -->
+                <!-- ================================================= -->
+
+                <header>
+
+                    <button
+                        name="action_issue"
+                        type="object"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Émettre"
+                        class="btn-primary"
+                        invisible="state != 'draft'"/>
+
+                    <button
+                        name="action_block"
+                        type="object"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Bloquer"
+                        invisible="state != 'active'"/>
+
+                    <button
+                        name="action_reactivate"
+                        type="object"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Réactiver"
+                        class="btn-primary"
+                        invisible="state != 'blocked'"/>
+                    
+                    <button
+                        name="action_print_member_card"
+                        type="object"
+                        string="Imprimer"
+                        icon="fa-print"
+                        class="btn-secondary"
+                        invisible="state not in ('active', 'expired', 'blocked')"/>
+
+                    <button
+                        name="action_expire"
+                        type="object"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Marquer expirée"
+                        invisible="state not in ('active', 'blocked')"/>
+
+                    <button
+                        name="action_renew"
+                        type="object"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Renouveler"
+                        class="btn-primary"
+                        invisible="state not in ('active', 'expired', 'blocked')"/>
+
+                    <button
+                        name="action_cancel"
+                        type="object"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Annuler"
+                        invisible="state == 'cancelled'"/>
+
+                    <field
+                        name="state"
+                        widget="statusbar"
+                        statusbar_visible="draft,active,expired,blocked,cancelled"/>
+
+                </header>
+
+
+                <sheet>
+
+                    <!-- ================================================= -->
+                    <!-- SMART BUTTONS                                     -->
+                    <!-- ================================================= -->
+
+                    <div
+                        class="oe_button_box"
+                        name="button_box">
+
+                        <button
+                            class="oe_stat_button"
+                            type="object"
+                            name="action_view_member"
+                            icon="fa-user">
+
+                            <div class="o_stat_info">
+
+                                <span class="o_stat_text">
+                                    Membre
+                                </span>
+
+                            </div>
+
+                        </button>
+
+                        <button
+                            class="oe_stat_button"
+                            type="object"
+                            name="action_view_renewals"
+                            icon="fa-history">
+
+                            <field
+                                name="renewal_count"
+                                widget="statinfo"
+                                string="Renouvellements"/>
+
+                        </button>
+
+                    </div>
+
+
+                    <!-- ================================================= -->
+                    <!-- IDENTITÉ                                           -->
+                    <!-- ================================================= -->
+
+                    <div class="d-flex align-items-start">
+
+                        <div
+                            class="me-4 flex-shrink-0 association_card_avatar_zone"
+                            style="
+                                width: 128px;
+                                height: 128px;
+                                min-width: 128px;
+                                min-height: 128px;
+                                max-width: 128px;
+                                max-height: 128px;
+                                overflow: hidden;
+                            ">
+
+                            <field
+                                name="image_128"
+                                widget="image"
+                                class="oe_avatar rounded border"
+                                options="{
+                                    'preview_image': 'image_128'
+                                }"
+                                style="
+                                    width: 128px;
+                                    height: 128px;
+                                    min-width: 128px;
+                                    min-height: 128px;
+                                    max-width: 128px;
+                                    max-height: 128px;
+                                    object-fit: cover;
+                                    object-position: center;
+                                "/>
+
+                        </div>
+
+
+                        <div class="flex-grow-1">
+
+                            <div
+                                class="d-flex
+                                       justify-content-between
+                                       align-items-start">
+
+                                <div>
+
+                                    <h1 class="mb-1">
+
+                                        <field
+                                            name="member_id"
+                                            readonly="state != 'draft'"
+                                            options="{
+                                                'no_create': True,
+                                                'no_create_edit': True
+                                            }"/>
+
+                                    </h1>
+
+                                    <div class="text-muted">
+
+                                        <i
+                                            class="fa fa-id-card-o me-1"
+                                            title="Code membre"/>
+
+                                        <field
+                                            name="member_code"
+                                            readonly="1"/>
+
+                                    </div>
+
+                                </div>
+
+                                <field
+                                    name="state"
+                                    widget="badge"
+                                    decoration-muted="state == 'draft'"
+                                    decoration-success="state == 'active'"
+                                    decoration-warning="state == 'expired'"
+                                    decoration-danger="state in ('blocked', 'cancelled')"/>
+
+                            </div>
+
+
+                            <div class="mt-3">
+
+                                <span
+                                    class="badge
+                                           rounded-pill
+                                           text-bg-light
+                                           border
+                                           d-inline-flex
+                                           align-items-center"
+                                    style="
+                                        max-width: 100%;
+                                        white-space: normal;
+                                    ">
+
+                                    <i
+                                        class="fa fa-credit-card me-2"
+                                        title="Numéro de carte"/>
+
+                                    <field
+                                        name="card_number"
+                                        readonly="1"/>
+
+                                </span>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- ================================================= -->
+                    <!-- INFORMATIONS                                      -->
+                    <!-- ================================================= -->
+
+                    <separator string="Informations de la carte"/>
+
+                    <group>
+
+                        <group string="Membre">
+
+                            <field
+                                name="function_id"
+                                readonly="1"/>
+
+                            <field
+                                name="phone"
+                                readonly="1"/>
+
+                            <field
+                                name="email"
+                                readonly="1"/>
+
+                        </group>
+
+                        <group string="Validité">
+
+                            <field
+                                name="issue_date"
+                                readonly="state != 'draft'"/>
+
+                            <field
+                                name="validity_months"
+                                string="Validité en mois"
+                                readonly="state != 'draft'"/>
+
+                            <field
+                                name="expiry_date"
+                                readonly="1"/>
+
+                            <field
+                                name="remaining_days"
+                                readonly="1"
+                                invisible="state != 'active'"/>
+
+                            <field
+                                name="company_id"
+                                string="Filiale"
+                                readonly="state != 'draft'"/>
+
+                        </group>
+
+                    </group>
+
+
+                    <!-- ================================================= -->
+                    <!-- NOTE D'ALERTE EXPIRATION                           -->
+                    <!-- ================================================= -->
+
+                    <div
+                        class="alert alert-warning"
+                        role="alert"
+                        invisible="not is_expired or state == 'expired'">
+
+                        <i
+                            class="fa fa-exclamation-triangle me-2"
+                            title="Alerte"/>
+
+                        Cette carte a dépassé sa date d'expiration.
+
+                    </div>
+
+
+                    <!-- ================================================= -->
+                    <!-- NOTEBOOK                                           -->
+                    <!-- ================================================= -->
+
+                    <notebook>
+
+                        <!-- ============================================= -->
+                        <!-- BLOCAGE                                      -->
+                        <!-- ============================================= -->
+
+                        <page
+                            string="Blocage"
+                            name="blocking">
+
+                            <group>
+
+                                <group>
+
+                                    <field
+                                        name="blocked_date"
+                                        readonly="1"/>
+
+                                </group>
+
+                                <group>
+
+                                    <field
+                                        name="blocked_reason"
+                                        placeholder="Indiquer le motif du blocage..."
+                                        readonly="state not in ('active', 'blocked')"/>
+
+                                </group>
+
+                            </group>
+
+                        </page>
+
+
+                        <!-- ============================================= -->
+                        <!-- ANNULATION                                    -->
+                        <!-- ============================================= -->
+
+                        <page
+                            string="Annulation"
+                            name="cancellation">
+
+                            <group>
+
+                                <group>
+
+                                    <field
+                                        name="cancellation_date"
+                                        readonly="1"/>
+
+                                </group>
+
+                                <group>
+
+                                    <field
+                                        name="cancellation_reason"
+                                        placeholder="Indiquer le motif d'annulation..."
+                                        readonly="state == 'cancelled'"/>
+
+                                </group>
+
+                            </group>
+
+                        </page>
+
+
+                        <!-- ============================================= -->
+                        <!-- RENOUVELLEMENT                                -->
+                        <!-- ============================================= -->
+
+                        <page
+                            string="Renouvellement"
+                            name="renewal">
+
+                            <group>
+
+                                <group>
+
+                                    <field
+                                        name="previous_card_id"
+                                        readonly="1"/>
+
+                                </group>
+
+                                <group>
+
+                                    <field
+                                        name="renewed_card_id"
+                                        readonly="1"/>
+
+                                </group>
+
+                            </group>
+
+                        </page>
+
+
+                        <!-- ============================================= -->
+                        <!-- NOTES                                         -->
+                        <!-- ============================================= -->
+
+                        <page
+                            string="Notes"
+                            name="notes">
+
+                            <field
+                                name="note"
+                                placeholder="Ajouter une note interne sur la carte..."/>
+
+                        </page>
+
+                    </notebook>
+
+                </sheet>
+
+
+                <!-- ================================================= -->
+                <!-- CHATTER                                           -->
+                <!-- ================================================= -->
+
+                <chatter/>
+
+            </form>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- ACTION                                                     -->
+    <!-- ========================================================= -->
+
+    <record id="action_association_card" model="ir.actions.act_window">
+
+        <field name="name">Cartes</field>
+
+        <field name="res_model">association.card</field>
+
+        <field name="view_mode">kanban,list,form</field>
+
+        <field name="search_view_id"
+               ref="view_association_card_search"/>
+
+        <field name="context">
+            {
+                'search_default_filter_active': 1
+            }
+        </field>
+
+        <field name="help" type="html">
+
+            <p class="o_view_nocontent_smiling_face">
+
+                Créez la première carte de membre.
+
+            </p>
+
+            <p>
+
+                Gérez l'émission, la validité, le blocage,
+                l'expiration et le renouvellement des cartes.
+
+            </p>
+
+        </field>
+
+    </record>
+
+    <!-- ========================================================= -->
+    <!-- ACTIONS DE MASSE                                          -->
+    <!-- ========================================================= -->
+
+    <record id="action_card_mass_generate" model="ir.actions.server">
+        <field name="name">Ancienne génération de cartes (désactivée)</field>
+        <field name="model_id" ref="model_association_card"/>
+        <field name="binding_model_id" eval="False"/>
+        <field name="binding_type">action</field>
+        <field name="binding_view_types"></field>
+        <field name="state">code</field>
+        <field name="code">
+action = False
+        </field>
+    </record>
+
+    <record id="action_card_mass_activate" model="ir.actions.server">
+        <field name="name">Activer / réactiver</field>
+        <field name="model_id" ref="model_association_card"/>
+        <field name="binding_model_id" ref="model_association_card"/>
+        <field name="binding_type">action</field>
+        <field name="binding_view_types">list</field>
+        <field
+            name="groups_id"
+            eval="[
+                (4, ref('primetech_association.group_association_manager')),
+                (4, ref('primetech_association.group_association_admin'))
+            ]"/>
+        <field name="state">code</field>
+        <field name="code">
+records.action_mass_activate()
+action = {'type': 'ir.actions.client', 'tag': 'reload'}
+        </field>
+    </record>
+
+    <record id="action_card_mass_suspend" model="ir.actions.server">
+        <field name="name">Bloquer</field>
+        <field name="model_id" ref="model_association_card"/>
+        <field name="binding_model_id" ref="model_association_card"/>
+        <field name="binding_type">action</field>
+        <field name="binding_view_types">list</field>
+        <field
+            name="groups_id"
+            eval="[
+                (4, ref('primetech_association.group_association_manager')),
+                (4, ref('primetech_association.group_association_admin'))
+            ]"/>
+        <field name="state">code</field>
+        <field name="code">
+records.action_mass_block()
+action = {'type': 'ir.actions.client', 'tag': 'reload'}
+        </field>
+    </record>
+
+    <record id="action_card_mass_expire" model="ir.actions.server">
+        <field name="name">Marquer expirée</field>
+        <field name="model_id" ref="model_association_card"/>
+        <field name="binding_model_id" ref="model_association_card"/>
+        <field name="binding_type">action</field>
+        <field name="binding_view_types">list</field>
+        <field
+            name="groups_id"
+            eval="[
+                (4, ref('primetech_association.group_association_manager')),
+                (4, ref('primetech_association.group_association_admin'))
+            ]"/>
+        <field name="state">code</field>
+        <field name="code">
+records.action_mass_expire()
+action = {'type': 'ir.actions.client', 'tag': 'reload'}
+        </field>
+    </record>
+
+    <record id="action_card_mass_deactivate" model="ir.actions.server">
+        <field name="name">Annuler</field>
+        <field name="model_id" ref="model_association_card"/>
+        <field name="binding_model_id" ref="model_association_card"/>
+        <field name="binding_type">action</field>
+        <field name="binding_view_types">list</field>
+        <field
+            name="groups_id"
+            eval="[
+                (4, ref('primetech_association.group_association_manager')),
+                (4, ref('primetech_association.group_association_admin'))
+            ]"/>
+        <field name="state">code</field>
+        <field name="code">
+records.action_mass_cancel()
+action = {'type': 'ir.actions.client', 'tag': 'reload'}
+        </field>
+    </record>
+
+</odoo>

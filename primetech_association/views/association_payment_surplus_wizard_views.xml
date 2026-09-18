@@ -1,0 +1,424 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<odoo>
+
+    <record
+        id="view_association_payment_surplus_wizard_form"
+        model="ir.ui.view">
+
+        <field name="name">association.payment.surplus.wizard.form</field>
+
+        <field name="model">association.payment.surplus.wizard</field>
+
+        <field name="arch" type="xml">
+
+            <form string="Traitement du surplus">
+
+                <sheet>
+
+                    <!-- ================================================= -->
+                    <!-- TECHNIQUE                                         -->
+                    <!-- ================================================= -->
+
+                    <field
+                        name="currency_id"
+                        invisible="1"/>
+
+                    <field
+                        name="company_id"
+                        invisible="1"/>
+
+                    <!-- ================================================= -->
+                    <!-- EN-TÊTE                                           -->
+                    <!-- ================================================= -->
+
+                    <div
+                        class="rounded border px-3 py-3 mb-3"
+                        style="
+                            background:
+                                rgba(113, 75, 103, 0.035);
+                            border-left:
+                                4px solid var(--o-brand-primary)
+                                !important;
+                        ">
+
+                        <div
+                            class="
+                                d-flex
+                                justify-content-between
+                                align-items-center
+                                gap-3
+                            ">
+
+                            <!-- MEMBRE -->
+
+                            <div class="flex-grow-1">
+
+                                <div
+                                    class="
+                                        text-muted
+                                        text-uppercase
+                                        fw-semibold
+                                    "
+                                    style="
+                                        font-size: 10px;
+                                        letter-spacing: .7px;
+                                    ">
+
+                                    Membre concerné
+
+                                </div>
+
+                                <div class="fw-bold fs-3 mt-1">
+
+                                    <i
+                                        class="
+                                            fa
+                                            fa-user-circle
+                                            me-2
+                                        "
+                                        title="Membre"/>
+
+                                    <field
+                                        name="member_id"
+                                        readonly="1"
+                                        nolabel="1"/>
+
+                                </div>
+
+                                <div class="mt-2">
+
+                                    <span
+                                        class="
+                                            badge
+                                            rounded-pill
+                                            text-bg-light
+                                            border
+                                            px-3
+                                            py-2
+                                        "
+                                        style="
+                                            white-space: nowrap;
+                                        ">
+
+                                        <i
+                                            class="
+                                                fa
+                                                fa-file-text-o
+                                                me-1
+                                            "
+                                            title="Paiement"/>
+
+                                        <field
+                                            name="payment_id"
+                                            readonly="1"/>
+
+                                    </span>
+
+                                </div>
+
+                            </div>
+
+                            <!-- SURPLUS -->
+
+                            <div
+                                class="
+                                    rounded
+                                    border
+                                    px-4
+                                    py-3
+                                    text-end
+                                "
+                                style="
+                                    min-width: 260px;
+                                    background: #ffffff;
+                                    border-left:
+                                        4px solid
+                                        var(--o-brand-primary)
+                                        !important;
+                                ">
+
+                                <div
+                                    class="
+                                        text-muted
+                                        text-uppercase
+                                        fw-semibold
+                                    "
+                                    style="
+                                        font-size: 10px;
+                                        letter-spacing: .6px;
+                                    ">
+
+                                    Surplus disponible
+
+                                </div>
+
+                                <div
+                                    class="fw-bold fs-2 mt-1"
+                                    style="
+                                        color:
+                                            var(--o-brand-primary);
+                                        white-space: nowrap;
+                                    ">
+
+                                    <field
+                                        name="surplus_amount"
+                                        widget="monetary"
+                                        options="{
+                                            'currency_field':
+                                            'currency_id'
+                                        }"
+                                        readonly="1"
+                                        nolabel="1"/>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- ================================================= -->
+                    <!-- MONTANTS                                          -->
+                    <!-- ================================================= -->
+
+                    <div class="row g-2 mb-3">
+
+                        <div class="col-lg-6 col-md-6">
+
+                            <div
+                                class="
+                                    h-100
+                                    rounded
+                                    border
+                                    px-3
+                                    py-3
+                                ">
+
+                                <div
+                                    class="
+                                        text-muted
+                                        text-uppercase
+                                        fw-semibold
+                                    "
+                                    style="font-size: 10px;">
+
+                                    Montant reçu
+
+                                </div>
+
+                                <div
+                                    class="fw-bold fs-4 mt-1"
+                                    style="white-space: nowrap;">
+
+                                    <field
+                                        name="payment_amount"
+                                        widget="monetary"
+                                        options="{
+                                            'currency_field':
+                                            'currency_id'
+                                        }"
+                                        readonly="1"
+                                        nolabel="1"/>
+
+                                </div>
+
+                                <div
+                                    class="text-muted mt-1"
+                                    style="font-size: 11px;">
+
+                                    Total encaissé du membre
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <div class="col-lg-6 col-md-6">
+
+                            <div
+                                class="
+                                    h-100
+                                    rounded
+                                    border
+                                    px-3
+                                    py-3
+                                "
+                                style="
+                                    border-left:
+                                        3px solid #198754
+                                        !important;
+                                ">
+
+                                <div
+                                    class="
+                                        text-muted
+                                        text-uppercase
+                                        fw-semibold
+                                    "
+                                    style="font-size: 10px;">
+
+                                    Affecté aux cotisations
+
+                                </div>
+
+                                <div
+                                    class="fw-bold fs-4 mt-1"
+                                    style="white-space: nowrap;">
+
+                                    <field
+                                        name="allocated_amount"
+                                        widget="monetary"
+                                        options="{
+                                            'currency_field':
+                                            'currency_id'
+                                        }"
+                                        readonly="1"
+                                        nolabel="1"/>
+
+                                </div>
+
+                                <div
+                                    class="text-muted mt-1"
+                                    style="font-size: 11px;">
+
+                                    Montant déjà affecté
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- ================================================= -->
+                    <!-- TRAITEMENT                                        -->
+                    <!-- ================================================= -->
+
+                    <div
+                        class="rounded border px-3 py-3"
+                        style="
+                            border-top:
+                                3px solid var(--o-brand-primary)
+                                !important;
+                        ">
+
+                        <div class="row g-3">
+
+                            <div class="col-lg-7">
+
+                                <div
+                                    class="fw-semibold fs-5 mb-1">
+
+                                    <i
+                                        class="
+                                            fa
+                                            fa-random
+                                            me-2
+                                        "
+                                        title="Traitement"/>
+
+                                    Destination du surplus
+
+                                </div>
+
+                                <div
+                                    class="text-muted mb-3"
+                                    style="font-size: 11px;">
+
+                                    Sélectionnez le traitement à appliquer
+                                    au montant restant du paiement.
+
+                                </div>
+
+                                <div
+                                    class="
+                                        rounded
+                                        border
+                                        px-3
+                                        py-3
+                                    "
+                                    style="
+                                        background:
+                                            rgba(
+                                                113,
+                                                75,
+                                                103,
+                                                0.025
+                                            );
+                                    ">
+
+                                    <field
+                                        name="surplus_action"
+                                        widget="radio"
+                                        nolabel="1"/>
+
+                                </div>
+
+                            </div>
+
+                            <div class="col-lg-5">
+
+                                <div
+                                    class="fw-semibold fs-5 mb-1">
+
+                                    <i
+                                        class="
+                                            fa
+                                            fa-comment-o
+                                            me-2
+                                        "
+                                        title="Observation"/>
+
+                                    Observation
+
+                                </div>
+
+                                <div
+                                    class="text-muted mb-3"
+                                    style="font-size: 11px;">
+
+                                    Ajoutez une précision si nécessaire.
+
+                                </div>
+
+                                <field
+                                    name="note"
+                                    nolabel="1"
+                                    placeholder="Observation facultative..."/>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </sheet>
+
+                <footer>
+
+                    <button
+                        name="action_confirm"
+                        type="object"
+                        string="Traiter le surplus"
+                        class="btn-primary"
+                        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        icon="fa-check"/>
+
+                    <button
+                        string="Annuler"
+                        special="cancel"
+                        class="btn-secondary"/>
+
+                </footer>
+
+            </form>
+
+        </field>
+
+    </record>
+
+</odoo>

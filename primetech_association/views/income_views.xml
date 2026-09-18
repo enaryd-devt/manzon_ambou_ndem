@@ -1,0 +1,538 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<odoo>
+
+    <!-- ========================================================= -->
+    <!-- RECHERCHE                                                 -->
+    <!-- ========================================================= -->
+
+    <record id="view_association_income_search" model="ir.ui.view">
+
+        <field name="name">association.income.search</field>
+
+        <field name="model">association.income</field>
+
+        <field name="arch" type="xml">
+
+            <search string="Rechercher une recette">
+
+                <field name="name"/>
+
+                <field name="source_name"/>
+
+                <field name="income_date"/>
+
+                <field name="income_type"/>
+
+                <field name="fund_id"/>
+
+                <field name="external_reference"/>
+
+                <separator/>
+
+                <!-- ================================================= -->
+                <!-- TYPES                                             -->
+                <!-- ================================================= -->
+
+                <filter
+                    name="filter_sale"
+                    string="Ventes"
+                    domain="[('income_type', '=', 'sale')]"
+                />
+
+                <filter
+                    name="filter_service"
+                    string="Prestations"
+                    domain="[('income_type', '=', 'service')]"
+                />
+
+                <filter
+                    name="filter_event"
+                    string="Événements"
+                    domain="[('income_type', '=', 'event')]"
+                />
+
+                <filter
+                    name="filter_rental"
+                    string="Locations"
+                    domain="[('income_type', '=', 'rental')]"
+                />
+
+                <filter
+                    name="filter_other"
+                    string="Autres"
+                    domain="[('income_type', '=', 'other')]"
+                />
+
+                <separator/>
+
+                <!-- ================================================= -->
+                <!-- STATUTS                                           -->
+                <!-- ================================================= -->
+
+                <filter
+                    name="filter_draft"
+                    string="Brouillons"
+                    domain="[('state', '=', 'draft')]"
+                />
+
+                <filter
+                    name="filter_validated"
+                    string="Validées"
+                    domain="[('state', '=', 'validated')]"
+                />
+
+                <filter
+                    name="filter_cancelled"
+                    string="Annulées"
+                    domain="[('state', '=', 'cancelled')]"
+                />
+
+                <separator/>
+
+                <!-- ================================================= -->
+                <!-- DATE                                              -->
+                <!-- ================================================= -->
+
+                <filter
+                    name="filter_income_date"
+                    string="Date de la recette"
+                    date="income_date"
+                />
+
+                <!-- ================================================= -->
+                <!-- REGROUPEMENT                                      -->
+                <!-- ================================================= -->
+
+                <group expand="0" string="Regrouper par">
+
+                    <filter
+                        name="group_income_type"
+                        string="Type de recette"
+                        context="{'group_by': 'income_type'}"
+                    />
+
+                    <filter
+                        name="group_payment_method"
+                        string="Mode d'encaissement"
+                        context="{'group_by': 'payment_method'}"
+                    />
+
+                    <filter
+                        name="group_fund"
+                        string="Compte financier"
+                        context="{'group_by': 'fund_id'}"
+                    />
+
+                    <filter
+                        name="group_state"
+                        string="Statut"
+                        context="{'group_by': 'state'}"
+                    />
+
+                    <filter
+                        name="group_company"
+                        string="Filiale"
+                        context="{'group_by': 'company_id'}"
+                    />
+
+                    <filter
+                        name="group_month"
+                        string="Mois"
+                        context="{'group_by': 'income_date:month'}"
+                    />
+
+                    <filter
+                        name="group_year"
+                        string="Année"
+                        context="{'group_by': 'income_date:year'}"
+                    />
+
+                </group>
+
+            </search>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- LISTE                                                     -->
+    <!-- ========================================================= -->
+
+    <record id="view_association_income_list" model="ir.ui.view">
+
+        <field name="name">association.income.list</field>
+
+        <field name="model">association.income</field>
+
+        <field name="arch" type="xml">
+
+            <list
+                string="Recettes"
+                default_order="income_date desc, id desc"
+                decoration-muted="state == 'cancelled'"
+                decoration-success="state == 'validated'">
+
+                <field
+                    name="income_date"
+                    string="Date"
+                />
+
+                <field
+                    name="name"
+                    string="Référence"
+                />
+
+                <field
+                    name="income_type"
+                    string="Type"
+                    widget="badge"
+                    decoration-info="income_type == 'sale'"
+                    decoration-primary="income_type == 'service'"
+                    decoration-warning="income_type == 'event'"
+                    decoration-success="income_type == 'rental'"
+                />
+
+                <field
+                    name="source_name"
+                    string="Provenance"
+                />
+
+                <field
+                    name="payment_method"
+                    string="Encaissement"
+                    optional="show"
+                />
+
+                <field
+                    name="fund_id"
+                    string="Compte financier"
+                    optional="show"
+                />
+
+                <field
+                    name="external_reference"
+                    string="Référence externe"
+                    optional="hide"
+                />
+
+                <field
+                    name="amount"
+                    string="Montant"
+                    sum="Total des recettes"
+                />
+
+                <field
+                    name="company_id"
+                    string="Filiale"
+                    optional="hide"
+                />
+
+                <field
+                    name="state"
+                    string="Statut"
+                    widget="badge"
+                    decoration-muted="state == 'draft'"
+                    decoration-success="state == 'validated'"
+                    decoration-danger="state == 'cancelled'"
+                />
+
+            </list>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- FORMULAIRE                                                -->
+    <!-- ========================================================= -->
+
+    <record id="view_association_income_form" model="ir.ui.view">
+
+        <field name="name">association.income.form</field>
+
+        <field name="model">association.income</field>
+
+        <field name="arch" type="xml">
+
+            <form string="Recette">
+
+                <!-- ================================================= -->
+                <!-- EN-TÊTE                                           -->
+                <!-- ================================================= -->
+
+                <header>
+
+                    <button
+                        name="action_validate"
+                        string="Valider"
+                        type="object"
+                        class="oe_highlight"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        invisible="state != 'draft'"
+                    />
+
+                    <button
+                        name="action_cancel"
+                        string="Annuler"
+                        type="object"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        invisible="state == 'cancelled'"
+                        confirm="Voulez-vous réellement annuler cette recette ?"
+                    />
+
+                    <button
+                        name="action_reset_draft"
+                        string="Remettre en brouillon"
+                        type="object"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        invisible="state != 'cancelled'"
+                    />
+
+                    <field
+                        name="state"
+                        widget="statusbar"
+                        statusbar_visible="draft,validated,cancelled"
+                    />
+
+                </header>
+
+
+                <sheet>
+
+                    <!-- ================================================= -->
+                    <!-- BOUTONS STATISTIQUES                              -->
+                    <!-- ================================================= -->
+
+                    <div
+                        class="oe_button_box"
+                        name="button_box">
+
+                        <button
+                            name="action_view_fund_transaction"
+                            type="object"
+                            class="oe_stat_button"
+                            icon="fa-exchange"
+                            groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                            invisible="not fund_transaction_id">
+
+                            <div class="o_stat_info">
+
+                                <span class="o_stat_text">
+                                    Mouvement
+                                </span>
+
+                                <span class="o_stat_text">
+                                    financier
+                                </span>
+
+                            </div>
+
+                        </button>
+
+                    </div>
+
+
+                    <!-- ================================================= -->
+                    <!-- TITRE                                             -->
+                    <!-- ================================================= -->
+
+                    <div class="oe_title">
+
+                        <label for="name"/>
+
+                        <h1>
+
+                            <field
+                                name="name"
+                                readonly="1"
+                                placeholder="Nouveau"
+                            />
+
+                        </h1>
+
+                    </div>
+
+
+                    <!-- ================================================= -->
+                    <!-- INFORMATIONS PRINCIPALES                          -->
+                    <!-- ================================================= -->
+
+                    <group>
+
+                        <group string="Informations de la recette">
+
+                            <field
+                                name="income_date"
+                                readonly="state != 'draft'"
+                            />
+
+                            <field
+                                name="income_type"
+                                readonly="state != 'draft'"
+                            />
+
+                            <field
+                                name="company_id"
+                                string="Filiale"
+                                readonly="state != 'draft'"
+                            />
+
+                        </group>
+
+
+                        <group string="Origine">
+
+                            <field
+                                name="source_name"
+                                readonly="state != 'draft'"
+                                placeholder="Ex. Vente de T-shirts, location de salle..."
+                            />
+
+                            <field
+                                name="external_reference"
+                                readonly="state != 'draft'"
+                                placeholder="Facture, reçu ou référence externe..."
+                            />
+
+                        </group>
+
+                    </group>
+
+
+                    <!-- ================================================= -->
+                    <!-- ENCAISSEMENT                                      -->
+                    <!-- ================================================= -->
+
+                    <group string="Encaissement">
+
+                        <group>
+
+                            <field
+                                name="amount"
+                                readonly="state != 'draft'"
+                            />
+
+                            <field
+                                name="payment_method"
+                                readonly="state != 'draft'"
+                            />
+
+                        </group>
+
+
+                        <group>
+
+                            <field
+                                name="fund_id"
+                                domain="[
+                                    ('company_id', '=', company_id),
+                                    ('active', '=', True)
+                                ]"
+                                readonly="state != 'draft'"
+                                options="{
+                                    'no_create': true,
+                                    'no_open': true
+                                }"
+                            />
+
+                        </group>
+
+                    </group>
+
+
+                    <!-- ================================================= -->
+                    <!-- INFORMATIONS COMPLÉMENTAIRES                       -->
+                    <!-- ================================================= -->
+
+                    <notebook>
+
+                        <page
+                            string="Description"
+                            name="description">
+
+                            <field
+                                name="description"
+                                readonly="state != 'draft'"
+                                placeholder="Décrivez l'origine ou le motif de cette recette..."
+                            />
+
+                        </page>
+
+
+                        <page
+                            string="Notes internes"
+                            name="notes">
+
+                            <field
+                                name="note"
+                                placeholder="Notes internes..."
+                            />
+
+                        </page>
+
+                    </notebook>
+
+
+                    <!-- ================================================= -->
+                    <!-- CHAMPS TECHNIQUES                                 -->
+                    <!-- ================================================= -->
+
+                    <field
+                        name="fund_transaction_id"
+                        invisible="1"
+                    />
+
+                    <field
+                        name="currency_id"
+                        invisible="1"
+                    />
+
+                </sheet>
+
+
+                <chatter/>
+
+            </form>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- ACTION                                                    -->
+    <!-- ========================================================= -->
+
+    <record id="action_income" model="ir.actions.act_window">
+
+        <field name="name">Recettes</field>
+
+        <field name="res_model">association.income</field>
+
+        <field name="view_mode">list,form</field>
+
+        <field
+            name="search_view_id"
+            ref="view_association_income_search"
+        />
+
+        <field name="help" type="html">
+
+            <p class="o_view_nocontent_smiling_face">
+                Enregistrez votre première recette
+            </p>
+
+            <p>
+                Enregistrez les revenus issus des activités de la Filiale
+                et affectez automatiquement les montants aux comptes financiers.
+            </p>
+
+        </field>
+
+    </record>
+
+</odoo>

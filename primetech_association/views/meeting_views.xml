@@ -1,0 +1,2998 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<odoo>
+
+    <!-- ========================================================= -->
+    <!-- RECHERCHE                                                 -->
+    <!-- ========================================================= -->
+
+    <record id="view_association_meeting_search" model="ir.ui.view">
+
+        <field name="name">association.meeting.search</field>
+
+        <field name="model">association.meeting</field>
+
+        <field name="arch" type="xml">
+
+            <search string="Rechercher une réunion">
+
+                <field name="name"/>
+
+                <field name="title"/>
+
+                <field name="chairperson_id"/>
+
+                <field name="secretary_id"/>
+
+                <field name="location"/>
+
+                <separator/>
+
+                <filter
+                    name="filter_ordinary"
+                    string="Réunions ordinaires"
+                    domain="[('meeting_type', '=', 'ordinary')]"
+                />
+
+                <filter
+                    name="filter_extraordinary"
+                    string="Réunions extraordinaires"
+                    domain="[('meeting_type', '=', 'extraordinary')]"
+                />
+
+                <filter
+                    name="filter_ago"
+                    string="AGO"
+                    domain="[('meeting_type', '=', 'ago')]"
+                />
+
+                <filter
+                    name="filter_age"
+                    string="AGE"
+                    domain="[('meeting_type', '=', 'age')]"
+                />
+
+                <filter
+                    name="filter_executive"
+                    string="Bureau Exécutif"
+                    domain="[('meeting_type', '=', 'executive')]"
+                />
+
+                <separator/>
+
+                <filter
+                    name="filter_draft"
+                    string="Brouillons"
+                    domain="[('state', '=', 'draft')]"
+                />
+
+                <filter
+                    name="filter_convoked"
+                    string="Convoquées"
+                    domain="[('state', '=', 'convoked')]"
+                />
+
+                <filter
+                    name="filter_in_progress"
+                    string="En cours"
+                    domain="[('state', '=', 'in_progress')]"
+                />
+
+                <filter
+                    name="filter_closed"
+                    string="Clôturées"
+                    domain="[('state', '=', 'closed')]"
+                />
+
+                <filter
+                    name="filter_cancelled"
+                    string="Annulées"
+                    domain="[('state', '=', 'cancelled')]"
+                />
+
+                <separator/>
+
+                <filter
+                    name="filter_meeting_date"
+                    string="Date de réunion"
+                    date="meeting_date"
+                />
+
+                <group
+                    expand="0"
+                    string="Regrouper par">
+
+                    <filter
+                        name="group_meeting_type"
+                        string="Type de réunion"
+                        context="{'group_by': 'meeting_type'}"
+                    />
+
+                    <filter
+                        name="group_state"
+                        string="Statut"
+                        context="{'group_by': 'state'}"
+                    />
+
+                    <filter
+                        name="group_chairperson"
+                        string="Président de séance"
+                        context="{'group_by': 'chairperson_id'}"
+                    />
+
+                    <filter
+                        name="group_company"
+                        string="Filiale"
+                        context="{'group_by': 'company_id'}"
+                    />
+
+                    <filter
+                        name="group_month"
+                        string="Mois"
+                        context="{'group_by': 'meeting_date:month'}"
+                    />
+
+                    <filter
+                        name="group_year"
+                        string="Année"
+                        context="{'group_by': 'meeting_date:year'}"
+                    />
+
+                </group>
+
+            </search>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- LISTE                                                     -->
+    <!-- ========================================================= -->
+
+    <record id="view_association_meeting_list" model="ir.ui.view">
+
+        <field name="name">association.meeting.list</field>
+
+        <field name="model">association.meeting</field>
+
+        <field name="arch" type="xml">
+
+            <list
+                string="Réunions"
+                default_order="meeting_date desc, id desc"
+                decoration-muted="state == 'cancelled'"
+                decoration-success="state == 'closed'"
+                decoration-warning="state == 'convoked'"
+                decoration-info="state == 'in_progress'">
+
+                <field
+                    name="meeting_date"
+                    string="Date"
+                />
+
+                <field
+                    name="name"
+                    string="Référence"
+                />
+
+                <field
+                    name="title"
+                    string="Objet"
+                />
+
+                <field
+                    name="meeting_type"
+                    string="Type"
+                    widget="badge"
+                    decoration-info="meeting_type == 'ordinary'"
+                    decoration-warning="meeting_type == 'extraordinary'"
+                    decoration-primary="meeting_type in ('ago', 'age')"
+                    decoration-success="meeting_type == 'executive'"
+                />
+
+                <field
+                    name="location"
+                    string="Lieu"
+                    optional="show"
+                />
+
+                <field
+                    name="chairperson_id"
+                    string="Président"
+                    optional="show"
+                />
+
+                <field
+                    name="invited_count"
+                    string="Convoqués"
+                    optional="hide"
+                />
+
+                <field
+                    name="present_count"
+                    string="Présents"
+                    optional="show"
+                />
+
+                <field
+                    name="attendance_percentage"
+                    string="Présence"
+                    widget="percentage"
+                    optional="show"
+                />
+
+                <field
+                    name="quorum_reached"
+                    string="Quorum"
+                    widget="boolean_toggle"
+                    optional="show"
+                />
+
+                <field
+                    name="company_id"
+                    string="Filiale"
+                    optional="hide"
+                />
+
+                <field
+                    name="state"
+                    string="Statut"
+                    widget="badge"
+                    decoration-muted="state == 'draft'"
+                    decoration-warning="state == 'convoked'"
+                    decoration-info="state == 'in_progress'"
+                    decoration-success="state == 'closed'"
+                    decoration-danger="state == 'cancelled'"
+                />
+
+            </list>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- FORMULAIRE                                                -->
+    <!-- ========================================================= -->
+
+    <record id="view_association_meeting_form" model="ir.ui.view">
+
+        <field name="name">association.meeting.form</field>
+
+        <field name="model">association.meeting</field>
+
+        <field name="arch" type="xml">
+
+            <form string="Réunion">
+
+                <!-- ================================================= -->
+                <!-- EN-TÊTE                                           -->
+                <!-- ================================================= -->
+
+                <header>
+
+                    <button
+                        name="action_generate_attendances"
+                        string="Générer les membres"
+                        type="object"
+                        groups="primetech_association.group_association_meeting_president,primetech_association.group_association_meeting_secretary,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        class="btn-secondary"
+                        invisible="state != 'draft'"
+                    />
+
+                    <button
+                        name="action_convocate"
+                        string="Convoquer"
+                        type="object"
+                        groups="primetech_association.group_association_meeting_president,primetech_association.group_association_meeting_secretary,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        class="oe_highlight"
+                        invisible="state != 'draft'"
+                    />
+
+                    <button
+                        name="action_start_meeting"
+                        string="Ouvrir la séance"
+                        type="object"
+                        groups="primetech_association.group_association_meeting_president,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        class="oe_highlight"
+                        invisible="state != 'convoked'"
+                    />
+
+                    <button
+                        name="action_close_meeting"
+                        string="Clôturer la séance"
+                        type="object"
+                        groups="primetech_association.group_association_meeting_president,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        class="oe_highlight"
+                        invisible="state != 'in_progress'"
+                        confirm="Voulez-vous réellement clôturer cette réunion ?"
+                    />
+
+                    <button
+                        name="action_approve_minutes"
+                        string="Approuver le procès-verbal"
+                        type="object"
+                        groups="primetech_association.group_association_meeting_president,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        class="btn-secondary"
+                        invisible="state != 'closed' or minutes_approved"
+                    />
+
+                    <button
+                            name="action_print_minutes"
+                            type="object"
+                            string="Imprimer le PV"
+                            icon="fa-print"
+                            class="btn-secondary"
+                            invisible="not minutes_prepared"
+                        />
+
+                    <button
+                        name="action_cancel"
+                        string="Annuler"
+                        type="object"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        invisible="state in ('closed', 'cancelled')"
+                        confirm="Voulez-vous réellement annuler cette réunion ?"
+                    />
+
+                    <button
+                        name="action_reset_draft"
+                        string="Remettre en brouillon"
+                        type="object"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        invisible="state != 'cancelled'"
+                    />
+
+                    <field
+                        name="state"
+                        widget="statusbar"
+                        statusbar_visible="draft,convoked,in_progress,closed"
+                    />
+
+                </header>
+
+
+                <sheet>
+
+                    <!-- ================================================= -->
+                    <!-- STATISTIQUES                                      -->
+                    <!-- ================================================= -->
+
+                    <div
+                        class="oe_button_box"
+                        name="button_box">
+
+                        <button
+                            class="oe_stat_button"
+                            type="object"
+                            name="action_generate_attendances"
+                            groups="primetech_association.group_association_meeting_president,primetech_association.group_association_meeting_secretary,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                            icon="fa-users"
+                            invisible="state != 'draft'">
+
+                            <field
+                                name="invited_count"
+                                widget="statinfo"
+                                string="Convoqués"
+                            />
+
+                        </button>
+
+                    </div>
+
+
+                    <!-- ================================================= -->
+                    <!-- TITRE                                             -->
+                    <!-- ================================================= -->
+
+                    <div class="oe_title">
+
+                        <div
+                            class="d-flex
+                                   align-items-center
+                                   gap-2
+                                   mb-2">
+
+                            <span
+                                class="badge rounded-pill text-bg-light border px-2 py-1
+                                    d-inline-flex align-items-center gap-1"
+                                style="width: fit-content;
+                                    max-width: 100%;
+                                    white-space: nowrap;">
+
+                                <i
+                                    class="fa fa-hashtag"
+                                    title="Référence"
+                                />
+
+                                <field
+                                    name="name"
+                                    readonly="1"
+                                    class="text-truncate"
+                                />
+
+                            </span>
+
+                        </div>
+
+                        <label for="title"/>
+
+                        <h1>
+
+                            <field
+                                name="title"
+                                readonly="state != 'draft'"
+                                placeholder="Objet de la réunion..."
+                            />
+
+                        </h1>
+
+                    </div>
+
+
+                        <!-- ========================================================= -->
+                        <!-- SYNTHÈSE COMPACTE                                         -->
+                        <!-- ========================================================= -->
+
+                        <div class="border rounded-3 px-3 py-2 mt-1 mb-2">
+
+                            <div class="row g-0 align-items-center text-center">
+
+                                <!-- CONVOQUÉS -->
+
+                                <div class="col-4 col-md-2 border-end">
+
+                                    <div class="text-muted small">
+                                        Convoqués
+                                    </div>
+
+                                    <div class="fs-5 fw-bold lh-sm">
+                                        <field name="invited_count"/>
+                                    </div>
+
+                                </div>
+
+
+                                <!-- PRÉSENTS -->
+
+                                <div class="col-4 col-md-2 border-end">
+
+                                    <div class="text-muted small">
+                                        Présents
+                                    </div>
+
+                                    <div class="fs-5 fw-bold text-success lh-sm">
+                                        <field name="present_count"/>
+                                    </div>
+
+                                </div>
+
+
+                                <!-- ABSENTS -->
+
+                                <div class="col-4 col-md-2 border-end">
+
+                                    <div class="text-muted small">
+                                        Absents
+                                    </div>
+
+                                    <div class="fs-5 fw-bold text-danger lh-sm">
+                                        <field name="absent_count"/>
+                                    </div>
+
+                                </div>
+
+
+                                <!-- RETARDS -->
+
+                                <div class="col-4 col-md-2 border-end">
+
+                                    <div class="text-muted small">
+                                        Retards
+                                    </div>
+
+                                    <div class="fs-5 fw-bold text-warning lh-sm">
+                                        <field name="late_count"/>
+                                    </div>
+
+                                </div>
+
+
+                                <!-- JUSTIFIÉS -->
+
+                                <div class="col-4 col-md-2 border-end">
+
+                                    <div class="text-muted small">
+                                        Justifiés
+                                    </div>
+
+                                    <div class="fs-5 fw-bold lh-sm">
+                                        <field name="excused_count"/>
+                                    </div>
+
+                                </div>
+
+
+                                <!-- TAUX DE PRÉSENCE -->
+
+                                <div class="col-4 col-md-2">
+
+                                    <div class="text-muted small">
+                                        Présence
+                                    </div>
+
+                                    <div class="fs-5 fw-bold lh-sm">
+                                        <field
+                                            name="attendance_percentage"
+                                            widget="percentage"
+                                        />
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- ========================================================= -->
+                        <!-- QUORUM COMPACT                                            -->
+                        <!-- ========================================================= -->
+
+                        <div
+                            class="d-flex align-items-center justify-content-between
+                                border rounded-3 px-3 py-2 mb-2
+                                text-success"
+                            invisible="not quorum_reached"
+                        >
+
+                            <div class="d-flex align-items-center gap-2">
+
+                                <i
+                                    class="fa fa-check-circle"
+                                    title="Quorum atteint"
+                                />
+
+                                <strong>
+                                    Quorum atteint
+                                </strong>
+
+                                <span class="text-muted small d-none d-md-inline">
+                                    — La séance peut être ouverte
+                                </span>
+
+                            </div>
+
+                            <div class="small">
+
+                                Minimum :
+
+                                <strong>
+                                    <field name="quorum_count"/>
+                                </strong>
+
+                            </div>
+
+                        </div>
+
+
+                        <div
+                            class="d-flex align-items-center justify-content-between
+                                border rounded-3 px-3 py-2 mb-2
+                                text-warning"
+                            invisible="quorum_reached or not quorum_required"
+                        >
+
+                            <div class="d-flex align-items-center gap-2">
+
+                                <i
+                                    class="fa fa-exclamation-triangle"
+                                    title="Quorum non atteint"
+                                />
+
+                                <strong>
+                                    Quorum non atteint
+                                </strong>
+
+                                <span class="text-muted small d-none d-md-inline">
+                                    — Participants insuffisants
+                                </span>
+
+                            </div>
+
+                            <div class="small">
+
+                                Minimum :
+
+                                <strong>
+                                    <field name="quorum_count"/>
+                                </strong>
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- ========================================================= -->
+                        <!-- INFORMATIONS COMPACTES                                    -->
+                        <!-- ========================================================= -->
+
+                        <div class="row g-3 mt-0 mb-2">
+
+                            <!-- RÉUNION -->
+
+                            <div class="col-12 col-lg-4">
+
+                                <div class="border rounded-3 px-3 py-2 h-100">
+
+                                    <div class="fw-bold small text-muted mb-2">
+
+                                        <i class="fa fa-calendar me-1"/>
+
+                                        Réunion
+
+                                    </div>
+
+                                    <group>
+
+                                        <field
+                                            name="meeting_type"
+                                            readonly="state != 'draft'"
+                                        />
+
+                                        <field
+                                            name="meeting_date"
+                                            readonly="state != 'draft'"
+                                        />
+
+                                        <field
+                                            name="location"
+                                            readonly="state != 'draft'"
+                                        />
+
+                                    </group>
+
+                                </div>
+
+                            </div>
+
+
+                            <!-- HORAIRES -->
+
+                            <div class="col-12 col-lg-4">
+
+                                <div class="border rounded-3 px-3 py-2 h-100">
+
+                                    <div class="fw-bold small text-muted mb-2">
+
+                                        <i class="fa fa-clock-o me-1"/>
+
+                                        Horaires
+
+                                    </div>
+
+                                    <group>
+
+                                        <field
+                                            name="start_time"
+                                            readonly="state not in ('draft', 'convoked')"
+                                        />
+
+                                        <field
+                                            name="actual_start_time"
+                                            readonly="state == 'closed'"
+                                        />
+
+                                        <field
+                                            name="end_time"
+                                            readonly="state == 'closed'"
+                                        />
+
+                                        <field
+                                            name="actual_end_time"
+                                            string="Clôture effective"
+                                            readonly="state == 'closed'"
+                                        />
+
+                                    </group>
+
+                                </div>
+
+                            </div>
+
+
+                            <!-- RESPONSABLES -->
+
+                            <div class="col-12 col-lg-4">
+
+                                <div class="border rounded-3 px-3 py-2 h-100">
+
+                                    <div class="fw-bold small text-muted mb-2">
+
+                                        <i class="fa fa-users me-1"/>
+
+                                        Responsables
+
+                                    </div>
+
+                                    <group>
+
+                                        <field name="committee_mode"
+                                               readonly="state == 'closed'"/>
+
+                                        <field name="available_committee_ids" invisible="1"/>
+
+                                        <field name="committee_id"
+                                               invisible="committee_mode != 'official'"
+                                               required="committee_mode == 'official'"
+                                               readonly="state == 'closed'"
+                                               options="{'no_create': true}"/>
+
+                                        <field name="eligible_officer_ids" invisible="1"/>
+
+
+                                        <field
+                                            name="chairperson_id"
+                                            domain="[('id', 'in', eligible_officer_ids)]"
+                                            invisible="committee_mode == 'official'"
+                                            readonly="state == 'closed'"
+                                            options="{'no_create': true}"
+                                        />
+
+                                        <field
+                                            name="secretary_id"
+                                            domain="[('id', 'in', eligible_officer_ids)]"
+                                            invisible="committee_mode == 'official'"
+                                            readonly="state == 'closed'"
+                                            options="{'no_create': true}"
+                                        />
+
+                                        <field name="special_treasurer_id"
+                                               invisible="committee_mode == 'official'"
+                                               readonly="state == 'closed'"
+                                               options="{'no_create': true}"/>
+
+                                        <field name="special_censor_id"
+                                               invisible="committee_mode == 'official'"
+                                               readonly="state == 'closed'"
+                                               options="{'no_create': true}"/>
+
+                                    </group>
+
+                                    <div invisible="committee_mode != 'official' or not committee_id" class="mt-2">
+                                        <div class="fw-semibold small text-muted mb-1">
+                                            Membres et fonctions du bureau mandaté
+                                        </div>
+                                        <field name="official_committee_line_ids" nolabel="1" readonly="1">
+                                            <list create="false" delete="false" default_order="sequence, id">
+                                                <field name="sequence" column_invisible="1"/>
+                                                <field name="function_id" string="Fonction dans le bureau"/>
+                                                <field name="member_id" string="Membre"/>
+                                            </list>
+                                        </field>
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+
+
+                    <!-- ================================================= -->
+                    <!-- NOTEBOOK                                          -->
+                    <!-- ================================================= -->
+
+                    <notebook>
+
+
+                        <!-- ============================================= -->
+                        <!-- CONVOCATION                                  -->
+                        <!-- ============================================= -->
+
+                        <page
+                            string="Convocation"
+                            name="convocation"
+                            groups="primetech_association.group_association_meeting_president,primetech_association.group_association_meeting_secretary,primetech_association.group_association_manager,primetech_association.group_association_admin">
+
+                            <group>
+
+                                <group string="Informations">
+
+                                    <field
+                                        name="convocation_date"
+                                        readonly="state != 'draft'"
+                                    />
+
+                                    <field
+                                        name="convocation_method"
+                                        readonly="state != 'draft'"
+                                    />
+
+                                </group>
+
+
+                                <group string="Quorum">
+
+                                    <field
+                                        name="quorum_required"
+                                        readonly="state == 'closed'"
+                                    />
+
+                                    <field
+                                        name="quorum_percentage"
+                                        invisible="not quorum_required"
+                                        readonly="state == 'closed'"
+                                    />
+
+                                    <field
+                                        name="quorum_count"
+                                        readonly="1"
+                                    />
+
+                                    <field
+                                        name="quorum_reached"
+                                        readonly="1"
+                                    />
+
+                                </group>
+
+                            </group>
+
+
+                            <group string="Informations de convocation">
+
+                                <field
+                                    name="convocation_note"
+                                    readonly="state == 'closed'"
+                                    placeholder="Informations complémentaires concernant la convocation..."
+                                />
+
+                            </group>
+
+                        </page>
+
+
+                        <!-- ============================================= -->
+                        <!-- ORDRE DU JOUR                                -->
+                        <!-- ============================================= -->
+
+                        <page
+                            string="Ordre du jour"
+                            name="agenda"
+                            groups="primetech_association.group_association_meeting_president,primetech_association.group_association_meeting_secretary,primetech_association.group_association_manager,primetech_association.group_association_admin">
+
+                            <field name="can_edit_agenda" invisible="1"/>
+
+                            <div class="alert alert-info py-2 px-3 mb-3" role="alert">
+                                <i class="fa fa-info-circle me-1"/>
+                                Un modèle d'ordre du jour est prérempli. Le secrétaire de séance peut l'adapter avant la clôture.
+                            </div>
+
+                            <field
+                                name="agenda"
+                                readonly="state == 'closed' or not can_edit_agenda"
+                                placeholder="Saisissez les différents points inscrits à l'ordre du jour..."
+                            />
+
+                        </page>
+                        
+                        <!-- ========================================================= -->
+                        <!-- COTISATIONS                                               -->
+                        <!-- ========================================================= -->
+
+                        <page
+                            string="Cotisations"
+                            name="meeting_subscriptions"
+                            groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin">
+
+                            <!-- CHAMP TECHNIQUE DE LA RÉUNION -->
+                            <field
+                                name="can_open_next_subscription_cycle"
+                                invisible="1"/>
+
+                            <!-- ===================================================== -->
+                            <!-- BARRE SUPÉRIEURE                                      -->
+                            <!-- ===================================================== -->
+
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 pb-1 mb-1 border-bottom">
+
+                                <div class="d-flex align-items-center gap-2">
+
+                                    <div
+                                        class="d-flex align-items-center justify-content-center rounded-3 bg-primary-subtle text-primary"
+                                        style="width: 32px; height: 32px;">
+
+                                        <i
+                                            class="fa fa-money fa-lg"
+                                            title="Cotisations"/>
+
+                                    </div>
+
+                                    <div>
+
+                                        <div class="fw-bold lh-1">
+                                            Cotisations
+                                        </div>
+
+                                        <div class="text-muted small mt-1">
+                                            Encaissements et cagnotte du cycle courant
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+
+                                <div class="d-flex flex-wrap gap-1">
+
+                                    <button
+                                        name="action_refresh_subscription_cycle"
+                                        type="object"
+                                        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                                        string="Actualiser"
+                                        icon="fa-refresh"
+                                        class="btn-secondary"
+                                        invisible="not subscription_id"
+                                        confirm="S'il n'existe aucun cycle en cours, souhaitez-vous créer le nouveau cycle maintenant ?"/>
+
+                                    <button
+                                        name="action_print_subscription_report"
+                                        type="object"
+                                        string="Imprimer le rapport PDF"
+                                        icon="fa-print"
+                                        class="btn-primary"
+                                        invisible="not subscription_report_available"/>
+
+                                    <button
+                                        name="action_settle_meeting_pot"
+                                        type="object"
+                                        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                                        string="Finaliser le cycle et solder la caisse"
+                                        icon="fa-bank"
+                                        class="btn-primary"
+                                        invisible="state == 'closed' or not subscription_period_id or subscription_report_available"
+                                        confirm="Cette action finalise le cycle : validez les attributions et versez le reliquat éventuel dans le compte financier choisi."/>
+
+                                </div>
+
+                            </div>
+
+                            <!-- ===================================================== -->
+                            <!-- PILOTAGE DU CYCLE                                     -->
+                            <!-- ===================================================== -->
+
+                            <div class="row g-1 mb-1">
+
+                                <!-- COTISATION -->
+
+                                <div class="col-12 col-lg-7">
+
+                                    <div class="border rounded-3 px-2 py-1 h-100">
+
+                                        <div class="d-flex align-items-center mb-1">
+
+                                            <i
+                                                class="fa fa-repeat text-primary me-2"
+                                                title="Cycle"/>
+
+                                            <span class="small fw-bold">
+                                                Cycle de cotisation
+                                            </span>
+
+                                        </div>
+
+                                        <group col="4">
+
+                                            <field
+                                                name="subscription_id"
+                                                string="Cotisation"
+                                                readonly="state == 'closed'"
+                                                options="{
+                                                    'no_create': True,
+                                                    'no_create_edit': True
+                                                }"/>
+
+                                            <field
+                                                name="subscription_period_id"
+                                                string="Cycle"
+                                                readonly="1"
+                                                options="{
+                                                    'no_create': True,
+                                                    'no_open': False
+                                                }"/>
+
+                                            <field
+                                                name="subscription_session_id"
+                                                invisible="1"
+                                                string="Session chargée"
+                                                readonly="1"
+                                                options="{
+                                                    'no_create': True,
+                                                    'no_open': False
+                                                }"/>
+
+                                            <field name="subscription_report_available" invisible="1"/>
+
+                                        </group>
+
+                                    </div>
+
+                                </div>
+
+
+                                <!-- SITUATION -->
+
+                                <div class="col-12 col-lg-5">
+
+                                    <div class="border rounded-3 px-2 py-1 h-100">
+
+                                        <div class="row g-0 text-center h-100 align-items-center">
+
+                                            <div class="col-4 border-end">
+
+                                                <div class="text-muted small">
+                                                    Membres
+                                                </div>
+
+                                                <div class="fw-bold fs-5">
+                                                    <field
+                                                        name="collection_count"
+                                                        readonly="1"/>
+                                                </div>
+
+                                            </div>
+
+                                            <div class="col-4 border-end">
+
+                                                <div class="text-muted small">
+                                                    En attente
+                                                </div>
+
+                                                <div class="fw-bold fs-5 text-warning">
+                                                    <field
+                                                        name="collection_pending_count"
+                                                        readonly="1"/>
+                                                </div>
+
+                                            </div>
+
+                                            <div class="col-4">
+
+                                                <div class="text-muted small">
+                                                    Payés
+                                                </div>
+
+                                                <div class="fw-bold fs-5 text-success">
+                                                    <field
+                                                        name="collection_paid_count"
+                                                        readonly="1"/>
+                                                </div>
+
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
+                            <!-- ===================================================== -->
+                            <!-- ABSENCE DE CYCLE                                      -->
+                            <!-- ===================================================== -->
+
+                            <div
+                                class="alert alert-warning py-1 px-2 mb-1 border-0"
+                                role="alert"
+                                invisible="
+                                    not subscription_id
+                                    or subscription_period_id
+                                ">
+
+                                <i
+                                    class="fa fa-exclamation-triangle me-2"
+                                    title="Attention"/>
+
+                                <strong>Aucun cycle courant.</strong>
+
+                                <span class="ms-1">
+                                    Actualisez le cycle ou ouvrez un nouveau cycle.
+                                </span>
+
+                            </div>
+
+
+                            <!-- ===================================================== -->
+                            <!-- INDICATEURS CAGNOTTE                                  -->
+                            <!-- ===================================================== -->
+
+                            <div
+                                class="row g-1 mb-1"
+                                invisible="not subscription_period_id">
+
+                                <!-- COLLECTÉ -->
+
+                                <div class="col-6 col-lg-3">
+
+                                    <div class="border rounded-3 px-2 py-1 h-100">
+
+                                        <div class="d-flex align-items-center justify-content-between">
+
+                                            <div>
+
+                                                <div class="text-muted small">
+                                                    Collecté
+                                                </div>
+
+                                                <div class="fw-bold fs-5 text-success">
+                                                    <field
+                                                        name="pot_collected_amount"
+                                                        widget="monetary"
+                                                        options="{
+                                                            'currency_field': 'currency_id'
+                                                        }"/>
+                                                </div>
+
+                                            </div>
+
+                                            <i
+                                                class="fa fa-arrow-circle-down fa-lg text-success"
+                                                title="Collecté"/>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+
+                                <!-- ATTRIBUÉ -->
+
+                                <div class="col-6 col-lg-3">
+
+                                    <div class="border rounded-3 px-2 py-1 h-100">
+
+                                        <div class="d-flex align-items-center justify-content-between">
+
+                                            <div>
+
+                                                <div class="text-muted small">
+                                                    Attribué
+                                                </div>
+
+                                                <div class="fw-bold fs-5">
+                                                    <field
+                                                        name="pot_allocated_amount"
+                                                        widget="monetary"
+                                                        options="{
+                                                            'currency_field': 'currency_id'
+                                                        }"/>
+                                                </div>
+
+                                            </div>
+
+                                            <i
+                                                class="fa fa-share fa-lg text-muted"
+                                                title="Attribué"/>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+
+                                <!-- DISPONIBLE -->
+
+                                <div class="col-6 col-lg-3">
+
+                                    <div class="border rounded-3 px-2 py-1 h-100">
+
+                                        <div class="d-flex align-items-center justify-content-between">
+
+                                            <div>
+
+                                                <div class="text-muted small">
+                                                    Disponible
+                                                </div>
+
+                                                <div class="fw-bold fs-5 text-primary">
+                                                    <field
+                                                        name="pot_available_amount"
+                                                        widget="monetary"
+                                                        options="{
+                                                            'currency_field': 'currency_id'
+                                                        }"/>
+                                                </div>
+
+                                            </div>
+
+                                            <i
+                                                class="fa fa-money fa-lg text-primary"
+                                                title="Disponible"/>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+
+                                <!-- BÉNÉFICIAIRES -->
+
+                                <div class="col-6 col-lg-3">
+
+                                    <div class="border rounded-3 px-2 py-1 h-100">
+
+                                        <div class="d-flex align-items-center justify-content-between">
+
+                                            <div>
+
+                                                <div class="text-muted small">
+                                                    Bénéficiaires
+                                                </div>
+
+                                                <div class="fw-bold fs-5">
+                                                    <field
+                                                        name="pot_beneficiary_count"/>
+                                                </div>
+
+                                            </div>
+
+                                            <i
+                                                class="fa fa-users fa-lg text-muted"
+                                                title="Bénéficiaires"/>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
+                            <!-- ===================================================== -->
+                            <!-- ENCAISSEMENTS                                         -->
+                            <!-- ===================================================== -->
+
+                            <div
+                                class="pt-member-filter-scope border rounded-3 mb-1"
+                                invisible="not subscription_period_id">
+
+                                <!-- TITRE -->
+
+                                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 px-2 py-1 border-bottom">
+
+                                    <div class="d-flex align-items-center">
+
+                                        <i
+                                            class="fa fa-credit-card text-primary me-2"
+                                            title="Encaissements"/>
+
+                                        <div>
+
+                                            <span class="fw-bold">
+                                                Encaissements
+                                            </span>
+
+                                            <span class="text-muted small ms-2">
+                                                Saisir le montant reçu puis payer
+                                            </span>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+
+                                <!-- TABLEAU -->
+
+                                <div class="pt-member-list-searchbar">
+                                    <i class="fa fa-search"/>
+                                    <input
+                                        type="search"
+                                        class="pt-member-list-search"
+                                        placeholder="Rechercher un membre..."/>
+                                </div>
+
+                                <field
+                                    name="subscription_line_ids"
+                                    nolabel="1"
+                                    invisible="subscription_report_available"
+                                    readonly="state == 'closed'">
+
+                                    <list
+                                        editable="bottom"
+                                        create="0"
+                                        delete="0"
+                                        default_order="member_id"
+                                        decoration-success="payment_state == 'paid'"
+                                        decoration-warning="payment_state == 'partial'"
+                                        decoration-danger="payment_state == 'not_paid'">
+
+                                        <field
+                                            name="image_128"
+                                            string=""
+                                            widget="image"
+                                            optional="show"
+                                            options="{'size': [30, 30]}"
+                                            width="38"/>
+
+                                        <field
+                                            name="member_code"
+                                            string="N°"
+                                            readonly="1"
+                                            width="70"/>
+
+                                        <field
+                                            name="member_id"
+                                            string="Membre"
+                                            readonly="1"/>
+
+                                        <field
+                                            name="amount_due"
+                                            string="Dû"
+                                            widget="monetary"
+                                            options="{
+                                                'currency_field': 'currency_id'
+                                            }"
+                                            readonly="1"/>
+
+                                        <field
+                                            name="amount_paid"
+                                            string="Payé"
+                                            widget="monetary"
+                                            options="{
+                                                'currency_field': 'currency_id'
+                                            }"
+                                            readonly="1"/>
+
+                                        <field
+                                            name="balance"
+                                            string="Reste"
+                                            widget="monetary"
+                                            options="{
+                                                'currency_field': 'currency_id'
+                                            }"
+                                            readonly="1"/>
+
+                                            <field
+                                                name="temporary_member_account_balance"
+                                                string="Solde temporaire"
+                                                widget="monetary"
+                                                options="{'currency_field': 'currency_id'}"
+                                                readonly="1"
+                                                optional="show"/>
+
+                                            <field
+                                                name="payment_state"
+                                                string="État"
+                                                widget="badge"
+                                                readonly="1"
+                                                decoration-success="payment_state == 'paid'"
+                                                decoration-warning="payment_state == 'partial'"
+                                                decoration-danger="payment_state == 'not_paid'"/>
+
+                                            <!-- ===================================================== -->
+                                            <!-- PAIEMENT DEPUIS LA RÉUNION                            -->
+                                            <!-- ===================================================== -->
+
+                                            <button
+                                                name="action_create_payment"
+                                                type="object"
+                                                groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                                                string="Payer"
+                                                icon="fa-money"
+                                                class="btn-primary"
+                                                context="{'default_meeting_id': parent.id}"
+                                                invisible="
+                                                    payment_state == 'paid'
+                                                    or balance &lt;= 0
+                                                "/>
+
+                                            <!-- ===================================================== -->
+                                            <!-- PAIEMENT DEPUIS LE COMPTE MEMBRE                      -->
+                                            <!-- ===================================================== -->
+
+                                            <button
+                                                name="action_pay_from_member_account"
+                                                type="object"
+                                                groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                                                string="Compte membre"
+                                                icon="fa-university"
+                                                class="btn-secondary"
+                                                context="{'default_meeting_id': parent.id}"
+                                                invisible="
+                                                    payment_state == 'paid'
+                                                    or balance &lt;= 0
+                                                "/>
+
+
+
+                                        <field
+                                            name="currency_id"
+                                            column_invisible="1"/>
+
+
+
+                                    </list>
+
+                                </field>
+
+                                <field name="subscription_snapshot_ids" nolabel="1" invisible="not subscription_report_available" readonly="1">
+                                    <list create="0" delete="0" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-danger="payment_state == 'not_paid'">
+                                        <field name="member_code" string="N°"/>
+                                        <field name="member_name" string="Membre"/>
+                                        <field name="amount_due" string="Dû"/>
+                                        <field name="penalty_amount" string="Pénalité" optional="show"/>
+                                        <field name="amount_paid" string="Payé"/>
+                                        <field name="balance" string="Impayé"/>
+                                        <field name="payment_state" string="État" widget="badge"/>
+                                    </list>
+                                </field>
+
+                            </div>
+
+
+                            <!-- ===================================================== -->
+                            <!-- ATTRIBUER LA CAGNOTTE                                 -->
+                            <!-- ===================================================== -->
+
+                            <div
+                                class="border rounded-3 mb-2"
+                                invisible="not subscription_period_id">
+
+                                <!-- ================================================= -->
+                                <!-- EN-TÊTE                                           -->
+                                <!-- ================================================= -->
+
+                                <div class="d-flex align-items-center px-3 py-2 border-bottom">
+
+                                    <i
+                                        class="fa fa-gift text-primary me-2"
+                                        title="Attribution"/>
+
+                                    <div>
+
+                                        <span class="fw-bold">
+                                            Attribution de la cagnotte
+                                        </span>
+
+                                        <span class="text-muted small ms-2">
+                                            Décision prise pendant la réunion
+                                        </span>
+
+                                    </div>
+
+                                </div>
+
+
+                                <!-- ================================================= -->
+                                <!-- FORMULAIRE                                        -->
+                                <!-- ================================================= -->
+
+                                <div class="px-3 py-2">
+
+                                    <div class="row g-2 align-items-end">
+
+                                        <!-- ========================================= -->
+                                        <!-- BÉNÉFICIAIRE                             -->
+                                        <!-- ========================================= -->
+
+                                        <div class="col-12 col-md-4">
+
+                                            <label
+                                                for="pot_beneficiary_id"
+                                                class="o_form_label small text-muted mb-1">
+                                                Bénéficiaire
+                                            </label>
+
+                                            <field
+                                                name="pot_beneficiary_id"
+                                                nolabel="1"
+                                                readonly="subscription_report_available"
+                                                options="{
+                                                    'no_create': True,
+                                                    'no_create_edit': True
+                                                }"/>
+
+                                        </div>
+
+
+                                        <!-- ========================================= -->
+                                        <!-- MONTANT                                  -->
+                                        <!-- ========================================= -->
+
+                                        <div class="col-12 col-md-2">
+
+                                            <label
+                                                for="pot_allocation_amount"
+                                                class="o_form_label small text-muted mb-1">
+                                                Montant
+                                            </label>
+
+                                            <field
+                                                name="pot_allocation_amount"
+                                                nolabel="1"
+                                                readonly="subscription_report_available"
+                                                widget="monetary"
+                                                options="{
+                                                    'currency_field': 'currency_id'
+                                                }"/>
+
+                                        </div>
+
+
+                                        <!-- ========================================= -->
+                                        <!-- MODE                                     -->
+                                        <!-- ========================================= -->
+
+                                        <div class="col-12 col-md-3">
+
+                                            <label
+                                                for="pot_allocation_method"
+                                                class="o_form_label small text-muted mb-1">
+                                                Mode d'attribution
+                                            </label>
+
+                                            <field
+                                                name="pot_allocation_method"
+                                                nolabel="1"
+                                                readonly="subscription_report_available"/>
+
+                                        </div>
+
+
+                                        <!-- ========================================= -->
+                                        <!-- ACTION                                   -->
+                                        <!-- ========================================= -->
+
+                                        <div class="col-12 col-md-3">
+
+                                            <button
+                                                name="action_allocate_subscription_pot"
+                                                type="object"
+                                                groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                                                string="Attribuer la cagnotte"
+                                                icon="fa-check"
+                                                class="btn-primary w-100"
+                                                invisible="
+                                                    not pot_beneficiary_id
+                                                    or pot_allocation_amount &lt;= 0
+                                                    or subscription_report_available
+                                                "/>
+
+                                        </div>
+
+                                    </div>
+
+
+                                    <!-- ================================================= -->
+                                    <!-- OBSERVATION                                       -->
+                                    <!-- ================================================= -->
+
+                                    <div class="mt-2">
+
+                                        <label
+                                            for="pot_allocation_note"
+                                            class="o_form_label small text-muted mb-1">
+                                            Décision / Observation
+                                        </label>
+
+                                        <field
+                                                name="pot_allocation_note"
+                                                nolabel="1"
+                                                readonly="subscription_report_available"
+                                            placeholder="Observation ou décision prise pendant la réunion..."/>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
+                            <!-- ===================================================== -->
+                            <!-- HISTORIQUE DES ATTRIBUTIONS                            -->
+                            <!-- ===================================================== -->
+
+                            <div
+                                class="border rounded-3"
+                                invisible="not subscription_period_id">
+
+                                <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
+
+                                    <div class="d-flex align-items-center">
+
+                                        <i
+                                            class="fa fa-history text-muted me-2"
+                                            title="Historique"/>
+
+                                        <span class="fw-bold">
+                                            Historique des attributions
+                                        </span>
+
+                                    </div>
+
+                                    <span class="text-muted small">
+                                        Cycle courant
+                                    </span>
+
+                                </div>
+
+
+                                <field
+                                    name="allocation_ids"
+                                    nolabel="1"
+                                    readonly="1">
+
+                                    <list
+                                        create="0"
+                                        delete="0"
+                                        default_order="allocation_date desc, id desc"
+                                        decoration-info="state == 'draft'"
+                                        decoration-success="state == 'paid'"
+                                        decoration-warning="state == 'confirmed'"
+                                        decoration-muted="state == 'cancelled'">
+
+                                        <field
+                                            name="beneficiary_image_128"
+                                            string=""
+                                            widget="image"
+                                            optional="show"
+                                            options="{'size': [30, 30]}"
+                                            width="38"/>
+
+                                        <field
+                                            name="beneficiary_id"
+                                            string="Bénéficiaire"/>
+
+                                        <field
+                                            name="allocation_date"
+                                            string="Date"/>
+
+                                        <field
+                                            name="amount"
+                                            string="Montant"
+                                            widget="monetary"
+                                            options="{
+                                                'currency_field': 'currency_id'
+                                            }"/>
+
+                                        <field
+                                            name="allocation_method"
+                                            string="Mode"
+                                            optional="show"/>
+
+                                        <field
+                                            name="decision_note"
+                                            string="Décision / Observation"
+                                            optional="hide"/>
+
+                                        <field
+                                            name="state"
+                                            string="État"
+                                            widget="badge"
+                                            decoration-info="state == 'draft'"
+                                            decoration-warning="state == 'confirmed'"
+                                            decoration-success="state == 'paid'"
+                                            decoration-muted="state == 'cancelled'"/>
+
+                                        <field
+                                            name="currency_id"
+                                            column_invisible="1"/>
+
+                                    </list>
+
+                                </field>
+
+                            </div>
+
+                        </page>
+
+
+                        <!-- ========================================================= -->
+                        <!-- LISTE D'APPEL                                             -->
+                        <!-- ========================================================= -->
+
+                        <page
+                            string="Liste d'appel"
+                            name="attendance"
+                            groups="primetech_association.group_association_meeting_secretary,primetech_association.group_association_meeting_censor,primetech_association.group_association_manager,primetech_association.group_association_admin">
+
+                            <!-- ===================================================== -->
+                            <!-- INFORMATION                                           -->
+                            <!-- ===================================================== -->
+
+                            <div
+                                class="alert alert-info py-2 px-3 mb-2"
+                                role="alert">
+
+                                <i class="fa fa-info-circle me-1"/>
+
+                                <strong>Pointage :</strong>
+
+                                la liste des membres se charge automatiquement avec
+                                le cycle de cotisation et les membres du bureau exécutif
+                                sélectionnés. Vous pouvez aussi ajouter manuellement un membre.
+
+                                Cochez ensuite Présent, Absent ou Retard.
+
+                                Pour un retard, saisissez l'heure d'arrivée.
+
+                                Une absence ou un retard peut être justifié.
+
+                            </div>
+
+                            <!-- ===================================================== -->
+                            <!-- BARRE D'ACTIONS                                       -->
+                            <!-- ===================================================== -->
+
+                            <div
+                                class="d-flex align-items-center gap-2 mb-3">
+
+                                <button
+                                    name="action_generate_attendances"
+                                    string="Actualiser les membres de la cotisation"
+                                    type="object"
+                                    groups="primetech_association.group_association_meeting_secretary,primetech_association.group_association_meeting_censor,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                                    class="btn-primary"
+                                    icon="fa-users"
+                                    invisible="state == 'closed' or not subscription_id"
+                                />
+
+                                <span
+                                    class="text-muted"
+                                    invisible="subscription_id">
+
+                                    Sélectionnez une cotisation pour générer
+                                    automatiquement la liste d'appel.
+
+                                </span>
+
+                            </div>
+
+                            <!-- ===================================================== -->
+                            <!-- LISTE                                                 -->
+                            <!-- ===================================================== -->
+
+                            <div class="pt-member-filter-scope">
+
+                                <div class="pt-member-list-searchbar">
+                                    <i class="fa fa-search"/>
+                                    <input
+                                        type="search"
+                                        class="pt-member-list-search"
+                                        placeholder="Rechercher un membre..."/>
+                                </div>
+
+                                <field
+                                    name="attendance_ids"
+                                nolabel="1"
+                                readonly="state == 'closed'"
+                                context="{
+                                    'default_meeting_id': id
+                                }">
+
+                                <list
+                                    editable="bottom"
+                                    create="true"
+                                    delete="true"
+                                    default_order="sequence, member_id"
+                                    decoration-success="state == 'present'"
+                                    decoration-warning="state == 'late'"
+                                    decoration-danger="state == 'absent' and not is_excused"
+                                    decoration-info="is_excused"
+                                    decoration-muted="state == 'pending'">
+
+                                    <!-- ============================================= -->
+                                    <!-- ORDRE                                        -->
+                                    <!-- ============================================= -->
+
+                                    <field
+                                        name="sequence"
+                                        widget="handle"
+                                        width="35"
+                                    />
+
+                                    <!-- ============================================= -->
+                                    <!-- MEMBRE                                       -->
+                                    <!-- ============================================= -->
+
+                                    <field
+                                        name="member_code"
+                                        string="Code"
+                                        readonly="1"
+                                        width="80"
+                                        optional="show"
+                                    />
+
+                                    <field
+                                        name="member_id"
+                                        string="Membre"
+                                        required="1"
+                                        domain="[
+                                            ('active', '=', True),
+                                            ('company_id', '=', parent.company_id)
+                                        ]"
+                                        options="{
+                                            'no_create': true,
+                                            'no_create_edit': true
+                                        }"
+                                    />
+
+                                    <!-- ============================================= -->
+                                    <!-- POINTAGE                                     -->
+                                    <!-- ============================================= -->
+
+                                    <field
+                                        name="is_present"
+                                        string="Prés."
+                                        widget="boolean_toggle"
+                                    />
+
+                                    <field
+                                        name="is_absent"
+                                        string="Abs."
+                                        widget="boolean_toggle"
+                                    />
+
+                                    <field
+                                        name="is_late"
+                                        string="Ret."
+                                        widget="boolean_toggle"
+                                    />
+
+                                    <!-- ============================================= -->
+                                    <!-- RETARD                                       -->
+                                    <!-- ============================================= -->
+
+                                    <field
+                                        name="arrival_time"
+                                        string="Heure d'arrivée"
+                                        invisible="state != 'late'"
+                                        required="state == 'late'"
+                                        placeholder="Saisir l'heure d'arrivée"
+                                    />
+
+                                    <field
+                                        name="late_duration"
+                                        string="Durée retard"
+                                        readonly="1"
+                                        invisible="state != 'late'"
+                                        optional="show"
+                                    />
+
+                                    <!-- ============================================= -->
+                                    <!-- JUSTIFICATION                                -->
+                                    <!-- ============================================= -->
+
+                                    <field
+                                        name="is_excused"
+                                        string="Justifié"
+                                        widget="boolean_toggle"
+                                        invisible="state not in ('absent', 'late')"
+                                    />
+
+                                    <field
+                                        name="absence_reason"
+                                        string="Motif"
+                                        invisible="not is_excused"
+                                        required="is_excused"
+                                        placeholder="Saisir le motif de justification"
+                                    />
+
+                                    <!-- ============================================= -->
+                                    <!-- ÉTAT                                         -->
+                                    <!-- ============================================= -->
+
+                                    <field
+                                        name="state"
+                                        string="État"
+                                        widget="badge"
+                                        readonly="1"
+                                        decoration-muted="state == 'pending'"
+                                        decoration-success="state == 'present'"
+                                        decoration-warning="state == 'late'"
+                                        decoration-danger="state == 'absent'"
+                                    />
+
+                                </list>
+
+                                </field>
+
+                            </div>
+
+                        </page>
+
+                        <!-- ============================================= -->
+                        <!-- SANCTIONS / INCIDENTS                         -->
+                        <!-- ============================================= -->
+
+                        <page
+                            string="Sanctions / Incidents"
+                            name="penalties"
+                            groups="primetech_association.group_association_meeting_president,primetech_association.group_association_meeting_censor,primetech_association.group_association_manager,primetech_association.group_association_admin">
+
+                                    <!-- ========================================= -->
+                            <!-- INFORMATION                              -->
+                            <!-- ========================================= -->
+
+                            <div
+                                class="alert alert-info border-0 shadow-sm mb-3"
+                                role="alert">
+
+                                <div class="d-flex align-items-start">
+
+                                    <div class="me-3">
+
+                                        <i
+                                            class="fa fa-gavel fa-2x"
+                                            title="Sanctions disciplinaires"/>
+
+                                    </div>
+
+                                    <div class="flex-grow-1">
+
+                                        <strong class="fs-5">
+
+                                            Incidents et décisions disciplinaires
+
+                                        </strong>
+
+                                        <div class="mt-1">
+
+                                            Enregistrez les incidents constatés pendant
+                                            la réunion et définissez la décision
+                                            disciplinaire prise.
+
+                                        </div>
+
+                                        <div class="small mt-2">
+
+                                            Chaque incident doit obligatoirement être
+
+                                            <strong>validé</strong>
+
+                                            ou
+
+                                            <strong>annulé</strong>
+
+                                            avant la préparation du procès-verbal.
+
+                                        </div>
+
+                                        <div class="small mt-1">
+
+                                            Une sanction validée reste active et continue
+                                            à être suivie dans le menu
+
+                                            <strong>Sanctions</strong>
+
+                                            même après la clôture de cette réunion.
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
+                            <!-- ========================================= -->
+                            <!-- ALERTE AVANT PV                          -->
+                            <!-- ========================================= -->
+
+                            <div
+                                class="alert alert-warning border-0 mb-3"
+                                role="alert"
+                                invisible="penalty_draft_count == 0">
+
+                                <div class="d-flex flex-wrap align-items-center gap-2">
+
+                                    <div class="me-3">
+
+                                        <i
+                                            class="fa fa-exclamation-triangle fa-lg"
+                                            title="Décisions en attente"/>
+
+                                    </div>
+
+                                    <div class="flex-grow-1">
+
+                                        <strong>
+
+                                            Décisions disciplinaires en attente
+
+                                        </strong>
+
+                                        <div class="small mt-1">
+
+                                            <field
+                                                name="penalty_draft_count"
+                                                class="oe_inline"
+                                            />
+
+                                            incident(s) doivent encore être validés
+                                            ou annulés avant la préparation du
+                                            procès-verbal.
+
+                                        </div>
+
+                                    </div>
+
+                                    <div class="ms-auto">
+
+                                        <button
+                                            name="action_apply_draft_penalties"
+                                            type="object"
+                                            string="Appliquer"
+                                            icon="fa-check"
+                                            class="btn-primary"
+                                            groups="primetech_association.group_association_meeting_president,primetech_association.group_association_meeting_censor,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                                            invisible="state == 'closed'"
+                                            confirm="Confirmez-vous l'application des sanctions en attente ? Les changements de la réunion seront enregistrés automatiquement."
+                                        />
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
+                            <!-- ========================================= -->
+                            <!-- LISTE DES SANCTIONS                      -->
+                            <!-- ========================================= -->
+
+                            <field
+                                name="penalty_ids"
+                                readonly="state == 'closed'"
+                                context="{
+                                    'default_meeting_id': id
+                                }">
+
+                                <list
+                                    string="Incidents et sanctions"
+                                    open_form_view="1"
+                                    decoration-muted="state == 'draft'"
+                                    decoration-info="state == 'validated'"
+                                    decoration-warning="state == 'executed'"
+                                    decoration-success="state == 'lifted'"
+                                    decoration-danger="state == 'cancelled'">
+
+                                    <field
+                                        name="create_date"
+                                        column_invisible="1"
+                                    />
+
+                                    <!-- ================================= -->
+                                    <!-- MEMBRE                           -->
+                                    <!-- ================================= -->
+
+                                    <field
+                                        name="member_id"
+                                        string="Membre"
+                                    />
+
+
+                                    <!-- ================================= -->
+                                    <!-- INCIDENT                         -->
+                                    <!-- ================================= -->
+
+                                    <field
+                                        name="incident_type"
+                                        string="Incident"
+                                    />
+
+
+                                    <!-- ================================= -->
+                                    <!-- GRAVITÉ                          -->
+                                    <!-- ================================= -->
+
+                                    <field
+                                        name="severity"
+                                        string="Gravité"
+                                        widget="badge"
+                                        decoration-muted="severity == 'minor'"
+                                        decoration-success="severity == 'low'"
+                                        decoration-info="severity == 'medium'"
+                                        decoration-warning="severity == 'serious'"
+                                        decoration-danger="severity == 'critical'"
+                                    />
+
+
+                                    <!-- ================================= -->
+                                    <!-- SANCTION                         -->
+                                    <!-- ================================= -->
+
+                                    <field
+                                        name="penalty_type"
+                                        string="Sanction"
+                                    />
+
+
+                                    <!-- ================================= -->
+                                    <!-- MONTANT                          -->
+                                    <!-- ================================= -->
+
+                                    <field
+                                        name="amount"
+                                        string="Montant"
+                                        invisible="penalty_type != 'fine'"
+                                        optional="show"
+                                    />
+
+                                    <field
+                                        name="amount_remaining"
+                                        string="Reste"
+                                        invisible="penalty_type != 'fine'"
+                                        optional="hide"
+                                    />
+
+                                    <field
+                                        name="payment_state"
+                                        string="Règlement"
+                                        widget="badge"
+                                        readonly="1"
+                                        optional="show"
+                                        decoration-muted="payment_state == 'not_payable'"
+                                        decoration-danger="payment_state == 'not_paid'"
+                                        decoration-warning="payment_state == 'partial'"
+                                        decoration-success="payment_state == 'paid'"
+                                    />
+
+
+                                    <!-- ================================= -->
+                                    <!-- ACTION CORRECTIVE                -->
+                                    <!-- ================================= -->
+
+                                    <field
+                                        name="corrective_action_required"
+                                        string="Action requise"
+                                        optional="show"
+                                    />
+
+                                    <field
+                                        name="corrective_deadline"
+                                        string="Échéance"
+                                        optional="show"
+                                    />
+
+
+                                    <!-- ================================= -->
+                                    <!-- PROCÈS-VERBAL                    -->
+                                    <!-- ================================= -->
+
+                                    <field
+                                        name="include_in_minutes"
+                                        string="Dans PV"
+                                        optional="hide"
+                                    />
+
+
+                                    <!-- ================================= -->
+                                    <!-- STATUT                           -->
+                                    <!-- ================================= -->
+
+                                    <field
+                                        name="state"
+                                        string="Statut"
+                                        widget="badge"
+                                        decoration-muted="state == 'draft'"
+                                        decoration-info="state == 'validated'"
+                                        decoration-warning="state == 'executed'"
+                                        decoration-success="state == 'lifted'"
+                                        decoration-danger="state == 'cancelled'"
+                                    />
+
+
+                                    <!-- ================================= -->
+                                    <!-- VALIDER                          -->
+                                    <!-- ================================= -->
+
+                                    <button
+                                        name="action_validate"
+                                        type="object"
+                                        groups="primetech_association.group_association_meeting_president,primetech_association.group_association_meeting_censor,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                                        string="Valider"
+                                        icon="fa-check"
+                                        class="btn-link"
+                                        invisible="not create_date or state != 'draft'"
+                                        confirm="Confirmez-vous la validation de cette sanction ? La décision sera intégrée au procès-verbal."
+                                    />
+
+
+                                    <!-- ================================= -->
+                                    <!-- ANNULER                          -->
+                                    <!-- ================================= -->
+
+                                    <button
+                                        name="action_cancel"
+                                        type="object"
+                                        groups="primetech_association.group_association_meeting_president,primetech_association.group_association_meeting_censor,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                                        string="Annuler"
+                                        icon="fa-times"
+                                        class="btn-link"
+                                        invisible="state not in ('draft', 'validated')"
+                                    />
+
+                                </list>
+
+                            </field>
+
+
+                            <!-- ========================================= -->
+                            <!-- AIDE AU SUIVI                            -->
+                            <!-- ========================================= -->
+
+                            <div
+                                class="mt-3 p-3 border rounded bg-light"
+                                invisible="not penalty_ids">
+
+                                <div class="d-flex align-items-start">
+
+                                    <div class="me-3">
+
+                                        <i
+                                            class="fa fa-info-circle fa-lg"
+                                            title="Suivi des sanctions"/>
+
+                                    </div>
+
+                                    <div>
+
+                                        <strong>
+
+                                            Suivi après la réunion
+
+                                        </strong>
+
+                                        <div class="small text-muted mt-1">
+
+                                            La clôture de la réunion ne clôture pas
+                                            automatiquement les sanctions validées.
+
+                                        </div>
+
+                                        <div class="small text-muted">
+
+                                            Elles restent actives jusqu'au règlement
+                                            du montant éventuel, à l'accomplissement
+                                            de l'action demandée ou à une décision
+                                            officielle de levée.
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </page>
+
+
+                        <!-- ============================================= -->
+                        <!-- RÉSOLUTIONS                                  -->
+                        <!-- ============================================= -->
+
+                        <page
+                            string="Résolutions"
+                            name="resolutions"
+                            groups="primetech_association.group_association_meeting_president,primetech_association.group_association_meeting_secretary,primetech_association.group_association_manager,primetech_association.group_association_admin">
+
+                            <field
+                                name="resolution_ids"
+                                readonly="state == 'closed'"
+                                context="{
+                                    'default_meeting_id': id
+                                }">
+
+                                <list
+                                    decoration-success="result == 'adopted'"
+                                    decoration-danger="result == 'rejected'"
+                                    decoration-muted="result == 'pending'">
+
+                                    <field
+                                        name="sequence"
+                                        widget="handle"
+                                    />
+
+                                    <field
+                                        name="name"
+                                        string="Résolution"
+                                    />
+
+                                    <field
+                                        name="resolution_type"
+                                        string="Type"
+                                        widget="badge"
+                                        optional="show"
+                                    />
+
+                                    <field
+                                        name="decision_method"
+                                        string="Décision"
+                                        optional="show"
+                                    />
+
+                                    <field
+                                        name="majority_type"
+                                        string="Majorité"
+                                        optional="show"
+                                    />
+
+                                    <field
+                                        name="votes_for"
+                                        string="Pour"
+                                    />
+
+                                    <field
+                                        name="votes_against"
+                                        string="Contre"
+                                    />
+
+                                    <field
+                                        name="abstentions"
+                                        string="Abst."
+                                    />
+
+                                    <field
+                                        name="approval_percentage"
+                                        string="Approbation"
+                                        widget="percentage"
+                                        optional="show"
+                                    />
+
+                                    <field
+                                        name="result"
+                                        string="Résultat"
+                                        widget="badge"
+                                        decoration-muted="result == 'pending'"
+                                        decoration-success="result == 'adopted'"
+                                        decoration-danger="result == 'rejected'"
+                                    />
+
+                                    <field
+                                        name="responsible_id"
+                                        string="Responsable"
+                                        optional="show"
+                                    />
+
+                                    <field
+                                        name="deadline"
+                                        string="Échéance"
+                                        optional="show"
+                                    />
+
+                                    <field
+                                        name="execution_state"
+                                        string="Exécution"
+                                        widget="badge"
+                                        optional="show"
+                                    />
+
+                                </list>
+
+
+                                <form string="Résolution">
+
+                                    <sheet>
+
+                                        <div class="oe_title">
+
+                                            <label for="name"/>
+
+                                            <h1>
+
+                                                <field
+                                                    name="name"
+                                                    placeholder="Titre de la résolution..."
+                                                />
+
+                                            </h1>
+
+                                        </div>
+
+
+                                        <group>
+
+                                            <group string="Résolution">
+
+                                                <field
+                                                    name="resolution_type"
+                                                />
+
+                                                <field
+                                                    name="decision_method"
+                                                />
+
+                                            </group>
+
+
+                                            <group string="Majorité">
+
+                                                <field
+                                                    name="majority_type"
+                                                />
+
+                                                <field
+                                                    name="custom_majority_percentage"
+                                                    invisible="majority_type != 'custom'"
+                                                />
+
+                                                <field
+                                                    name="required_percentage"
+                                                    widget="percentage"
+                                                    readonly="1"
+                                                />
+
+                                            </group>
+
+                                        </group>
+
+
+                                        <group string="Texte de la résolution">
+
+                                            <field
+                                                name="description"
+                                                placeholder="Texte complet de la résolution..."
+                                            />
+
+                                        </group>
+
+
+                                        <group
+                                            string="Résultat du vote"
+                                            invisible="decision_method == 'consensus'">
+
+                                            <group>
+
+                                                <field name="votes_for"/>
+
+                                                <field name="votes_against"/>
+
+                                                <field name="abstentions"/>
+
+                                                <field name="blank_votes"/>
+
+                                            </group>
+
+
+                                            <group>
+
+                                                <field
+                                                    name="total_votes"
+                                                    readonly="1"
+                                                />
+
+                                                <field
+                                                    name="valid_votes"
+                                                    readonly="1"
+                                                />
+
+                                                <field
+                                                    name="approval_percentage"
+                                                    widget="percentage"
+                                                    readonly="1"
+                                                />
+
+                                                <field
+                                                    name="result"
+                                                    widget="badge"
+                                                    decoration-muted="result == 'pending'"
+                                                    decoration-success="result == 'adopted'"
+                                                    decoration-danger="result == 'rejected'"
+                                                />
+
+                                            </group>
+
+                                        </group>
+
+
+                                        <group string="Suivi de la décision">
+
+                                            <group>
+
+                                                <field
+                                                    name="responsible_id"
+                                                    domain="[('company_id', '=', company_id)]"
+                                                    options="{
+                                                        'no_create': true
+                                                    }"
+                                                />
+
+                                                <field name="deadline"/>
+
+                                            </group>
+
+
+                                            <group>
+
+                                                <field
+                                                    name="execution_state"
+                                                    widget="badge"
+                                                />
+
+                                                <button
+                                                    name="action_mark_done"
+                                                    string="Marquer comme réalisée"
+                                                    type="object"
+                                                    groups="primetech_association.group_association_meeting_president,primetech_association.group_association_meeting_secretary,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                                                    class="oe_highlight"
+                                                    invisible="result != 'adopted' or execution_state == 'done'"
+                                                />
+
+                                            </group>
+
+                                        </group>
+
+
+                                        <notebook>
+
+                                            <page
+                                                string="Compte rendu d'exécution"
+                                                name="execution_note">
+
+                                                <field
+                                                    name="execution_note"
+                                                    placeholder="Compte rendu de l'exécution de cette résolution..."
+                                                />
+
+                                            </page>
+
+
+                                            <page
+                                                string="Notes internes"
+                                                name="resolution_note">
+
+                                                <field name="note"/>
+
+                                            </page>
+
+                                        </notebook>
+
+                                    </sheet>
+
+                                </form>
+
+                            </field>
+
+                        </page>
+
+
+                        <!-- ============================================= -->
+                        <!-- PROCÈS-VERBAL                                 -->
+                        <!-- ============================================= -->
+
+                        <page
+                            string="Procès-verbal"
+                            name="minutes"
+                            groups="primetech_association.group_association_meeting_president,primetech_association.group_association_meeting_secretary,primetech_association.group_association_manager,primetech_association.group_association_admin">
+
+                            <!-- ========================================= -->
+                            <!-- PV NON PRÉPARÉ                            -->
+                            <!-- ========================================= -->
+
+                            <div
+                                class="alert alert-warning border-0 shadow-sm"
+                                role="alert"
+                                invisible="minutes_prepared">
+
+                                <div class="d-flex align-items-center">
+
+                                    <div class="me-3">
+
+                                        <i
+                                            class="fa fa-file-text-o fa-2x"
+                                            title="Procès-verbal"/>
+
+                                    </div>
+
+                                    <div class="flex-grow-1">
+
+                                        <strong class="fs-5">
+                                            Procès-verbal non préparé
+                                        </strong>
+
+                                        <div class="mt-1">
+
+                                            Générez automatiquement la trame du
+                                            procès-verbal à partir des informations
+                                            enregistrées pendant la réunion.
+
+                                        </div>
+
+                                        <div class="small text-muted mt-1">
+
+                                            Présences, retards, absences, incidents,
+                                            sanctions et résolutions seront intégrés.
+
+                                        </div>
+
+                                    </div>
+
+                                    <div class="ms-3">
+
+                                        <button
+                                            name="action_prepare_minutes"
+                                            type="object"
+                                            groups="primetech_association.group_association_meeting_secretary,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                                            string="Préparer le procès-verbal"
+                                            icon="fa-magic"
+                                            class="btn-primary"
+                                            invisible="state not in ('convoked', 'in_progress')"
+                                        />
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
+                            <!-- ========================================= -->
+                            <!-- PV EN PRÉPARATION                         -->
+                            <!-- ========================================= -->
+
+                            <div
+                                class="alert alert-info border-0 shadow-sm"
+                                role="alert"
+                                invisible="not minutes_prepared or minutes_approved">
+
+                                <div class="d-flex align-items-center">
+
+                                    <div class="me-3">
+
+                                        <i
+                                            class="fa fa-pencil-square-o fa-2x"
+                                            title="Procès-verbal en préparation"/>
+
+                                    </div>
+
+                                    <div class="flex-grow-1">
+
+                                        <strong class="fs-5">
+                                            Procès-verbal en préparation
+                                        </strong>
+
+                                        <div class="mt-1">
+
+                                            Vérifiez les informations générées
+                                            automatiquement et complétez le compte
+                                            rendu de la séance.
+
+                                        </div>
+
+                                    </div>
+
+                                    <div class="ms-3">
+
+                                        <button
+                                            name="action_prepare_minutes"
+                                            type="object"
+                                            groups="primetech_association.group_association_meeting_secretary,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                                            string="Actualiser la trame"
+                                            icon="fa-refresh"
+                                            class="btn-secondary"
+                                            confirm="La trame du procès-verbal sera régénérée. Continuer ?"
+                                        />
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
+                            <!-- ========================================= -->
+                            <!-- PV APPROUVÉ                               -->
+                            <!-- ========================================= -->
+
+                            <div
+                                class="alert alert-success border-0 shadow-sm"
+                                role="alert"
+                                invisible="not minutes_approved">
+
+                                <div class="d-flex align-items-center">
+
+                                    <div class="me-3">
+
+                                        <i
+                                            class="fa fa-check-circle fa-2x"
+                                            title="Procès-verbal approuvé"/>
+
+                                    </div>
+
+                                    <div class="flex-grow-1">
+
+                                        <strong class="fs-5">
+                                            Procès-verbal approuvé
+                                        </strong>
+
+                                        <div class="mt-1">
+
+                                            Le procès-verbal a été vérifié
+                                            et approuvé.
+
+                                        </div>
+
+                                        <div class="small mt-1">
+
+                                            Date d'approbation :
+
+                                            <field
+                                                name="minutes_approval_date"
+                                                class="oe_inline"
+                                            />
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
+                            <!-- ========================================= -->
+                            <!-- ÉTAPES DU PROCÈS-VERBAL                   -->
+                            <!-- ========================================= -->
+
+                            <group
+                                string="Préparation du procès-verbal"
+                                invisible="not minutes_prepared">
+
+                                <group>
+
+                                    <field
+                                        name="minutes_prepared"
+                                        string="Trame préparée"
+                                        readonly="1"
+                                    />
+
+                                    <field
+                                        name="minutes_preparation_date"
+                                        string="Date de préparation"
+                                        readonly="1"
+                                    />
+
+                                </group>
+
+                                <group>
+
+                                    <field
+                                        name="minutes_prepared_by"
+                                        string="Préparé par"
+                                        readonly="1"
+                                    />
+
+                                    <field
+                                        name="minutes_approved"
+                                        string="PV approuvé"
+                                        readonly="1"
+                                    />
+
+                                </group>
+
+                            </group>
+
+
+                            <!-- ========================================= -->
+                            <!-- COMPTE RENDU PRINCIPAL                    -->
+                            <!-- ========================================= -->
+
+                            <div
+                                class="mt-4"
+                                invisible="not minutes_prepared">
+
+                                <div class="mb-2">
+
+                                    <h4 class="mb-1">
+
+                                        <i
+                                            class="fa fa-file-text-o me-2"
+                                            title="Compte rendu"/>
+
+                                        Compte rendu de la séance
+
+                                    </h4>
+
+                                    <div class="text-muted small">
+
+                                        Complétez le déroulement de la réunion,
+                                        les échanges importants et les décisions prises.
+
+                                    </div>
+
+                                </div>
+
+                                <field
+                                    name="minutes"
+                                    nolabel="1"
+                                    readonly="minutes_approved"
+                                    placeholder="Complétez ici le déroulement de la séance..."
+                                />
+
+                            </div>
+
+
+                            <!-- ========================================= -->
+                            <!-- INCIDENTS ET SANCTIONS                    -->
+                            <!-- ========================================= -->
+
+                            <div
+                                class="mt-4"
+                                invisible="not minutes_prepared">
+
+                                <div class="border rounded shadow-sm p-3">
+
+                                    <div class="d-flex align-items-center mb-3">
+
+                                        <div class="me-3">
+
+                                            <i
+                                                class="fa fa-exclamation-triangle fa-2x"
+                                                title="Incidents et sanctions"/>
+
+                                        </div>
+
+                                        <div>
+
+                                            <h5 class="mb-0">
+                                                Incidents et sanctions
+                                            </h5>
+
+                                            <div class="text-muted small">
+
+                                                Informations reprises automatiquement
+                                                depuis l'onglet Sanctions / Incidents.
+
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+
+                                    <field
+                                        name="minutes_penalty_summary"
+                                        groups="primetech_association.group_association_meeting_president,primetech_association.group_association_meeting_secretary,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                                        nolabel="1"
+                                        readonly="1"
+                                    />
+
+                                </div>
+
+                            </div>
+
+
+                            <!-- ========================================= -->
+                            <!-- ACTIONS DU PROCÈS-VERBAL                  -->
+                            <!-- ========================================= -->
+
+                            <div
+                                class="mt-4 pt-3 border-top"
+                                invisible="not minutes_prepared">
+
+                                <div class="d-flex justify-content-end gap-2">
+
+                                    <button
+                                        name="action_prepare_minutes"
+                                        type="object"
+                                        groups="primetech_association.group_association_meeting_secretary,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                                        string="Actualiser"
+                                        icon="fa-refresh"
+                                        class="btn-secondary"
+                                        invisible="minutes_approved"
+                                        confirm="Actualiser la trame du procès-verbal ?"
+                                    />
+
+                                    <button
+                                        name="action_approve_minutes"
+                                        type="object"
+                                        groups="primetech_association.group_association_meeting_president,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                                        string="Approuver le procès-verbal"
+                                        icon="fa-check"
+                                        class="btn-primary"
+                                        invisible="minutes_approved"
+                                        confirm="Confirmez-vous l'approbation du procès-verbal ? Après approbation, son contenu sera verrouillé."
+                                    />
+
+                                </div>
+
+                            </div>
+
+                        </page>
+
+
+                        <!-- ============================================= -->
+                        <!-- NOTES                                        -->
+                        <!-- ============================================= -->
+
+                        <page
+                            string="Notes internes"
+                            name="notes"
+                            groups="primetech_association.group_association_meeting_president,primetech_association.group_association_meeting_secretary,primetech_association.group_association_manager,primetech_association.group_association_admin">
+
+                            <field
+                                name="note"
+                                placeholder="Notes internes concernant cette réunion..."
+                            />
+
+                        </page>
+
+                    </notebook>
+
+
+                    <!-- ================================================= -->
+                    <!-- CHAMPS TECHNIQUES                                 -->
+                    <!-- ================================================= -->
+
+                    <field
+                        name="currency_id"
+                        invisible="1"
+                    />
+
+                    <field
+                        name="resolution_count"
+                        invisible="1"
+                    />
+
+                </sheet>
+
+
+                <chatter/>
+
+            </form>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- ACTION                                                    -->
+    <!-- ========================================================= -->
+
+    <record id="action_meeting" model="ir.actions.act_window">
+
+        <field name="name">Réunions</field>
+
+        <field name="res_model">association.meeting</field>
+
+        <field name="view_mode">list,form</field>
+
+        <field
+            name="search_view_id"
+            ref="view_association_meeting_search"
+        />
+
+        <field name="help" type="html">
+
+            <p class="o_view_nocontent_smiling_face">
+                Organisez votre première réunion
+            </p>
+
+            <p>
+                Gérez les convocations, les listes de présence,
+                le quorum, les résolutions, les votes et les
+                procès-verbaux de la Filiale.
+            </p>
+
+        </field>
+
+    </record>
+
+</odoo>

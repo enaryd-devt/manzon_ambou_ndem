@@ -1,0 +1,450 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<odoo>
+
+    <!-- ========================================================= -->
+    <!-- PROCÈS-VERBAL DE RÉUNION                                 -->
+    <!-- ========================================================= -->
+
+    <template id="report_meeting_minutes_document">
+
+        <t t-call="web.html_container">
+
+            <t
+                t-foreach="docs"
+                t-as="meeting">
+
+                <t t-call="web.external_layout">
+
+                    <div class="page">
+
+                        <!-- ========================================= -->
+                        <!-- TITRE                                    -->
+                        <!-- ========================================= -->
+
+                        <div
+                            style="
+                                text-align: center;
+                                margin-bottom: 24px;
+                            ">
+
+                            <div
+                                style="
+                                    font-size: 20px;
+                                    font-weight: 700;
+                                    text-transform: uppercase;
+                                    letter-spacing: 1px;
+                                ">
+
+                                PROCÈS-VERBAL DE RÉUNION
+
+                            </div>
+
+                            <div
+                                style="
+                                    width: 80px;
+                                    border-bottom: 2px solid #444;
+                                    margin: 8px auto 0 auto;
+                                ">
+                            </div>
+
+                        </div>
+
+
+                        <!-- ========================================= -->
+                        <!-- INFORMATIONS DE LA RÉUNION                -->
+                        <!-- ========================================= -->
+
+                        <table
+                            style="
+                                width: 100%;
+                                border-collapse: collapse;
+                                margin-bottom: 22px;
+                                font-size: 12px;
+                            ">
+
+                            <tbody>
+
+                                <tr>
+
+                                    <td
+                                        style="
+                                            width: 20%;
+                                            padding: 7px 8px;
+                                            font-weight: bold;
+                                            border-bottom: 1px solid #dddddd;
+                                        ">
+
+                                        Référence
+
+                                    </td>
+
+                                    <td
+                                        style="
+                                            width: 30%;
+                                            padding: 7px 8px;
+                                            border-bottom: 1px solid #dddddd;
+                                        ">
+
+                                        <span t-field="meeting.name"/>
+
+                                    </td>
+
+                                    <td
+                                        style="
+                                            width: 20%;
+                                            padding: 7px 8px;
+                                            font-weight: bold;
+                                            border-bottom: 1px solid #dddddd;
+                                        ">
+
+                                        Date
+
+                                    </td>
+
+                                    <td
+                                        style="
+                                            width: 30%;
+                                            padding: 7px 8px;
+                                            border-bottom: 1px solid #dddddd;
+                                        ">
+
+                                        <span
+                                            t-field="meeting.meeting_date"
+                                            t-options="{
+                                                'widget': 'date',
+                                                'format': 'dd/MM/yyyy'
+                                            }"
+                                        />
+
+                                    </td>
+
+                                </tr>
+
+
+                                <tr>
+
+                                    <td
+                                        style="
+                                            padding: 7px 8px;
+                                            font-weight: bold;
+                                            border-bottom: 1px solid #dddddd;
+                                        ">
+
+                                        Type de réunion
+
+                                    </td>
+
+                                    <td
+                                        style="
+                                            padding: 7px 8px;
+                                            border-bottom: 1px solid #dddddd;
+                                        ">
+
+                                        <span t-field="meeting.meeting_type"/>
+
+                                    </td>
+
+                                    <td
+                                        style="
+                                            padding: 7px 8px;
+                                            font-weight: bold;
+                                            border-bottom: 1px solid #dddddd;
+                                        ">
+
+                                        Lieu
+
+                                    </td>
+
+                                    <td
+                                        style="
+                                            padding: 7px 8px;
+                                            border-bottom: 1px solid #dddddd;
+                                        ">
+
+                                        <span t-field="meeting.location"/>
+
+                                    </td>
+
+                                </tr>
+
+
+                                <tr>
+
+                                    <td
+                                        style="
+                                            padding: 7px 8px;
+                                            font-weight: bold;
+                                        ">
+
+                                        Heure d'ouverture
+
+                                    </td>
+
+                                    <td
+                                        style="
+                                            padding: 7px 8px;
+                                        ">
+
+                                        <span
+                                            t-esc="
+                                                meeting.actual_start_time
+                                                or meeting.start_time
+                                                or '-'
+                                            "
+                                        />
+
+                                    </td>
+
+                                    <td
+                                        style="
+                                            padding: 7px 8px;
+                                            font-weight: bold;
+                                        ">
+
+                                        Heure de clôture
+
+                                    </td>
+
+                                    <td
+                                        style="
+                                            padding: 7px 8px;
+                                        ">
+
+                                        <span
+                                            t-esc="
+                                                meeting.end_time
+                                                or '-'
+                                            "
+                                        />
+
+                                    </td>
+
+                                </tr>
+
+                            </tbody>
+
+                        </table>
+
+
+                        <!-- ========================================= -->
+                        <!-- CONTENU DU PROCÈS-VERBAL                  -->
+                        <!-- ========================================= -->
+
+                        <div
+                            style="
+                                font-size: 12px;
+                                line-height: 1.65;
+                                text-align: justify;
+                            ">
+
+                            <div t-field="meeting.minutes"/>
+
+                        </div>
+
+
+                        <!-- ========================================= -->
+                        <!-- APPROBATION                              -->
+                        <!-- ========================================= -->
+
+                        <div
+                            t-if="meeting.minutes_approved"
+                            style="
+                                margin-top: 25px;
+                                padding: 10px 12px;
+                                border: 1px solid #dddddd;
+                                font-size: 11px;
+                                page-break-inside: avoid;
+                            ">
+
+                            <strong>
+
+                                Procès-verbal approuvé
+
+                            </strong>
+
+                            <br/>
+
+                            <span>
+
+                                Date d'approbation :
+
+                            </span>
+
+                            <span
+                                t-if="meeting.minutes_approval_date"
+                                t-field="meeting.minutes_approval_date"
+                                t-options="{
+                                    'widget': 'datetime',
+                                    'format': 'dd/MM/yyyy HH:mm'
+                                }"
+                            />
+
+                        </div>
+
+
+                        <!-- ========================================= -->
+                        <!-- SIGNATURES                               -->
+                        <!-- ========================================= -->
+
+                        <div
+                            style="
+                                margin-top: 45px;
+                                page-break-inside: avoid;
+                            ">
+
+                            <table
+                                style="
+                                    width: 100%;
+                                    border-collapse: collapse;
+                                ">
+
+                                <tbody>
+
+                                    <tr>
+
+                                        <td
+                                            style="
+                                                width: 48%;
+                                                text-align: center;
+                                                vertical-align: top;
+                                            ">
+
+                                            <strong>
+
+                                                Le Secrétaire de séance
+
+                                            </strong>
+
+                                            <div
+                                                style="
+                                                    height: 75px;
+                                                ">
+                                            </div>
+
+                                            <div
+                                                style="
+                                                    width: 70%;
+                                                    margin: auto;
+                                                    padding-top: 5px;
+                                                    border-top: 1px solid #777777;
+                                                    font-size: 10px;
+                                                ">
+
+                                                Nom et signature
+
+                                            </div>
+
+                                        </td>
+
+
+                                        <td style="width: 4%;"></td>
+
+
+                                        <td
+                                            style="
+                                                width: 48%;
+                                                text-align: center;
+                                                vertical-align: top;
+                                            ">
+
+                                            <strong>
+
+                                                Le Président de séance
+
+                                            </strong>
+
+                                            <div
+                                                style="
+                                                    height: 75px;
+                                                ">
+                                            </div>
+
+                                            <div
+                                                style="
+                                                    width: 70%;
+                                                    margin: auto;
+                                                    padding-top: 5px;
+                                                    border-top: 1px solid #777777;
+                                                    font-size: 10px;
+                                                ">
+
+                                                Nom et signature
+
+                                            </div>
+
+                                        </td>
+
+                                    </tr>
+
+                                </tbody>
+
+                            </table>
+
+                        </div>
+
+
+                        <!-- ========================================= -->
+                        <!-- INFORMATIONS DOCUMENTAIRES                -->
+                        <!-- ========================================= -->
+
+                        <div
+                            style="
+                                margin-top: 35px;
+                                padding-top: 8px;
+                                border-top: 1px solid #dddddd;
+                                text-align: center;
+                                font-size: 9px;
+                            ">
+
+                            <t t-if="meeting.minutes_preparation_date">
+
+                                Procès-verbal préparé le
+
+                                <span
+                                    t-field="meeting.minutes_preparation_date"
+                                    t-options="{
+                                        'widget': 'datetime',
+                                        'format': 'dd/MM/yyyy HH:mm'
+                                    }"
+                                />
+
+                            </t>
+
+                            <t t-if="meeting.minutes_prepared_by">
+
+                                par
+
+                                <strong>
+
+                                    <span
+                                        t-field="meeting.minutes_prepared_by"
+                                    />
+
+                                </strong>
+
+                            </t>
+
+                            <br/>
+
+                            Référence :
+
+                            <strong>
+
+                                <span t-field="meeting.name"/>
+
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+                </t>
+
+            </t>
+
+        </t>
+
+    </template>
+
+</odoo>

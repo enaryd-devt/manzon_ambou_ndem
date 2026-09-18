@@ -1,0 +1,725 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<odoo>
+
+    <!-- ========================================================= -->
+    <!-- VUE LISTE                                                 -->
+    <!-- ========================================================= -->
+
+    <record id="view_association_attendance_list" model="ir.ui.view">
+
+        <field name="name">association.attendance.list</field>
+
+        <field name="model">association.attendance</field>
+
+        <field name="arch" type="xml">
+
+            <list
+                string="Présences"
+                decoration-success="state == 'present'"
+                decoration-warning="state == 'late'"
+                decoration-danger="state == 'absent'"
+                decoration-info="state == 'excused'"
+                decoration-muted="state == 'pending'">
+
+                <field
+                    name="meeting_date"
+                    string="Date"
+                />
+
+                <field
+                    name="meeting_id"
+                    string="Réunion"
+                />
+
+                <field
+                    name="member_code"
+                    string="Code"
+                    optional="show"
+                />
+
+                <field
+                    name="member_id"
+                    string="Membre"
+                />
+
+                <field
+                    name="function_id"
+                    string="Fonction"
+                    optional="hide"
+                />
+
+                <field
+                    name="invited"
+                    string="Convoqué"
+                    optional="show"
+                />
+
+                <field
+                    name="state"
+                    string="Présence"
+                    widget="badge"
+                    decoration-muted="state == 'pending'"
+                    decoration-success="state == 'present'"
+                    decoration-warning="state == 'late'"
+                    decoration-danger="state == 'absent'"
+                    decoration-info="state == 'excused'"
+                />
+
+                <!-- MENU DÉROULANT HEURE ARRIVÉE -->
+
+                <field
+                    name="arrival_time"
+                    string="Heure d'arrivée"
+                    optional="show"
+                />
+
+                <field
+                    name="late_minutes"
+                    string="Retard (min)"
+                    optional="show"
+                />
+
+                <!-- MENU DÉROULANT HEURE DÉPART -->
+
+                <field
+                    name="departure_time"
+                    string="Heure de départ"
+                    optional="show"
+                />
+
+                <field
+                    name="early_departure"
+                    string="Départ anticipé"
+                    optional="hide"
+                />
+
+                <field
+                    name="presence_confirmed"
+                    string="Confirmée"
+                    optional="show"
+                />
+
+            </list>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- VUE FORMULAIRE                                            -->
+    <!-- ========================================================= -->
+
+    <record id="view_association_attendance_form" model="ir.ui.view">
+
+        <field name="name">association.attendance.form</field>
+
+        <field name="model">association.attendance</field>
+
+        <field name="arch" type="xml">
+
+            <form string="Présence">
+
+                <!-- ================================================= -->
+                <!-- HEADER                                            -->
+                <!-- ================================================= -->
+
+                <header>
+
+                    <button
+                        name="action_confirm_convocation"
+                        type="object"
+                        groups="primetech_association.group_association_meeting_secretary,primetech_association.group_association_meeting_censor,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Confirmer convocation"
+                        class="btn-secondary"
+                        invisible="convocation_confirmed or meeting_state == 'closed'"
+                    />
+
+                    <button
+                        name="action_mark_present"
+                        type="object"
+                        groups="primetech_association.group_association_meeting_secretary,primetech_association.group_association_meeting_censor,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Présent"
+                        class="btn-primary"
+                        invisible="meeting_state not in ('convoked', 'in_progress')"
+                    />
+
+                    <button
+                        name="action_mark_late"
+                        type="object"
+                        groups="primetech_association.group_association_meeting_secretary,primetech_association.group_association_meeting_censor,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="En retard"
+                        class="btn-warning"
+                        invisible="meeting_state not in ('convoked', 'in_progress')"
+                    />
+
+                    <button
+                        name="action_mark_absent"
+                        type="object"
+                        groups="primetech_association.group_association_meeting_secretary,primetech_association.group_association_meeting_censor,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Absent"
+                        class="btn-secondary"
+                        invisible="meeting_state not in ('convoked', 'in_progress')"
+                    />
+
+                    <button
+                        name="action_mark_excused"
+                        type="object"
+                        groups="primetech_association.group_association_meeting_secretary,primetech_association.group_association_meeting_censor,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Absence justifiée"
+                        invisible="meeting_state not in ('convoked', 'in_progress')"
+                    />
+
+                    <button
+                        name="action_confirm_presence"
+                        type="object"
+                        groups="primetech_association.group_association_meeting_secretary,primetech_association.group_association_meeting_censor,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Confirmer présence"
+                        class="btn-primary"
+                        invisible="state not in ('present', 'late') or presence_confirmed"
+                    />
+
+                    <button
+                        name="action_validate_absence"
+                        type="object"
+                        groups="primetech_association.group_association_meeting_secretary,primetech_association.group_association_meeting_censor,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Valider justification"
+                        class="btn-primary"
+                        invisible="state != 'excused' or absence_validated"
+                    />
+
+                    <field
+                        name="state"
+                        widget="statusbar"
+                        statusbar_visible="pending,present,late,excused,absent"
+                    />
+
+                </header>
+
+
+                <!-- ================================================= -->
+                <!-- SHEET                                             -->
+                <!-- ================================================= -->
+
+                <sheet>
+
+                    <!-- ================================================= -->
+                    <!-- MEMBRE                                            -->
+                    <!-- ================================================= -->
+
+                    <div class="oe_title">
+
+                        <label for="member_id"/>
+
+                        <h1>
+
+                            <field
+                                name="member_id"
+                                readonly="meeting_state == 'closed'"
+                            />
+
+                        </h1>
+
+                    </div>
+
+
+                    <!-- ================================================= -->
+                    <!-- INFORMATIONS PRINCIPALES                          -->
+                    <!-- ================================================= -->
+
+                    <group>
+
+                        <group string="Réunion">
+
+                            <field
+                                name="meeting_id"
+                                readonly="meeting_state == 'closed'"
+                            />
+
+                            <field
+                                name="meeting_date"
+                            />
+
+                            <field
+                                name="meeting_type"
+                            />
+
+                            <field
+                                name="meeting_state"
+                                widget="badge"
+                            />
+
+                        </group>
+
+
+                        <group string="Membre">
+
+                            <field
+                                name="member_code"
+                            />
+
+                            <field
+                                name="function_id"
+                            />
+
+                            <field
+                                name="phone"
+                            />
+
+                        </group>
+
+                    </group>
+
+
+                    <!-- ================================================= -->
+                    <!-- HORAIRES DE PRÉSENCE                              -->
+                    <!-- ================================================= -->
+
+                    <group string="Horaires de présence">
+
+                        <group>
+
+                            <!--
+                                FIELD SELECTION
+                                ODOO AFFICHE AUTOMATIQUEMENT
+                                UN MENU DÉROULANT
+                            -->
+
+                            <field
+                                name="arrival_time"
+                                string="Heure d'arrivée"
+                                readonly="meeting_state == 'closed'"
+                            />
+
+                            <field
+                                name="late_minutes"
+                                string="Minutes de retard"
+                                readonly="1"
+                            />
+
+                        </group>
+
+
+                        <group>
+
+                            <!-- MENU DÉROULANT -->
+
+                            <field
+                                name="departure_time"
+                                string="Heure de départ"
+                                readonly="meeting_state == 'closed'"
+                            />
+
+                            <field
+                                name="early_departure"
+                                string="Départ anticipé"
+                                readonly="1"
+                            />
+
+                        </group>
+
+                    </group>
+
+
+                    <!-- ================================================= -->
+                    <!-- NOTE RETARD                                       -->
+                    <!-- ================================================= -->
+
+                    <div
+                        class="alert alert-warning"
+                        role="alert"
+                        invisible="state != 'late'">
+
+                        <strong>
+                            Membre en retard
+                        </strong>
+
+                        <br/>
+
+                        Retard enregistré :
+
+                        <field
+                            name="late_minutes"
+                            class="oe_inline"
+                        />
+
+                        minute(s).
+
+                    </div>
+
+
+                    <!-- ================================================= -->
+                    <!-- NOTE DÉPART ANTICIPÉ                              -->
+                    <!-- ================================================= -->
+
+                    <div
+                        class="alert alert-warning"
+                        role="alert"
+                        invisible="not early_departure">
+
+                        <strong>
+                            Départ anticipé détecté
+                        </strong>
+
+                    </div>
+
+
+                    <!-- ================================================= -->
+                    <!-- ONGLETS                                           -->
+                    <!-- ================================================= -->
+
+                    <notebook>
+
+
+                        <!-- ================================================= -->
+                        <!-- CONVOCATION                                       -->
+                        <!-- ================================================= -->
+
+                        <page
+                            string="Convocation"
+                            name="convocation">
+
+                            <group>
+
+                                <group>
+
+                                    <field
+                                        name="invited"
+                                    />
+
+                                    <field
+                                        name="convocation_confirmed"
+                                    />
+
+                                </group>
+
+                                <group>
+
+                                    <field
+                                        name="confirmation_date"
+                                    />
+
+                                </group>
+
+                            </group>
+
+                        </page>
+
+
+                        <!-- ================================================= -->
+                        <!-- ABSENCE                                           -->
+                        <!-- ================================================= -->
+
+                        <page
+                            string="Absence"
+                            name="absence">
+
+                            <group>
+
+                                <field
+                                    name="absence_reason"
+                                    placeholder="Précisez le motif de l'absence..."
+                                />
+
+                                <field
+                                    name="justification"
+                                    filename="justification_filename"
+                                />
+
+                                <field
+                                    name="justification_filename"
+                                    invisible="1"
+                                />
+
+                            </group>
+
+
+                            <group string="Validation de la justification">
+
+                                <group>
+
+                                    <field
+                                        name="absence_validated"
+                                    />
+
+                                </group>
+
+                                <group>
+
+                                    <field
+                                        name="absence_validated_by"
+                                    />
+
+                                    <field
+                                        name="absence_validation_date"
+                                    />
+
+                                </group>
+
+                            </group>
+
+                        </page>
+
+
+                        <!-- ================================================= -->
+                        <!-- PRÉSENCE                                          -->
+                        <!-- ================================================= -->
+
+                        <page
+                            string="Validation présence"
+                            name="presence_validation">
+
+                            <group>
+
+                                <group>
+
+                                    <field
+                                        name="presence_confirmed"
+                                    />
+
+                                    <field
+                                        name="signature"
+                                        widget="image"
+                                    />
+
+                                </group>
+
+                                <group>
+
+                                    <field
+                                        name="presence_confirmed_by"
+                                    />
+
+                                    <field
+                                        name="presence_confirmation_date"
+                                    />
+
+                                </group>
+
+                            </group>
+
+                        </page>
+
+
+                        <!-- ================================================= -->
+                        <!-- DROIT DE VOTE                                     -->
+                        <!-- ================================================= -->
+
+                        <page
+                            string="Droit de vote"
+                            name="voting">
+
+                            <group>
+
+                                <field
+                                    name="voting_eligible"
+                                />
+
+                                <field
+                                    name="voting_block_reason"
+                                    invisible="voting_eligible"
+                                    placeholder="Motif de suspension du droit de vote..."
+                                />
+
+                            </group>
+
+                        </page>
+
+
+                        <!-- ================================================= -->
+                        <!-- SANCTION                                          -->
+                        <!-- ================================================= -->
+
+                        <page
+                            string="Sanction"
+                            name="penalty">
+
+                            <group>
+
+                                <field
+                                    name="penalty_required"
+                                />
+
+                                <field
+                                    name="penalty_reason"
+                                    invisible="not penalty_required"
+                                    placeholder="Motif de la sanction..."
+                                />
+
+                            </group>
+
+                        </page>
+
+
+                        <!-- ================================================= -->
+                        <!-- OBSERVATIONS                                      -->
+                        <!-- ================================================= -->
+
+                        <page
+                            string="Observations"
+                            name="notes">
+
+                            <field
+                                name="note"
+                                placeholder="Observations concernant la présence du membre..."
+                            />
+
+                        </page>
+
+                    </notebook>
+
+                </sheet>
+
+
+                <!-- ================================================= -->
+                <!-- CHATTER                                           -->
+                <!-- ================================================= -->
+
+                <chatter/>
+
+            </form>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- VUE RECHERCHE                                             -->
+    <!-- ========================================================= -->
+
+    <record id="view_association_attendance_search" model="ir.ui.view">
+
+        <field name="name">association.attendance.search</field>
+
+        <field name="model">association.attendance</field>
+
+        <field name="arch" type="xml">
+
+            <search string="Rechercher une présence">
+
+                <field name="member_id"/>
+
+                <field name="member_code"/>
+
+                <field name="meeting_id"/>
+
+                <field name="meeting_date"/>
+
+
+                <separator/>
+
+
+                <filter
+                    name="filter_present"
+                    string="Présents"
+                    domain="[('state', '=', 'present')]"
+                />
+
+                <filter
+                    name="filter_late"
+                    string="En retard"
+                    domain="[('state', '=', 'late')]"
+                />
+
+                <filter
+                    name="filter_absent"
+                    string="Absents"
+                    domain="[('state', '=', 'absent')]"
+                />
+
+                <filter
+                    name="filter_excused"
+                    string="Absences justifiées"
+                    domain="[('state', '=', 'excused')]"
+                />
+
+
+                <separator/>
+
+
+                <filter
+                    name="filter_early_departure"
+                    string="Départs anticipés"
+                    domain="[('early_departure', '=', True)]"
+                />
+
+                <filter
+                    name="filter_penalty"
+                    string="Sanction à prévoir"
+                    domain="[('penalty_required', '=', True)]"
+                />
+
+
+                <group expand="0" string="Regrouper par">
+
+                    <filter
+                        name="group_meeting"
+                        string="Réunion"
+                        context="{'group_by': 'meeting_id'}"
+                    />
+
+                    <filter
+                        name="group_member"
+                        string="Membre"
+                        context="{'group_by': 'member_id'}"
+                    />
+
+                    <filter
+                        name="group_state"
+                        string="État de présence"
+                        context="{'group_by': 'state'}"
+                    />
+
+                    <filter
+                        name="group_date"
+                        string="Date"
+                        context="{'group_by': 'meeting_date'}"
+                    />
+
+                </group>
+
+            </search>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- ACTION                                                    -->
+    <!-- ========================================================= -->
+
+    <record id="action_attendance" model="ir.actions.act_window">
+
+        <field name="name">Présences</field>
+
+        <field name="res_model">association.attendance</field>
+
+        <field name="view_mode">list,form</field>
+
+        <field name="search_view_id"
+               ref="view_association_attendance_search"/>
+
+        <field name="context">
+            {
+                'search_default_group_meeting': 1
+            }
+        </field>
+
+        <field name="help" type="html">
+
+            <p class="o_view_nocontent_smiling_face">
+                Aucune présence enregistrée
+            </p>
+
+            <p>
+                Les présences sont générées depuis les réunions.
+            </p>
+
+        </field>
+
+    </record>
+
+</odoo>

@@ -1,0 +1,348 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<odoo>
+
+    <!-- ========================================================= -->
+    <!-- RECHERCHE                                                 -->
+    <!-- ========================================================= -->
+
+    <record
+        id="view_association_member_account_transaction_search"
+        model="ir.ui.view">
+
+        <field name="name">association.member.account.transaction.search</field>
+
+        <field name="model">association.member.account.transaction</field>
+
+        <field name="arch" type="xml">
+
+            <search string="Rechercher un mouvement de compte membre">
+
+                <field name="name"/>
+
+                <field name="account_id"/>
+
+                <field name="member_id"/>
+
+                <field name="description"/>
+
+                <field name="origin_reference"/>
+
+                <separator/>
+
+                <filter
+                    name="filter_credit"
+                    string="Crédits"
+                    domain="[('transaction_type', '=', 'credit')]"/>
+
+                <filter
+                    name="filter_debit"
+                    string="Débits"
+                    domain="[('transaction_type', '=', 'debit')]"/>
+
+                <filter
+                    name="filter_draft"
+                    string="Brouillons"
+                    domain="[('state', '=', 'draft')]"/>
+
+                <filter
+                    name="filter_validated"
+                    string="Validés"
+                    domain="[('state', '=', 'validated')]"/>
+
+                <filter
+                    name="filter_cancelled"
+                    string="Annulés"
+                    domain="[('state', '=', 'cancelled')]"/>
+
+                <separator/>
+
+                <filter
+                    name="filter_transaction_date"
+                    string="Date"
+                    date="transaction_date"/>
+
+                <group expand="0" string="Regrouper par">
+
+                    <filter
+                        name="group_member"
+                        string="Membre"
+                        context="{'group_by': 'member_id'}"/>
+
+                    <filter
+                        name="group_account"
+                        string="Compte membre"
+                        context="{'group_by': 'account_id'}"/>
+
+                    <filter
+                        name="group_type"
+                        string="Type"
+                        context="{'group_by': 'transaction_type'}"/>
+
+                    <filter
+                        name="group_origin"
+                        string="Origine"
+                        context="{'group_by': 'origin_type'}"/>
+
+                    <filter
+                        name="group_state"
+                        string="Statut"
+                        context="{'group_by': 'state'}"/>
+
+                    <filter
+                        name="group_month"
+                        string="Mois"
+                        context="{'group_by': 'transaction_date:month'}"/>
+
+                </group>
+
+            </search>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- LISTE                                                     -->
+    <!-- ========================================================= -->
+
+    <record
+        id="view_association_member_account_transaction_list"
+        model="ir.ui.view">
+
+        <field name="name">association.member.account.transaction.list</field>
+
+        <field name="model">association.member.account.transaction</field>
+
+        <field name="arch" type="xml">
+
+            <list
+                string="Mouvements des comptes membres"
+                decoration-success="transaction_type == 'credit' and state == 'validated'"
+                decoration-danger="transaction_type == 'debit' and state == 'validated'"
+                decoration-muted="state == 'cancelled'">
+
+                <field name="transaction_date"/>
+
+                <field name="name"/>
+
+                <field name="member_id"/>
+
+                <field name="account_id"/>
+
+                <field name="description"/>
+
+                <field
+                    name="transaction_type"
+                    widget="badge"
+                    decoration-success="transaction_type == 'credit'"
+                    decoration-danger="transaction_type == 'debit'"/>
+
+                <field
+                    name="amount"
+                    sum="Total"/>
+
+                <field name="origin_type"/>
+
+                <field name="origin_reference" optional="show"/>
+
+                <field
+                    name="state"
+                    widget="badge"
+                    decoration-muted="state == 'draft'"
+                    decoration-success="state == 'validated'"
+                    decoration-danger="state == 'cancelled'"/>
+
+                <field name="currency_id" column_invisible="True"/>
+
+            </list>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- FORMULAIRE                                                -->
+    <!-- ========================================================= -->
+
+    <record
+        id="view_association_member_account_transaction_form"
+        model="ir.ui.view">
+
+        <field name="name">association.member.account.transaction.form</field>
+
+        <field name="model">association.member.account.transaction</field>
+
+        <field name="arch" type="xml">
+
+            <form string="Mouvement de compte membre">
+
+                <header>
+
+                    <button
+                        name="action_validate"
+                        type="object"
+                        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Valider"
+                        class="btn-primary"
+                        invisible="state != 'draft'"/>
+
+                    <button
+                        name="action_cancel"
+                        type="object"
+                        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Annuler"
+                        invisible="state == 'cancelled'"/>
+
+                    <button
+                        name="action_reset_draft"
+                        type="object"
+                        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        string="Remettre en brouillon"
+                        invisible="state != 'cancelled'"/>
+
+                    <field
+                        name="state"
+                        widget="statusbar"
+                        statusbar_visible="draft,validated,cancelled"/>
+
+                </header>
+
+                <sheet>
+
+                    <div class="oe_title">
+
+                        <label for="description"/>
+
+                        <h1>
+
+                            <field
+                                name="description"
+                                placeholder="Libellé du mouvement..."/>
+
+                        </h1>
+
+                        <div>
+
+                            <span
+                                class="badge rounded-pill text-bg-light border"
+                                style="white-space: normal;">
+
+                                <field name="name" readonly="1"/>
+
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                    <group>
+
+                        <group string="Compte membre">
+
+                            <field
+                                name="account_id"
+                                readonly="state != 'draft'"/>
+
+                            <field name="member_id" readonly="1"/>
+
+                            <field name="company_id" readonly="1"/>
+
+                            <field
+                                name="transaction_date"
+                                readonly="state != 'draft'"/>
+
+                        </group>
+
+                        <group string="Origine">
+
+                            <field
+                                name="payment_id"
+                                readonly="1"/>
+
+                            <field
+                                name="description"
+                                readonly="state != 'draft'"/>
+
+                        </group>
+
+                        <group string="Mouvement">
+
+                            <field
+                                name="transaction_type"
+                                widget="radio"
+                                readonly="state != 'draft'"/>
+
+                            <field
+                                name="amount"
+                                readonly="state != 'draft'"/>
+
+                            <field name="currency_id" readonly="1"/>
+
+                            <field
+                                name="origin_type"
+                                readonly="state != 'draft'"/>
+
+                        </group>
+
+                    </group>
+
+                    <group
+                        string="Document d'origine"
+                        invisible="not origin_reference">
+
+                        <field name="origin_reference"/>
+
+                        <field name="origin_model" invisible="1"/>
+
+                        <field name="origin_res_id" invisible="1"/>
+
+                    </group>
+
+                    <notebook>
+
+                        <page string="Notes internes">
+
+                            <field
+                                name="note"
+                                readonly="state == 'validated'"
+                                placeholder="Notes relatives au mouvement..."/>
+
+                        </page>
+
+                    </notebook>
+
+                </sheet>
+
+                <chatter/>
+
+            </form>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- ACTION                                                    -->
+    <!-- ========================================================= -->
+
+    <record
+        id="action_association_member_account_transaction"
+        model="ir.actions.act_window">
+
+        <field name="name">Mouvements des comptes membres</field>
+
+        <field name="res_model">association.member.account.transaction</field>
+
+        <field name="view_mode">list,form</field>
+
+        <field
+            name="search_view_id"
+            ref="view_association_member_account_transaction_search"/>
+
+    </record>
+
+</odoo>

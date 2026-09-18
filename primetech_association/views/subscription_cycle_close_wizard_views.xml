@@ -1,0 +1,675 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<odoo>
+
+    <!-- ===================================================== -->
+    <!-- ASSISTANT DE CLÔTURE DU CYCLE                        -->
+    <!-- ===================================================== -->
+
+    <record
+        id="view_association_subscription_cycle_close_wizard_form"
+        model="ir.ui.view">
+
+        <field name="name">association.subscription.cycle.close.wizard.form</field>
+        <field name="model">association.subscription.cycle.close.wizard</field>
+
+        <field name="arch" type="xml">
+
+            <form string="Clôture du cycle">
+
+                <sheet>
+
+                    <!-- ================================================= -->
+                    <!-- CHAMPS TECHNIQUES                                 -->
+                    <!-- ================================================= -->
+
+                    <field name="currency_id" invisible="1"/>
+                    <field name="company_id" invisible="1"/>
+                    <field name="allocation_complete" invisible="1"/>
+
+                    <!-- ================================================= -->
+                    <!-- EN-TÊTE                                           -->
+                    <!-- ================================================= -->
+
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+
+                        <div class="oe_title mb-0">
+
+                            <h1 class="mb-1">
+                                Clôture du cycle
+                            </h1>
+
+                            <div class="text-muted">
+                                <i class="fa fa-calendar-check-o me-1"/>
+                                <field
+                                    name="period_id"
+                                    readonly="1"
+                                    nolabel="1"/>
+                            </div>
+
+                        </div>
+
+                        <div
+                            class="rounded border px-3 py-2 text-end"
+                            style="
+                                min-width: 220px;
+                                background: rgba(113, 75, 103, 0.04);
+                                border-left: 3px solid var(--o-brand-primary) !important;
+                            ">
+
+                            <div
+                                class="text-muted text-uppercase fw-semibold"
+                                style="font-size: 10px; letter-spacing: .6px;">
+                                Cotisation
+                            </div>
+
+                            <div class="fw-bold mt-1">
+                                <field
+                                    name="subscription_id"
+                                    readonly="1"
+                                    nolabel="1"/>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- ================================================= -->
+                    <!-- SYNTHÈSE DU CYCLE                                 -->
+                    <!-- ================================================= -->
+
+                    <div class="row g-2 mb-3">
+
+                        <div class="col-lg-3 col-md-6">
+
+                            <div class="h-100 rounded border px-3 py-2">
+
+                                <div
+                                    class="text-muted text-uppercase"
+                                    style="font-size: 10px;">
+                                    Membres
+                                </div>
+
+                                <div class="fw-bold fs-4 mt-1">
+                                    <field name="member_count" readonly="1"/>
+                                </div>
+
+                                <div class="text-muted" style="font-size: 11px;">
+                                    membres concernés
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <div class="col-lg-3 col-md-6">
+
+                            <div
+                                class="h-100 rounded border px-3 py-2"
+                                style="border-left: 3px solid #198754 !important;">
+
+                                <div
+                                    class="text-muted text-uppercase"
+                                    style="font-size: 10px;">
+                                    Payés
+                                </div>
+
+                                <div class="fw-bold fs-4 mt-1">
+                                    <field name="paid_member_count" readonly="1"/>
+                                </div>
+
+                                <div class="text-muted" style="font-size: 11px;">
+                                    règlements complets
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <div class="col-lg-3 col-md-6">
+
+                            <div
+                                class="h-100 rounded border px-3 py-2"
+                                style="border-left: 3px solid #f59e0b !important;">
+
+                                <div
+                                    class="text-muted text-uppercase"
+                                    style="font-size: 10px;">
+                                    Partiels
+                                </div>
+
+                                <div class="fw-bold fs-4 mt-1">
+                                    <field name="partial_member_count" readonly="1"/>
+                                </div>
+
+                                <div class="text-muted" style="font-size: 11px;">
+                                    paiements incomplets
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <div class="col-lg-3 col-md-6">
+
+                            <div
+                                class="h-100 rounded border px-3 py-2"
+                                style="border-left: 3px solid #dc3545 !important;">
+
+                                <div
+                                    class="text-muted text-uppercase"
+                                    style="font-size: 10px;">
+                                    Non payés
+                                </div>
+
+                                <div class="fw-bold fs-4 mt-1">
+                                    <field name="unpaid_member_count" readonly="1"/>
+                                </div>
+
+                                <div class="text-muted" style="font-size: 11px;">
+                                    règlements en attente
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- ================================================= -->
+                    <!-- FINANCES ET RECOUVREMENT                          -->
+                    <!-- ================================================= -->
+
+                    <div class="row g-2 mb-3">
+
+                        <div class="col-lg-8">
+
+                            <div class="rounded border h-100 px-3 py-3">
+
+                                <div
+                                    class="fw-semibold mb-2"
+                                    style="font-size: 13px;">
+                                    <i class="fa fa-money me-1"/>
+                                    Situation financière
+                                </div>
+
+                                <div class="row g-0">
+
+                                    <div class="col-3 pe-2">
+
+                                        <div class="text-muted" style="font-size: 10px;">
+                                            ATTENDU
+                                        </div>
+
+                                        <div class="fw-bold mt-1" style="white-space: nowrap;">
+                                            <field name="expected_amount" readonly="1"/>
+                                        </div>
+
+                                    </div>
+
+                                    <div
+                                        class="col-3 px-2"
+                                        style="border-left: 1px solid #dee2e6;">
+
+                                        <div class="text-muted" style="font-size: 10px;">
+                                            ENCAISSÉ
+                                        </div>
+
+                                        <div class="fw-bold mt-1" style="white-space: nowrap;">
+                                            <field name="collected_amount" readonly="1"/>
+                                        </div>
+
+                                        <div class="text-warning mt-1" style="font-size: 10px;">
+                                            dont <field name="penalty_collected_amount" readonly="1"/> de pénalités non attribuables
+                                        </div>
+
+                                    </div>
+
+                                    <div
+                                        class="col-3 px-2"
+                                        style="border-left: 1px solid #dee2e6;">
+
+                                        <div class="text-muted" style="font-size: 10px;">
+                                            ATTRIBUÉ
+                                        </div>
+
+                                        <div class="fw-bold mt-1" style="white-space: nowrap;">
+                                            <field name="allocated_amount" readonly="1"/>
+                                        </div>
+
+                                    </div>
+
+                                    <div
+                                        class="col-3 ps-2"
+                                        style="border-left: 1px solid #dee2e6;">
+
+                                        <div class="text-muted" style="font-size: 10px;">
+                                            DISPONIBLE
+                                        </div>
+
+                                        <div
+                                            class="fw-bold mt-1"
+                                            style="
+                                                white-space: nowrap;
+                                                color: var(--o-brand-primary);
+                                            ">
+                                            <field name="available_amount" readonly="1"/>
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <div class="col-lg-4">
+
+                            <div class="rounded border h-100 px-3 py-3">
+
+                                <div
+                                    class="d-flex justify-content-between align-items-center mb-2">
+
+                                    <span class="fw-semibold" style="font-size: 13px;">
+                                        <i class="fa fa-line-chart me-1"/>
+                                        Recouvrement
+                                    </span>
+
+                                    <span
+                                        class="badge rounded-pill text-bg-light border px-2 py-1">
+                                        <field
+                                            name="recovery_rate"
+                                            widget="percentage"
+                                            readonly="1"/>
+                                    </span>
+
+                                </div>
+
+                                <div class="mt-2">
+                                    <field
+                                        name="recovery_rate"
+                                        widget="progressbar"
+                                        readonly="1"
+                                        nolabel="1"/>
+                                </div>
+
+                                <div class="text-muted mt-2" style="font-size: 11px;">
+                                    Niveau global de recouvrement du cycle
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- ================================================= -->
+                    <!-- DÉCISION DE CLÔTURE                               -->
+                    <!-- ================================================= -->
+
+                    <div
+                        class="rounded border px-3 py-3 mb-3"
+                        style="
+                            background: rgba(13, 110, 253, 0.025);
+                            border-left: 3px solid var(--o-brand-primary) !important;
+                        ">
+
+                        <div class="row align-items-center">
+
+                            <div class="col-lg-5">
+
+                                <div class="fw-semibold">
+                                    Destination de la cagnotte
+                                </div>
+
+                                <div class="text-muted mt-1" style="font-size: 11px;">
+                                    Indiquez si la cagnotte doit être attribuée
+                                    à un ou plusieurs bénéficiaires.
+                                </div>
+
+                            </div>
+
+                            <div class="col-lg-7">
+
+                                <field
+                                    name="has_beneficiaries"
+                                    widget="radio"
+                                    options="{'horizontal': true}"
+                                    nolabel="1"/>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- ================================================= -->
+                    <!-- ATTRIBUTIONS DÉJÀ DÉCIDÉES                        -->
+                    <!-- ================================================= -->
+
+                    <div
+                        class="rounded border px-3 py-3 mb-3"
+                        invisible="not existing_allocation_ids"
+                        style="
+                            background: rgba(25, 135, 84, 0.045);
+                            border-left: 4px solid #198754 !important;
+                        ">
+
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+
+                            <div>
+
+                                <div class="fw-semibold">
+                                    <i class="fa fa-check-circle me-1"/>
+                                    Bénéficiaires déjà attribués
+                                </div>
+
+                                <div class="text-muted mt-1" style="font-size: 11px;">
+                                    Ces décisions ont déjà été prises pour ce cycle. Elles sont
+                                    déduites de la cagnotte disponible et ne seront pas créées une seconde fois.
+                                </div>
+
+                            </div>
+
+                            <div class="text-end ms-3" style="white-space: nowrap;">
+
+                                <div class="text-muted text-uppercase" style="font-size: 10px;">
+                                    Déjà attribué
+                                </div>
+
+                                <div class="fw-bold text-success mt-1">
+                                    <field name="allocated_amount" readonly="1" nolabel="1"/>
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <field name="existing_allocation_ids" nolabel="1" readonly="1">
+
+                            <list create="0" edit="0" delete="0">
+
+                                <field name="currency_id" column_invisible="True"/>
+
+                                <field name="beneficiary_id" string="Bénéficiaire"/>
+
+                                <field name="amount" string="Montant attribué" sum="Total"/>
+
+                                <field name="allocation_date" string="Date"/>
+
+                                <field name="allocation_method" string="Mode" optional="show"/>
+
+                                <field name="state" string="Statut" widget="badge"/>
+
+                            </list>
+
+                        </field>
+
+                    </div>
+
+                    <!-- ================================================= -->
+                    <!-- ATTRIBUTION AUX BÉNÉFICIAIRES                     -->
+                    <!-- ================================================= -->
+
+                    <div invisible="has_beneficiaries != 'yes'">
+
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+
+                            <div>
+
+                                <div class="fw-semibold">
+                                    <i class="fa fa-users me-1"/>
+                                    Attribution de la cagnotte
+                                </div>
+
+                                <div class="text-muted" style="font-size: 11px;">
+                                    Répartissez le montant disponible entre les bénéficiaires.
+                                </div>
+
+                            </div>
+
+                            <span class="badge rounded-pill text-bg-light border px-3 py-2">
+                                Disponible :
+                                <field name="available_amount" readonly="1"/>
+                            </span>
+
+                        </div>
+
+                        <field
+                            name="allocation_line_ids"
+                            nolabel="1">
+
+                            <list
+                                editable="bottom"
+                                create="true"
+                                delete="true">
+
+                                <field
+                                    name="currency_id"
+                                    column_invisible="True"/>
+
+                                <field
+                                    name="beneficiary_id"
+                                    string="Bénéficiaire"/>
+
+                                <field
+                                    name="amount"
+                                    string="Montant attribué"
+                                    sum="Total attribué"/>
+
+                                <field
+                                    name="allocation_method"
+                                    string="Mode d'attribution"/>
+
+                                <field
+                                    name="decision_note"
+                                    string="Observation"
+                                    optional="show"/>
+
+                            </list>
+
+                        </field>
+
+                        <div class="row g-2 mt-2 mb-3">
+
+                            <div class="col-lg-4">
+
+                                <div class="rounded border px-3 py-2">
+
+                                    <div class="text-muted" style="font-size: 10px;">
+                                        CAGNOTTE DISPONIBLE
+                                    </div>
+
+                                    <div class="fw-bold mt-1">
+                                        <field name="available_amount" readonly="1"/>
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                            <div class="col-lg-4">
+
+                                <div class="rounded border px-3 py-2">
+
+                                    <div class="text-muted" style="font-size: 10px;">
+                                        TOTAL ATTRIBUÉ
+                                    </div>
+
+                                    <div class="fw-bold mt-1">
+                                        <field name="wizard_allocated_amount" readonly="1"/>
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                            <div class="col-lg-4">
+
+                                <div
+                                    class="rounded border px-3 py-2"
+                                    style="border-left: 3px solid #f59e0b !important;">
+
+                                    <div class="text-muted" style="font-size: 10px;">
+                                        RELIQUAT
+                                    </div>
+
+                                    <div class="fw-bold mt-1">
+                                        <field name="remaining_amount" readonly="1"/>
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <div
+                            class="alert alert-success py-2 mb-3"
+                            role="alert"
+                            invisible="remaining_amount &gt; 0">
+
+                            <i class="fa fa-check-circle me-1"/>
+
+                            <strong>Cagnotte entièrement attribuée.</strong>
+                            Aucun reliquat ne sera transféré en trésorerie.
+
+                        </div>
+
+                    </div>
+
+                    <!-- ================================================= -->
+                    <!-- COMPTE DE VERSEMENT                               -->
+                    <!-- ================================================= -->
+
+                    <div
+                        class="rounded border px-4 py-3 mb-3"
+                        invisible="
+                            not has_beneficiaries
+                            or (has_beneficiaries == 'yes' and remaining_amount &lt;= 0)
+                        "
+                        style="
+                            background: linear-gradient(135deg, rgba(13, 110, 253, 0.10), rgba(13, 110, 253, 0.025));
+                            border-left: 5px solid #0d6efd !important;
+                            box-shadow: 0 2px 8px rgba(13, 110, 253, 0.08);
+                        ">
+
+                        <div class="d-flex align-items-center mb-3">
+
+                            <span
+                                class="d-inline-flex align-items-center justify-content-center rounded-circle me-2"
+                                style="width: 32px; height: 32px; background: #0d6efd; color: #fff;">
+                                <i class="fa fa-bank"/>
+                            </span>
+
+                            <div>
+
+                                <div class="fw-bold">
+                                    Choix obligatoire du compte de versement
+                                </div>
+
+                                <div class="text-muted" style="font-size: 11px;">
+                                    Le reliquat sera enregistré une seule fois sur le compte sélectionné lors de la confirmation.
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <div class="row align-items-end g-3">
+
+                            <div class="col-lg-4">
+
+                                <div class="text-muted text-uppercase" style="font-size: 10px;">
+                                    Montant à verser
+                                </div>
+
+                                <div class="fw-bold fs-4 mt-1 text-primary">
+                                    <field name="treasury_amount" readonly="1" nolabel="1"/>
+                                </div>
+
+                            </div>
+
+                            <div class="col-lg-8">
+
+                                <field
+                                    name="fund_id"
+                                    string="Compte financier de destination"
+                                    required="
+                                        has_beneficiaries == 'no'
+                                        or (has_beneficiaries == 'yes' and remaining_amount &gt; 0)
+                                    "/>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div
+                        class="alert alert-warning py-2 mb-3"
+                        role="alert"
+                        invisible="not has_beneficiaries or (has_beneficiaries == 'yes' and remaining_amount &lt;= 0)">
+
+                        <i class="fa fa-exclamation-triangle me-1"/>
+
+                        La confirmation créera un unique mouvement financier d'entrée pour le montant affiché,
+                        puis terminera et verrouillera le cycle.
+
+                    </div>
+
+                </sheet>
+
+                <!-- ===================================================== -->
+                <!-- PIED DU WIZARD                                        -->
+                <!-- ===================================================== -->
+
+                <footer>
+
+                    <button
+                        name="action_confirm_close"
+                        string="Confirmer et terminer le cycle"
+                        type="object"
+                        class="btn-primary"
+                        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        invisible="not has_beneficiaries"/>
+
+                    <button
+                        string="Annuler"
+                        special="cancel"
+                        class="btn-secondary"/>
+
+                </footer>
+
+            </form>
+
+        </field>
+
+    </record>
+
+
+    <!-- ===================================================== -->
+    <!-- ACTION                                               -->
+    <!-- ===================================================== -->
+
+    <record
+        id="action_association_subscription_cycle_close_wizard"
+        model="ir.actions.act_window">
+
+        <field name="name">Clôture du cycle</field>
+
+        <field name="res_model">association.subscription.cycle.close.wizard</field>
+
+        <field name="view_mode">form</field>
+
+        <field
+            name="view_id"
+            ref="view_association_subscription_cycle_close_wizard_form"
+        />
+
+        <field name="target">new</field>
+
+    </record>
+
+</odoo>
