@@ -11,6 +11,7 @@
             Manage associations, members, meetings and finances.
         </field>
         <field name="sequence">30</field>
+        <field name="visible">True</field>
     </record>
 
     <!-- ========================================================== -->

@@ -141,6 +141,7 @@ Bonnes pratiques
         "views/attendance_views.xml",
         "views/penalty_views.xml",
         "views/res_config_settings_views.xml",
+        "views/res_users_views.xml",
 
         # =====================================================
         # REPORT
