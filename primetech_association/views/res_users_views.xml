@@ -1,12 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!--
-        Odoo hides categories with several independent groups from the normal
-        generated access-rights view.  Association roles are intentionally
-        independent (president, secretary, treasurer and censor), so expose
-        this category explicitly to Settings administrators without requiring
-        developer mode.
-    -->
+    <!-- Association roles are rendered explicitly: unlike Odoo's generated
+         group checkboxes, this block remains available without debug mode. -->
     <record id="view_users_form_association_access" model="ir.ui.view">
         <field name="name">res.users.form.association.access</field>
         <field name="model">res.users</field>
@@ -16,12 +11,17 @@
             <xpath expr="//page[@name='access_rights']" position="inside">
                 <group string="Association Management" groups="base.group_system">
                     <div class="text-muted" colspan="2">
-                        Sélectionnez le niveau d’accès et, si nécessaire, les fonctions de réunion.
+                        Définissez le niveau d’accès et les fonctions de réunion sans activer le mode développeur.
                     </div>
-                    <field name="groups_id"
-                           widget="many2many_checkboxes"
-                           domain="[('category_id', '=', ref('primetech_association.module_category_association'))]"
-                           options="{'no_create': True}"/>
+                    <group>
+                        <field name="association_access_level" widget="radio"/>
+                    </group>
+                    <group string="Fonctions de réunion">
+                        <field name="association_meeting_president"/>
+                        <field name="association_meeting_secretary"/>
+                        <field name="association_meeting_treasurer"/>
+                        <field name="association_meeting_censor"/>
+                    </group>
                 </group>
             </xpath>
         </field>
