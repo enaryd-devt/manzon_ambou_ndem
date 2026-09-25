@@ -45,6 +45,9 @@ export class AssociationDashboard extends Component {
                 recent_members: [],
                 currency: {},
                 paymentDetail: false,
+                penaltyDetail: false,
+                subscriptionDetail: false,
+                treasuryDetail: false,
             },
             filters: {period: "all", months: 6, date_from: "", date_to: ""},
 
@@ -297,6 +300,39 @@ export class AssociationDashboard extends Component {
 
     closeMemberPayment() {
         this.state.paymentDetail = false;
+    }
+
+    async openMemberPenalty(penaltyId) {
+        if (!penaltyId) {
+            return;
+        }
+        this.state.penaltyDetail = await this.orm.call(
+            "association.dashboard", "get_member_penalty_detail", [penaltyId]
+        );
+    }
+
+    closeMemberPenalty() {
+        this.state.penaltyDetail = false;
+    }
+
+    async openMemberSubscription(subscriptionLineId) {
+        this.state.subscriptionDetail = await this.orm.call(
+            "association.dashboard", "get_member_subscription_detail", [subscriptionLineId]
+        );
+    }
+
+    closeMemberSubscription() {
+        this.state.subscriptionDetail = false;
+    }
+
+    async openMemberTreasury(fundId) {
+        this.state.treasuryDetail = await this.orm.call(
+            "association.dashboard", "get_member_treasury_detail", [fundId]
+        );
+    }
+
+    closeMemberTreasury() {
+        this.state.treasuryDetail = false;
     }
 
     openRecord(model, recordId, name) {

@@ -695,6 +695,9 @@ class AssociationDashboard(models.AbstractModel):
             ("user_id", "=", self.env.user.id), ("company_id", "=", company.id),
         ], limit=1)
         funds = Fund.search([("company_id", "=", company.id), ("active", "=", True)], order="sequence, name")
+        member_state_labels = dict(
+            Member._fields["state"]._description_selection(self.env)
+        )
         values = {
             "member_portal": True,
             "user_name": self.env.user.name,
@@ -702,12 +705,17 @@ class AssociationDashboard(models.AbstractModel):
             "currency": {"symbol": company.currency_id.symbol or ""},
             "member": False,
             "treasury_accounts": [{"id": fund.id, "name": fund.display_name, "balance": fund.current_balance} for fund in funds],
-            "directory": [{"id": item.id, "name": item.display_name, "code": item.member_code or ""} for item in Member.search([("company_id", "=", company.id), ("active", "=", True)], order="name")],
+            "directory": [{
+                "id": item.id,
+                "name": item.display_name,
+                "code": item.member_code or "",
+                "state": member_state_labels.get(item.state, item.state or ""),
+            } for item in Member.search([("company_id", "=", company.id), ("active", "=", True)], order="name")],
         }
         if not member:
             return values
         payments = Payment.search([("member_id", "=", member.id)], order="payment_date desc, id desc")
-        penalties = Penalty.search([("member_id", "=", member.id)], order="id desc")
+        penalties = Penalty.search([("member_id", "=", member.id)], order="incident_date desc, id desc")
         member_account = MemberAccount.search([("member_id", "=", member.id)], limit=1)
         subscription_lines = SubscriptionLine.search([
             ("member_id", "=", member.id),
@@ -721,20 +729,111 @@ class AssociationDashboard(models.AbstractModel):
             "account_balance": member_account.balance if member_account else 0.0,
             "account_name": member_account.name if member_account else "",
             "payments_total": sum(payments.filtered(lambda p: p.state in ("collected", "confirmed")).mapped("amount")),
-            "payment_count": len(payments), "penalty_count": len(penalties),
+            "payment_count": len(payments),
+            "penalty_count": len(penalties),
             "payments": [{"id": p.id, "name": p.name or "", "date": fields.Date.to_string(p.payment_date) if p.payment_date else "", "amount": p.amount, "state": p.state or ""} for p in payments],
-            "penalties": [{"id": p.id, "name": p.display_name, "amount": p.amount_remaining if "amount_remaining" in p._fields else 0.0, "state": p.state or ""} for p in penalties],
+            "financial_penalties": [{"id": p.id, "name": p.display_name, "amount": p.amount_remaining or 0.0, "state": p.state or ""} for p in penalties.filtered(lambda penalty: penalty.penalty_type == "fine")],
+            "sanctions": [{
+                "id": p.id,
+                "name": p.display_name,
+                "amount": p.amount_remaining if p.penalty_type == "fine" else 0.0,
+                "state": p.state or "",
+            } for p in penalties],
             "subscriptions": [{
                 "id": line.id,
                 "name": line.subscription_id.display_name or "Cotisation",
                 "cycle": line.current_period_id.display_name or "",
-                "due": line.amount_due or 0.0,
+                "contribution_due": line.cycle_base_amount_due or 0.0,
+                "penalty_due": line.cycle_penalty_amount or 0.0,
+                "total_due": line.cycle_amount_due or line.amount_due or 0.0,
                 "paid": line.amount_paid or 0.0,
                 "balance": line.balance or 0.0,
                 "state": payment_state_labels.get(line.payment_state, line.payment_state or ""),
             } for line in subscription_lines],
         }
         return values
+
+    @api.model
+    def get_member_penalty_detail(self, penalty_id):
+        """Return a member's own disciplinary record to the read-only dialog."""
+        company = self.env.company
+        member = self.env["association.member"].sudo().search([
+            ("user_id", "=", self.env.user.id), ("company_id", "=", company.id),
+        ], limit=1)
+        penalty = self.env["association.penalty"].sudo().search([
+            ("id", "=", penalty_id), ("member_id", "=", member.id),
+        ], limit=1)
+        if not penalty:
+            return False
+        type_labels = dict(penalty._fields["penalty_type"]._description_selection(self.env))
+        incident_labels = dict(penalty._fields["incident_type"]._description_selection(self.env))
+        state_labels = dict(penalty._fields["state"]._description_selection(self.env))
+        return {
+            "id": penalty.id,
+            "name": penalty.display_name or "",
+            "is_financial": penalty.penalty_type == "fine",
+            "type": type_labels.get(penalty.penalty_type, penalty.penalty_type or ""),
+            "state": state_labels.get(penalty.state, penalty.state or ""),
+            "incident": incident_labels.get(penalty.incident_type, penalty.incident_type or ""),
+            "date": fields.Datetime.to_string(penalty.incident_date) if penalty.incident_date else "",
+            "description": penalty.penalty_description or "",
+            "incident_description": penalty.incident_description or "",
+            "amount": penalty.amount or 0.0,
+            "paid": penalty.amount_paid or 0.0,
+            "remaining": penalty.amount_remaining or 0.0,
+        }
+
+    @api.model
+    def get_member_subscription_detail(self, subscription_line_id):
+        """Return one participating subscription to the member's JS dialog."""
+        company = self.env.company
+        member = self.env["association.member"].sudo().search([
+            ("user_id", "=", self.env.user.id), ("company_id", "=", company.id),
+        ], limit=1)
+        line = self.env["association.subscription.line"].sudo().search([
+            ("id", "=", subscription_line_id), ("member_id", "=", member.id),
+        ], limit=1)
+        if not line:
+            return False
+        labels = dict(line._fields["payment_state"]._description_selection(self.env))
+        return {
+            "id": line.id,
+            "name": line.subscription_id.display_name or "Cotisation",
+            "cycle": line.current_period_id.display_name or "",
+            "state": labels.get(line.payment_state, line.payment_state or ""),
+            "contribution_due": line.cycle_base_amount_due or 0.0,
+            "penalty_due": line.cycle_penalty_amount or 0.0,
+            "total_due": line.cycle_amount_due or line.amount_due or 0.0,
+            "paid": line.amount_paid or 0.0,
+            "balance": line.balance or 0.0,
+            "last_payment_date": fields.Date.to_string(line.payment_date) if line.payment_date else "",
+        }
+
+    @api.model
+    def get_member_treasury_detail(self, fund_id):
+        """Provide a transparency view of a treasury account to members."""
+        company = self.env.company
+        fund = self.env["association.fund"].sudo().search([
+            ("id", "=", fund_id), ("company_id", "=", company.id),
+        ], limit=1)
+        if not fund:
+            return False
+        Transaction = self.env["association.fund.transaction"].sudo()
+        transactions = Transaction.search([
+            ("fund_id", "=", fund.id), ("state", "=", "validated"),
+        ], order="transaction_date desc, id desc", limit=30)
+        return {
+            "id": fund.id,
+            "name": fund.display_name,
+            "balance": fund.current_balance or 0.0,
+            "transactions": [{
+                "id": transaction.id,
+                "date": fields.Date.to_string(transaction.transaction_date) if transaction.transaction_date else "",
+                "description": transaction.description or transaction.name or "Mouvement de trésorerie",
+                "type": transaction.transaction_type,
+                "amount": transaction.amount or 0.0,
+            } for transaction in transactions],
+        }
 
     @api.model
     def get_member_payment_detail(self, payment_id):
