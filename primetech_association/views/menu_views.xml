@@ -2,22 +2,22 @@
 <odoo>
     <!-- Navigation compacte : les entrées de même nature partagent un sous-menu. -->
     <menuitem id="menu_association_root" name="Associations" sequence="10"
-        groups="primetech_association.group_association_user"
+        groups="primetech_association.group_association_user,primetech_association.group_association_member"
         web_icon="primetech_association,static/description/icon.png"/>
 
     <menuitem id="menu_dashboard" name="Tableau de bord" parent="menu_association_root"
         action="action_association_dashboard_client" sequence="10"
-        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"/>
+        groups="primetech_association.group_association_member,primetech_association.group_association_manager,primetech_association.group_association_admin"/>
 
     <!-- Adhérents -->
-    <menuitem id="menu_members_root" name="Adhérents" parent="menu_association_root" sequence="20"/>
+    <menuitem id="menu_members_root" name="Adhérents" parent="menu_association_root" sequence="20" groups="primetech_association.group_association_user"/>
     <menuitem id="menu_members" name="Membres" parent="menu_members_root"
         action="action_association_member" sequence="10"/>
     <menuitem id="menu_cards" name="Cartes de membres" parent="menu_members_root"
         action="action_association_card" sequence="20"/>
 
     <!-- Vie associative -->
-    <menuitem id="menu_association_life" name="Vie associative" parent="menu_association_root" sequence="30"/>
+    <menuitem id="menu_association_life" name="Vie associative" parent="menu_association_root" sequence="30" groups="primetech_association.group_association_user"/>
     <menuitem id="menu_committee" name="Bureau exécutif" parent="menu_association_life"
         action="action_committee" sequence="10"/>
     <menuitem id="menu_meeting" name="Réunions" parent="menu_association_life"
@@ -27,7 +27,7 @@
         groups="primetech_association.group_association_meeting_president,primetech_association.group_association_meeting_censor,primetech_association.group_association_manager,primetech_association.group_association_admin"/>
 
     <!-- Finances -->
-    <menuitem id="menu_finance" name="Finances" parent="menu_association_root" sequence="40"/>
+    <menuitem id="menu_finance" name="Finances" parent="menu_association_root" sequence="40" groups="primetech_association.group_association_user"/>
 
     <menuitem id="menu_finance_collections" name="Cotisations et encaissements"
         parent="menu_finance" sequence="10"
@@ -45,16 +45,16 @@
 
     <menuitem id="menu_finance_operations" name="Recettes et dépenses"
         parent="menu_finance" sequence="20"
-        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"/>
+        groups="primetech_association.group_association_manager,primetech_association.group_association_admin,primetech_association.group_association_accountant"/>
     <menuitem id="menu_donation" name="Dons" parent="menu_finance_operations"
         action="action_donation" sequence="10"
-        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"/>
+        groups="primetech_association.group_association_manager,primetech_association.group_association_admin,primetech_association.group_association_accountant"/>
     <menuitem id="menu_income" name="Autres recettes" parent="menu_finance_operations"
         action="action_income" sequence="20"
-        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"/>
+        groups="primetech_association.group_association_manager,primetech_association.group_association_admin,primetech_association.group_association_accountant"/>
     <menuitem id="menu_expense" name="Dépenses" parent="menu_finance_operations"
         action="action_expense" sequence="30"
-        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"/>
+        groups="primetech_association.group_association_manager,primetech_association.group_association_admin,primetech_association.group_association_accountant"/>
 
     <menuitem id="menu_association_bank" name="Trésorerie et comptes"
         parent="menu_finance" sequence="30"/>

@@ -10,15 +10,18 @@
         <field name="arch" type="xml">
             <xpath expr="//page[@name='access_rights']" position="inside">
                 <group string="Association Management" groups="base.group_system">
-                    <div class="text-muted" colspan="2">
-                        Définissez le niveau d’accès et les fonctions de réunion sans activer le mode développeur.
-                    </div>
                     <group>
                         <field name="association_access_level" widget="radio"/>
+                    </group>
+                    <group string="Compte membre" invisible="association_access_level != 'member'">
+                        <field name="association_member_id" domain="[('user_id', 'in', [False, id])]" required="association_access_level == 'member'"/>
                     </group>
                     <group string="Fonctions de réunion">
                         <field name="association_meeting_president"/>
                         <field name="association_meeting_secretary"/>
+                        <field name="association_meeting_vice_president"/>
+                        <field name="association_meeting_vice_secretary"/>
+                        <field name="association_accountant"/>
                         <field name="association_meeting_treasurer"/>
                         <field name="association_meeting_censor"/>
                     </group>

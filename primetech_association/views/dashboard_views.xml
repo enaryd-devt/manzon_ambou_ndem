@@ -16,4 +16,13 @@
 
     </record>
 
+    <!-- A server action is used as user home action because res.users.action_id
+         accepts generic actions, not an ir.actions.client record directly. -->
+    <record id="action_association_member_home" model="ir.actions.server">
+        <field name="name">Accueil membre Association</field>
+        <field name="model_id" ref="base.model_res_users"/>
+        <field name="state">code</field>
+        <field name="code">action = env.ref('primetech_association.action_association_dashboard_client').read()[0]</field>
+    </record>
+
 </odoo>

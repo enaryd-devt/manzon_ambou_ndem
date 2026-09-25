@@ -326,6 +326,15 @@
                         invisible="state != 'cancelled'"
                     />
 
+                    <button
+                        name="action_print_receipt"
+                        string="Imprimer le reçu"
+                        type="object"
+                        class="btn-secondary"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        invisible="state != 'validated'"
+                    />
+
                     <field
                         name="state"
                         widget="statusbar"

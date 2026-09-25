@@ -16,6 +16,9 @@ class AssociationDashboard(models.AbstractModel):
     @api.model
     def get_dashboard_data(self, options=None):
 
+        if self.env.user.has_group("primetech_association.group_association_member"):
+            return self._get_member_portal_data()
+
         company = self.env.company
         today = fields.Date.context_today(self)
         options = options or {}
@@ -27,8 +30,13 @@ class AssociationDashboard(models.AbstractModel):
             date_from = today.replace(day=1)
         elif period == "quarter":
             date_from = today - relativedelta(months=3)
+        elif period == "semester":
+            date_from = today.replace(month=1, day=1) if today.month <= 6 else today.replace(month=7, day=1)
         elif period == "year":
             date_from = today.replace(month=1, day=1)
+        elif period == "custom":
+            date_from = fields.Date.to_date(options.get("date_from")) if options.get("date_from") else False
+        date_to = fields.Date.to_date(options.get("date_to")) if options.get("date_to") else False
 
         Member = self.env["association.member"]
         Meeting = self.env["association.meeting"]
@@ -196,6 +204,8 @@ class AssociationDashboard(models.AbstractModel):
         ]
         if date_from:
             payment_domain.append(("payment_date", ">=", date_from))
+        if date_to:
+            payment_domain.append(("payment_date", "<=", date_to))
 
         payment_count = Payment.search_count(
             payment_domain
@@ -244,6 +254,8 @@ class AssociationDashboard(models.AbstractModel):
         ]
         if date_from:
             expense_domain.append(("expense_date", ">=", date_from))
+        if date_to:
+            expense_domain.append(("expense_date", "<=", date_to))
         validated_expenses = Expense.search(expense_domain)
         expense_total = sum(validated_expenses.mapped("amount"))
         expense_labels = dict(
@@ -667,4 +679,92 @@ class AssociationDashboard(models.AbstractModel):
                 "position":
                     company.currency_id.position or "after",
             },
+        }
+
+    @api.model
+    def _get_member_portal_data(self):
+        """Small, read-only data set for an ordinary member."""
+        company = self.env.company
+        Member = self.env["association.member"].sudo()
+        Payment = self.env["association.payment"].sudo()
+        Penalty = self.env["association.penalty"].sudo()
+        Fund = self.env["association.fund"].sudo()
+        MemberAccount = self.env["association.member.account"].sudo()
+        SubscriptionLine = self.env["association.subscription.line"].sudo()
+        member = Member.search([
+            ("user_id", "=", self.env.user.id), ("company_id", "=", company.id),
+        ], limit=1)
+        funds = Fund.search([("company_id", "=", company.id), ("active", "=", True)], order="sequence, name")
+        values = {
+            "member_portal": True,
+            "user_name": self.env.user.name,
+            "company": {"name": company.display_name},
+            "currency": {"symbol": company.currency_id.symbol or ""},
+            "member": False,
+            "treasury_accounts": [{"id": fund.id, "name": fund.display_name, "balance": fund.current_balance} for fund in funds],
+            "directory": [{"id": item.id, "name": item.display_name, "code": item.member_code or ""} for item in Member.search([("company_id", "=", company.id), ("active", "=", True)], order="name")],
+        }
+        if not member:
+            return values
+        payments = Payment.search([("member_id", "=", member.id)], order="payment_date desc, id desc")
+        penalties = Penalty.search([("member_id", "=", member.id)], order="id desc")
+        member_account = MemberAccount.search([("member_id", "=", member.id)], limit=1)
+        subscription_lines = SubscriptionLine.search([
+            ("member_id", "=", member.id),
+            ("active", "=", True),
+        ], order="subscription_id, id")
+        payment_state_labels = dict(
+            SubscriptionLine._fields["payment_state"]._description_selection(self.env)
+        )
+        values["member"] = {
+            "id": member.id, "name": member.display_name, "code": member.member_code or "",
+            "account_balance": member_account.balance if member_account else 0.0,
+            "account_name": member_account.name if member_account else "",
+            "payments_total": sum(payments.filtered(lambda p: p.state in ("collected", "confirmed")).mapped("amount")),
+            "payment_count": len(payments), "penalty_count": len(penalties),
+            "payments": [{"id": p.id, "name": p.name or "", "date": fields.Date.to_string(p.payment_date) if p.payment_date else "", "amount": p.amount, "state": p.state or ""} for p in payments],
+            "penalties": [{"id": p.id, "name": p.display_name, "amount": p.amount_remaining if "amount_remaining" in p._fields else 0.0, "state": p.state or ""} for p in penalties],
+            "subscriptions": [{
+                "id": line.id,
+                "name": line.subscription_id.display_name or "Cotisation",
+                "cycle": line.current_period_id.display_name or "",
+                "due": line.amount_due or 0.0,
+                "paid": line.amount_paid or 0.0,
+                "balance": line.balance or 0.0,
+                "state": payment_state_labels.get(line.payment_state, line.payment_state or ""),
+            } for line in subscription_lines],
+        }
+        return values
+
+    @api.model
+    def get_member_payment_detail(self, payment_id):
+        """Return only the selected member's payment data for the JS dialog."""
+        company = self.env.company
+        member = self.env["association.member"].sudo().search([
+            ("user_id", "=", self.env.user.id),
+            ("company_id", "=", company.id),
+        ], limit=1)
+        payment = self.env["association.payment"].sudo().search([
+            ("id", "=", payment_id),
+            ("member_id", "=", member.id),
+        ], limit=1)
+        if not payment:
+            return False
+        method_labels = dict(
+            payment._fields["payment_method"]._description_selection(self.env)
+        )
+        return {
+            "id": payment.id,
+            "reference": payment.name or "",
+            "date": fields.Date.to_string(payment.payment_date) if payment.payment_date else "",
+            "amount": payment.amount or 0.0,
+            "method": method_labels.get(payment.payment_method, payment.payment_method or ""),
+            "external_reference": payment.payment_reference or "",
+            "account": payment.receipt_account_id.display_name or "",
+            "description": payment.description or "",
+            "allocations": [{
+                "name": line.subscription_id.display_name or line.subscription_line_id.subscription_id.display_name or "Cotisation",
+                "amount": line.amount_paid or 0.0,
+                "balance": line.balance_after_payment or 0.0,
+            } for line in payment.line_ids],
         }

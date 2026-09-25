@@ -624,6 +624,15 @@ class AssociationExpense(models.Model):
             "target": "current",
         }
 
+    def action_print_receipt(self):
+        """Print the A5 disbursement receipt once the expense is validated."""
+        self.ensure_one()
+        if self.state != "validated":
+            raise UserError(_("Le reçu est disponible après validation de la dépense."))
+        return self.env.ref(
+            "primetech_association.action_report_expense_receipt"
+        ).report_action(self)
+
     # ==========================================================
     # PROTECTION DES MODIFICATIONS
     # ==========================================================

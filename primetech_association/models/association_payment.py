@@ -2316,3 +2316,12 @@ class AssociationPayment(models.Model):
                 "create": self.state == "draft",
             },
         }
+
+    def action_print_receipt(self):
+        """Print the A5 receipt of a collected or validated receipt."""
+        self.ensure_one()
+        if self.state not in ("collected", "confirmed"):
+            raise UserError(_("Le reçu est disponible après l'encaissement."))
+        return self.env.ref(
+            "primetech_association.action_report_payment_receipt"
+        ).report_action(self)

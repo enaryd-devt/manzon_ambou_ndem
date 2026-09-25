@@ -287,6 +287,7 @@
                     <field name="color" invisible="1"/>
                     <field name="sequence" invisible="1"/>
                     <field name="company_id" invisible="1"/>
+                    <field name="user_id" groups="primetech_association.group_association_manager,primetech_association.group_association_admin"/>
 
 
                     <!-- ================================================== -->

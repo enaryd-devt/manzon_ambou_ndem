@@ -61,3 +61,4 @@ from . import association_member_account_transaction
 from . import association_member_wallet
 from . import association_member_wallet_transaction
 from . import res_users
+from . import association_ir_http

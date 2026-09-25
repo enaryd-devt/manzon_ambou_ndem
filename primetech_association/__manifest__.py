@@ -151,6 +151,7 @@ Bonnes pratiques
         "report/member_card_report.xml",
         "report/member_directory_report.xml",
         "report/statement_report.xml",
+        "report/payment_receipt_report.xml",
 
         "report/meeting_minutes_report.xml",
         "report/meeting_minutes_template.xml",

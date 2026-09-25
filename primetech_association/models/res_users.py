@@ -7,9 +7,11 @@ server-side editing surface for Settings administrators.
 """
 
 from odoo import Command, api, fields, models
+from odoo.exceptions import ValidationError
 
 
 CORE_GROUP_XMLIDS = {
+    'member': 'primetech_association.group_association_member',
     'user': 'primetech_association.group_association_user',
     'manager': 'primetech_association.group_association_manager',
     'admin': 'primetech_association.group_association_admin',
@@ -18,6 +20,9 @@ CORE_GROUP_XMLIDS = {
 MEETING_ROLE_XMLIDS = {
     'association_meeting_president': 'primetech_association.group_association_meeting_president',
     'association_meeting_secretary': 'primetech_association.group_association_meeting_secretary',
+    'association_meeting_vice_president': 'primetech_association.group_association_meeting_vice_president',
+    'association_meeting_vice_secretary': 'primetech_association.group_association_meeting_vice_secretary',
+    'association_accountant': 'primetech_association.group_association_accountant',
     'association_meeting_treasurer': 'primetech_association.group_association_meeting_treasurer',
     'association_meeting_censor': 'primetech_association.group_association_meeting_censor',
 }
@@ -26,8 +31,17 @@ MEETING_ROLE_XMLIDS = {
 class ResUsers(models.Model):
     _inherit = 'res.users'
 
+    association_member_id = fields.Many2one(
+        'association.member',
+        string='Membre associé',
+        compute='_compute_association_member_id',
+        inverse='_inverse_association_member_id',
+        help="Fiche membre reliée à ce compte utilisateur.",
+    )
+
     association_access_level = fields.Selection(
         [
+            ('member', 'Membre ordinaire'),
             ('user', 'Utilisateur Association'),
             ('manager', 'Responsable Association'),
             ('admin', 'Administrateur Association'),
@@ -45,6 +59,18 @@ class ResUsers(models.Model):
         string='Secrétaire de réunion', compute='_compute_association_meeting_roles',
         inverse='_inverse_association_meeting_secretary',
     )
+    association_meeting_vice_president = fields.Boolean(
+        string='Vice-président de réunion', compute='_compute_association_meeting_roles',
+        inverse='_inverse_association_meeting_vice_president',
+    )
+    association_meeting_vice_secretary = fields.Boolean(
+        string='Vice-secrétaire de réunion', compute='_compute_association_meeting_roles',
+        inverse='_inverse_association_meeting_vice_secretary',
+    )
+    association_accountant = fields.Boolean(
+        string='Comptable Association', compute='_compute_association_meeting_roles',
+        inverse='_inverse_association_accountant',
+    )
     association_meeting_treasurer = fields.Boolean(
         string='Trésorier de réunion', compute='_compute_association_meeting_roles',
         inverse='_inverse_association_meeting_treasurer',
@@ -53,6 +79,33 @@ class ResUsers(models.Model):
         string='Censeur de réunion', compute='_compute_association_meeting_roles',
         inverse='_inverse_association_meeting_censor',
     )
+
+    def _compute_association_member_id(self):
+        """Expose the member link on the user card without duplicating data."""
+        members_by_user = {}
+        if self.ids:
+            members = self.env['association.member'].search([
+                ('user_id', 'in', self.ids),
+            ])
+            members_by_user = {member.user_id.id: member for member in members}
+        for user in self:
+            user.association_member_id = members_by_user.get(user.id)
+
+    def _inverse_association_member_id(self):
+        Member = self.env['association.member']
+        for user in self:
+            selected_member = user.association_member_id
+            if selected_member and selected_member.user_id and selected_member.user_id != user:
+                raise ValidationError(
+                    "Ce membre est déjà lié à un autre compte utilisateur."
+                )
+            linked_members = Member.search([
+                ('user_id', '=', user.id),
+                ('id', '!=', selected_member.id),
+            ])
+            linked_members.user_id = False
+            if selected_member:
+                selected_member.user_id = user.id
 
     @api.model
     def _association_group(self, xmlid):
@@ -72,20 +125,23 @@ class ResUsers(models.Model):
             for level, xmlid in CORE_GROUP_XMLIDS.items()
         }
         for user in self:
-            effective_groups = user.groups_id.trans_implied_ids
-            if groups_by_level['admin'] and groups_by_level['admin'] in effective_groups:
+            effective_group_ids = set((user.groups_id | user.groups_id.trans_implied_ids).ids)
+            if groups_by_level['admin'] and groups_by_level['admin'].id in effective_group_ids:
                 user.association_access_level = 'admin'
-            elif groups_by_level['manager'] and groups_by_level['manager'] in effective_groups:
+            elif groups_by_level['manager'] and groups_by_level['manager'].id in effective_group_ids:
                 user.association_access_level = 'manager'
-            elif groups_by_level['user'] and groups_by_level['user'] in effective_groups:
+            elif groups_by_level['user'] and groups_by_level['user'].id in effective_group_ids:
                 user.association_access_level = 'user'
+            elif groups_by_level['member'] and groups_by_level['member'].id in effective_group_ids:
+                user.association_access_level = 'member'
             else:
                 user.association_access_level = False
 
     def _inverse_association_access_level(self):
         core_groups = self._association_core_groups()
+        core_group_ids = set(core_groups.ids)
         for user in self:
-            commands = [Command.unlink(group.id) for group in user.groups_id & core_groups]
+            commands = [Command.unlink(group.id) for group in user.groups_id if group.id in core_group_ids]
             selected_group = self._association_group(CORE_GROUP_XMLIDS.get(user.association_access_level)) if user.association_access_level else False
             if selected_group:
                 commands.append(Command.link(selected_group.id))
@@ -119,6 +175,15 @@ class ResUsers(models.Model):
 
     def _inverse_association_meeting_secretary(self):
         self._set_association_meeting_role('association_meeting_secretary')
+
+    def _inverse_association_meeting_vice_president(self):
+        self._set_association_meeting_role('association_meeting_vice_president')
+
+    def _inverse_association_meeting_vice_secretary(self):
+        self._set_association_meeting_role('association_meeting_vice_secretary')
+
+    def _inverse_association_accountant(self):
+        self._set_association_meeting_role('association_accountant')
 
     def _inverse_association_meeting_treasurer(self):
         self._set_association_meeting_role('association_meeting_treasurer')

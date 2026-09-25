@@ -44,8 +44,9 @@ export class AssociationDashboard extends Component {
                 upcoming_meetings: [],
                 recent_members: [],
                 currency: {},
+                paymentDetail: false,
             },
-            filters: {period: "all", months: 6},
+            filters: {period: "all", months: 6, date_from: "", date_to: ""},
 
         });
 
@@ -89,6 +90,13 @@ export class AssociationDashboard extends Component {
     onPeriodChange(ev) {
         this.state.filters.period = ev.target.value;
         return this.loadDashboard();
+    }
+
+    onCustomDateChange(ev) {
+        this.state.filters[ev.target.name] = ev.target.value;
+        if (this.state.filters.period === "custom") {
+            return this.loadDashboard();
+        }
     }
 
     onMonthsChange(ev) {
@@ -276,6 +284,19 @@ export class AssociationDashboard extends Component {
 
     openPayment(paymentId) {
         return this.openRecord("association.payment", paymentId, "Paiement");
+    }
+
+    async openMemberPayment(paymentId) {
+        if (!paymentId) {
+            return;
+        }
+        this.state.paymentDetail = await this.orm.call(
+            "association.dashboard", "get_member_payment_detail", [paymentId]
+        );
+    }
+
+    closeMemberPayment() {
+        this.state.paymentDetail = false;
     }
 
     openRecord(model, recordId, name) {

@@ -59,6 +59,15 @@ class AssociationMember(models.Model):
         readonly=True,
     )
 
+    user_id = fields.Many2one(
+        "res.users",
+        string="Utilisateur de l'espace membre",
+        ondelete="set null",
+        copy=False,
+        index=True,
+        help="Compte autorisé à consulter cette fiche et ses informations personnelles.",
+    )
+
     # ==========================================================
     # IDENTIFICATION
     # ==========================================================
