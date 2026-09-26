@@ -119,3 +119,13 @@ class ResConfigSettings(models.TransientModel):
         string="Pied de page des rapports",
         config_parameter="primetech_association.report_footer",
     )
+    late_penalty_amount = fields.Float(
+        string="Sanction financière par retard",
+        config_parameter="primetech_association.late_penalty_amount",
+        help="Montant automatiquement appliqué à chaque retard. Laissez 0 pour désactiver.",
+    )
+    consecutive_absence_penalty_amount = fields.Float(
+        string="Montant de base après deux absences",
+        config_parameter="primetech_association.consecutive_absence_penalty_amount",
+        help="Deux absences consécutives appliquent ce montant, trois absences le double, etc.",
+    )

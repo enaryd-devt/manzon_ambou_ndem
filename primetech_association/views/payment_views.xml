@@ -315,6 +315,11 @@
 
                         <separator string="Affectation"/>
 
+                        <div class="d-flex gap-2 mb-3" invisible="state != 'draft' or not member_id">
+                            <button name="action_generate_subscription_lines" type="object" string="Charger tous les recouvrements en cours" class="btn-primary"/>
+                            <button name="action_auto_allocate" type="object" string="Répartir automatiquement" class="btn-secondary" invisible="not line_ids"/>
+                        </div>
+
                         <div class="d-flex align-items-center justify-content-between gap-3 rounded-3 p-3 mb-3" style="border: 2px solid var(--o-brand-primary); background: rgba(113, 75, 103, 0.04);">
 
                             <div>
@@ -741,4 +746,11 @@
 
     </record>
 
+    <record id="action_global_member_payment" model="ir.actions.act_window">
+        <field name="name">Encaissement global d’un membre</field>
+        <field name="res_model">association.payment</field>
+        <field name="view_mode">form,list</field>
+        <field name="context">{'default_payment_source': 'external', 'default_has_allocations': True}</field>
+        <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Encaissez toutes les cotisations en cours d’un membre.</p><p>Sélectionnez le membre, chargez ses redevances en cours, puis répartissez le règlement partiel ou total en une seule opération.</p></field>
+    </record>
 </odoo>

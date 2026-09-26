@@ -215,6 +215,14 @@
                     <!-- SITUATION DU MEMBRE                               -->
                     <!-- ================================================= -->
 
+                    <div class="rounded border px-3 py-3 mb-3" invisible="origin != 'meeting'">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div><strong>Recouvrements du membre</strong><div class="text-muted small">Toutes les cotisations non réglées sont incluses, pénalités comprises.</div></div>
+                            <div class="text-end"><small class="text-muted d-block">Total à régler</small><field name="global_due_amount" widget="monetary" options="{'currency_field': 'currency_id'}" class="fw-bold fs-4" readonly="1"/></div>
+                        </div>
+                        <field name="global_lines_html" nolabel="1" readonly="1"/>
+                    </div>
+
                     <div class="row g-2 mb-3">
 
                         <!-- MONTANT DÛ -->

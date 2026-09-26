@@ -121,6 +121,7 @@ Bonnes pratiques
 
         "views/member_views.xml",
         "views/member_card_wizard_views.xml",
+        "views/member_activation_wizard_views.xml",
         "views/member_card_views.xml",
 
         "views/committee_views.xml",
@@ -147,6 +148,7 @@ Bonnes pratiques
         # REPORT
         # =====================================================
 
+        "report/association_external_layout.xml",
         "report/member_card_template.xml",
         "report/member_card_report.xml",
         "report/member_directory_report.xml",
@@ -171,6 +173,7 @@ Bonnes pratiques
         "views/member_wallet_transaction_views.xml",
         "views/subscription_cycle_close_wizard_views.xml",
         "views/meeting_subscription_cycle_start_wizard_views.xml",
+        "views/meeting_expense_wizard_views.xml",
         "views/member_account_subscription_payment_wizard_views.xml",
 
         # =====================================================
@@ -192,6 +195,7 @@ Bonnes pratiques
         "web.assets_backend": [
             "primetech_association/static/src/dashboard/association_dashboard.js",
             "primetech_association/static/src/dashboard/association_dashboard.xml",
+            "primetech_association/static/src/dashboard/member_minutes.xml",
             "primetech_association/static/src/dashboard/association_dashboard.scss",
             "primetech_association/static/src/scss/member_card.scss",
             "primetech_association/static/src/scss/member_list_filter.scss",

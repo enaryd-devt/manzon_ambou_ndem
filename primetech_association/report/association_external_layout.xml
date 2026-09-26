@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- En-tête commun aux documents de l'association.
+         Le pied de page reste celui du layout externe Odoo. -->
+    <template id="external_layout_standard_manzon" inherit_id="web.external_layout_standard">
+        <xpath expr="//div[contains(@t-attf-class, 'header o_company_')]" position="replace">
+            <div t-attf-class="header o_company_#{company.id}_layout"
+                 style="margin:0; padding:0 0 3mm 0; border-bottom:1px solid #d9dde3;">
+                <img src="/primetech_association/static/src/img/manzon_report_header.png"
+                     alt="En-tête MANZON AMBOU-NDEM"
+                     style="display:block; width:100%; height:auto;"/>
+            </div>
+        </xpath>
+    </template>
+
+    <!-- La société MANZON utilise actuellement le layout « Striped ». -->
+    <template id="external_layout_striped_manzon" inherit_id="web.external_layout_striped">
+        <xpath expr="//div[contains(@t-attf-class, 'header')]" position="replace">
+            <div t-attf-class="o_company_#{company.id}_layout header"
+                 style="margin:0; padding:0 0 3mm 0; border-bottom:1px solid #d9dde3;">
+                <img src="/primetech_association/static/src/img/manzon_report_header.png"
+                     alt="En-tête MANZON AMBOU-NDEM"
+                     style="display:block; width:100%; height:auto;"/>
+            </div>
+        </xpath>
+    </template>
+</odoo>

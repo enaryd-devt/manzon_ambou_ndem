@@ -16,40 +16,7 @@
 
                 <t t-call="web.external_layout">
 
-                    <div class="page">
-
-                        <!-- ========================================= -->
-                        <!-- TITRE                                    -->
-                        <!-- ========================================= -->
-
-                        <div
-                            style="
-                                text-align: center;
-                                margin-bottom: 24px;
-                            ">
-
-                            <div
-                                style="
-                                    font-size: 20px;
-                                    font-weight: 700;
-                                    text-transform: uppercase;
-                                    letter-spacing: 1px;
-                                ">
-
-                                PROCÈS-VERBAL DE RÉUNION
-
-                            </div>
-
-                            <div
-                                style="
-                                    width: 80px;
-                                    border-bottom: 2px solid #444;
-                                    margin: 8px auto 0 auto;
-                                ">
-                            </div>
-
-                        </div>
-
+                    <div class="page" style="padding-top: 25mm;">
 
                         <!-- ========================================= -->
                         <!-- INFORMATIONS DE LA RÉUNION                -->

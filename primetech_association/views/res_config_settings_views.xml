@@ -52,6 +52,16 @@
                             <field name="settlement_tolerance"/>
                         </setting>
                     </block>
+                    <block title="Discipline automatique" name="association_discipline">
+                        <setting string="Sanction pour retard"
+                                 help="Montant appliqué automatiquement lorsqu’un membre est marqué en retard.">
+                            <field name="late_penalty_amount"/>
+                        </setting>
+                        <setting string="Absences consécutives"
+                                 help="Première absence : blâme. Dès la deuxième, le montant est multiplié par le nombre d’absences au-delà de la première.">
+                            <field name="consecutive_absence_penalty_amount"/>
+                        </setting>
+                    </block>
                     <block title="Comptes membres et excédents" name="association_member_accounts">
                         <setting string="Paiement depuis le compte membre">
                             <field name="allow_member_account_payment"/>

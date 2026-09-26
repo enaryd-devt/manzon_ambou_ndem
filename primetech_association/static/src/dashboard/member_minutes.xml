@@ -1,0 +1,40 @@
+<templates xml:space="preserve">
+  <t t-inherit="primetech_association.AssociationDashboard" t-inherit-mode="extension">
+    <xpath expr="//section[contains(@class, 'member_portal_cards')]" position="after">
+      <section class="member_portal_panel member_minutes_panel member_minutes_kpi">
+        <div class="member_portal_title"><h2><i class="fa fa-file-text-o"/> Procès verbaux des réunions</h2></div>
+        <div class="member_portal_list member_portal_scroll">
+          <t t-foreach="state.data.shared_minutes || []" t-as="minute" t-key="minute.id">
+            <button class="member_treasury_link" t-on-click="() => this.openMemberMinutes(minute.id)">
+              <span><strong t-esc="minute.title"/><small t-esc="minute.date"/></span>
+              <b><i class="fa fa-eye"/> Aperçu</b>
+            </button>
+          </t>
+          <p t-if="!(state.data.shared_minutes || []).length" class="member_portal_empty">Aucun procès-verbal n’est encore partagé.</p>
+        </div>
+      </section>
+    </xpath>
+    <xpath expr="//section[@class='member_portal']" position="inside">
+      <div t-if="state.minutesPreview" class="member_payment_modal_backdrop" t-on-click="closeMemberMinutes">
+        <section class="member_payment_modal member_minutes_modal" t-on-click.stop="">
+          <header><div><small>Procès-verbal partagé</small><h2 t-esc="state.minutesPreview.title"/><p t-if="state.minutesPreview.date" t-esc="state.minutesPreview.date"/></div><button title="Fermer" t-on-click="closeMemberMinutes"><i class="fa fa-times"/></button></header>
+          <div class="member_payment_modal_content"><div class="member_minutes_content" t-out="state.minutesPreview.content"/></div>
+          <footer><button class="btn btn-primary" t-on-click="() => this.downloadSharedMinutes(state.minutesPreview)"><i class="fa fa-download"/> Télécharger le procès-verbal (PDF)</button></footer>
+        </section>
+      </div>
+    </xpath>
+    <xpath expr="//header[contains(@class, 'member_portal_head')]//h1" position="inside">
+      <button t-if="state.data.member &amp;&amp; memberSanctionAlertLabel" class="member_financial_alert_bubble sanction" type="button" t-on-click="scrollToMemberSanctions" title="Voir mes sanctions financières"><i class="fa fa-gavel"/><span t-esc="memberSanctionAlertLabel"/></button>
+      <button t-if="state.data.member &amp;&amp; memberPenaltyAlertLabel" class="member_financial_alert_bubble penalty" type="button" t-on-click="scrollToMemberSubscriptionPenalties" title="Voir mes pénalités de cotisation"><i class="fa fa-exclamation-circle"/><span t-esc="memberPenaltyAlertLabel"/></button>
+    </xpath>
+    <xpath expr="//section[contains(@class, 'member_penalty_alert')]" position="replace"/>
+    <xpath expr="//h2[normalize-space()='Mes sanctions disciplinaires']/ancestor::article[1]" position="attributes"><attribute name="class" add="member_sanctions_panel" separator=" "/></xpath>
+    <xpath expr="//h2[normalize-space()='Mes cotisations']" position="replace"><h2><i class="fa fa-refresh"/> Mes cotisations</h2></xpath>
+    <xpath expr="//h2[normalize-space()='Historique de vos paiements']" position="replace"><h2><i class="fa fa-history"/> Historique de vos paiements</h2></xpath>
+    <xpath expr="//h2[normalize-space()='Mes sanctions disciplinaires']" position="replace"><h2><i class="fa fa-gavel"/> Mes sanctions disciplinaires</h2></xpath>
+    <xpath expr="//h2[normalize-space()='Soldes de trésorerie']" position="replace"><h2><i class="fa fa-bank"/> Soldes de trésorerie</h2></xpath>
+    <xpath expr="//h2[normalize-space()='Liste des membres']" position="replace"><h2><i class="fa fa-users"/> Liste des membres</h2></xpath>
+    <xpath expr="//button[contains(@class, 'member_subscription_link')]" position="attributes"><attribute name="t-att-class">'member_subscription_row member_subscription_link' + (subscription.penalty_due ? ' member_subscription_penalty_target' : '')</attribute></xpath>
+    <xpath expr="//button[contains(@class, 'member_sanction_link')]" position="attributes"><attribute name="t-att-class">'member_sanction_link' + (sanction.amount ? ' member_financial_sanction_target' : '')</attribute></xpath>
+  </t>
+</templates>

@@ -1390,6 +1390,7 @@
                                         decoration-success="payment_state == 'paid'"
                                         decoration-warning="payment_state == 'partial'"
                                         decoration-danger="payment_state == 'not_paid'"/>
+                                    <field name="has_member_account" column_invisible="1"/>
 
                                     <!-- ===================================================== -->
                                     <!-- OUVRIR L'ASSISTANT DE PAIEMENT                        -->
@@ -1421,6 +1422,7 @@
                                         invisible="
                                             payment_state == 'paid'
                                             or balance &lt;= 0
+                                            or not has_member_account
                                         "/>
 
                                     <field

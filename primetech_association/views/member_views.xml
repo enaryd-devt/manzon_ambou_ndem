@@ -626,6 +626,12 @@
 
                     <notebook>
 
+                        <page string="Conditions d’adhésion" name="activation_requirements" invisible="state == 'draft'">
+                            <div class="alert alert-info" role="alert">Les conditions d’adhésion sont enregistrées lors de l’activation du membre.</div>
+                            <group string="Frais encaissés"><group><field name="registration_fee_amount" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/><field name="insurance_fee_amount" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/></group><group><field name="forfait_recovery_fee_amount" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/><field name="working_capital_catchup_amount" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/></group></group>
+                            <group string="Biens confirmés"><group><field name="jogging_provided" readonly="1"/><field name="traditional_outfit_provided" readonly="1"/><field name="sport_jersey_provided" readonly="1"/></group><group><field name="committee_beer_case_provided" readonly="1"/><field name="ag_beer_case_provided" readonly="1"/><field name="activation_requirements_complete" readonly="1" widget="boolean_toggle"/></group></group>
+                        </page>
+
 
                         <!-- ============================================== -->
                         <!-- CONTACT -->

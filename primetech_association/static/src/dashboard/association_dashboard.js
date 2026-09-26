@@ -2,6 +2,7 @@
 
 import {
     Component,
+    markup,
     onWillStart,
     useState,
 } from "@odoo/owl";
@@ -48,6 +49,7 @@ export class AssociationDashboard extends Component {
                 penaltyDetail: false,
                 subscriptionDetail: false,
                 treasuryDetail: false,
+                minutesPreview: false,
             },
             filters: {period: "all", months: 6, date_from: "", date_to: ""},
 
@@ -289,6 +291,30 @@ export class AssociationDashboard extends Component {
         return this.openRecord("association.payment", paymentId, "Paiement");
     }
 
+    get memberFinancialAlertLabel() {
+        const alert = this.state.data.member?.financial_alert || {};
+        const labels = [];
+        const sanctions = Number(alert.sanction_count || 0);
+        const penalties = Number(alert.penalty_count || 0);
+        if (sanctions) {
+            labels.push(`${sanctions} sanction${sanctions > 1 ? "s" : ""}`);
+        }
+        if (penalties) {
+            labels.push(`${penalties} pénalité${penalties > 1 ? "s" : ""}`);
+        }
+        return labels.join(" · ");
+    }
+
+    get memberSanctionAlertLabel() {
+        const count = Number(this.state.data.member?.financial_alert?.sanction_count || 0);
+        return count ? `${count} sanction${count > 1 ? "s" : ""}` : "";
+    }
+
+    get memberPenaltyAlertLabel() {
+        const count = Number(this.state.data.member?.financial_alert?.penalty_count || 0);
+        return count ? `${count} pénalité${count > 1 ? "s" : ""}` : "";
+    }
+
     async openMemberPayment(paymentId) {
         if (!paymentId) {
             return;
@@ -333,6 +359,67 @@ export class AssociationDashboard extends Component {
 
     closeMemberTreasury() {
         this.state.treasuryDetail = false;
+    }
+
+    async downloadSharedMinutes(meeting) {
+        if (!meeting?.id) {
+            return;
+        }
+        const reportAction = await this.orm.call(
+            "association.dashboard", "get_member_minutes_download_action", [meeting.id]
+        );
+        if (reportAction) {
+            return this.action.doAction(reportAction);
+        }
+    }
+
+    async openMemberMinutes(meetingId) {
+        if (!meetingId) {
+            return;
+        }
+        const preview = await this.orm.call(
+            "association.dashboard", "get_member_minutes_preview", [meetingId]
+        );
+        this.state.minutesPreview = preview && {
+            ...preview,
+            content: markup(preview.content || ""),
+        };
+    }
+
+    closeMemberMinutes() {
+        this.state.minutesPreview = false;
+    }
+
+    scrollToMemberSanctions() {
+        const targets = document.querySelectorAll(".member_financial_sanction_target");
+        document.querySelector(".member_sanctions_panel")?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+        });
+        targets.forEach((target) => {
+            target.classList.add("member_financial_sanction_focus");
+            setTimeout(() => target.classList.remove("member_financial_sanction_focus"), 2200);
+        });
+    }
+
+    scrollToMemberFinancialItem() {
+        const alert = this.state.data.member?.financial_alert || {};
+        if (Number(alert.penalty_count || 0)) {
+            return this.scrollToMemberSubscriptionPenalties();
+        }
+        this.scrollToMemberSanctions();
+    }
+
+    scrollToMemberSubscriptionPenalties() {
+        const targets = document.querySelectorAll(".member_subscription_penalty_target");
+        document.querySelector(".member_subscriptions_panel")?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+        });
+        targets.forEach((target) => {
+            target.classList.add("member_subscription_penalty_focus");
+            setTimeout(() => target.classList.remove("member_subscription_penalty_focus"), 2200);
+        });
     }
 
     openRecord(model, recordId, name) {

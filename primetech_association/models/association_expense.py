@@ -73,6 +73,10 @@ class AssociationExpense(models.Model):
         tracking=True,
         index=True,
     )
+    meeting_id = fields.Many2one(
+        "association.meeting", string="Réunion concernée", ondelete="set null", index=True,
+        help="Renseignez cette réunion pour que la dépense soit déduite de sa caisse.",
+    )
 
     expense_type = fields.Selection(
         selection=[
@@ -486,7 +490,7 @@ class AssociationExpense(models.Model):
                     )
                 )
 
-            if not record.fund_id:
+            if not record.fund_id and not record.meeting_id:
 
                 raise UserError(
                     _(
@@ -508,7 +512,7 @@ class AssociationExpense(models.Model):
             # CONTRÔLE DU SOLDE
             # ==================================================
 
-            if record.fund_balance < record.amount:
+            if record.fund_id and record.fund_balance < record.amount:
 
                 raise UserError(
                     _(
@@ -528,6 +532,12 @@ class AssociationExpense(models.Model):
             # ==================================================
             # CRÉATION DU MOUVEMENT FINANCIER
             # ==================================================
+
+            if not record.fund_id:
+                # Cash spent during a meeting is paid from the temporary
+                # meeting cash, not from a permanent treasury account.
+                record.write({"state": "validated"})
+                continue
 
             transaction = FundTransaction.create(
                 {

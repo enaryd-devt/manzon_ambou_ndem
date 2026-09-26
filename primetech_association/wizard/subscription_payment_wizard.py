@@ -12,6 +12,7 @@
 
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
+from odoo.tools import html_escape
 
 
 class AssociationSubscriptionPaymentWizard(models.TransientModel):
@@ -149,6 +150,10 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
         string="Paiement généré",
         readonly=True,
     )
+    global_due_amount = fields.Monetary(
+        string="Total à régler", currency_field="currency_id", readonly=True,
+    )
+    global_lines_html = fields.Html(string="Recouvrements en cours", readonly=True)
 
     # ==========================================================
     # DEFAULT GET
@@ -285,6 +290,28 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
             )
         )
 
+        # During a meeting, the member is called once: load every unpaid
+        # subscription/cycle, including penalties, into the same payment.
+        global_due = 0.0
+        global_rows = []
+        if self.env.context.get("default_origin") == "meeting":
+            SubscriptionLine = self.env["association.subscription.line"]
+            lines = SubscriptionLine.search([
+                ("member_id", "=", subscription_line.member_id.id),
+                ("company_id", "=", subscription_line.company_id.id), ("active", "=", True),
+            ])
+            for line in lines:
+                for line_period in PaymentLine._get_unsettled_periods_for_line(line):
+                    due = PaymentLine._get_period_due_for_line(line, line_period)
+                    paid = PaymentLine._get_period_paid_for_line(line, line_period)
+                    balance = max(due - paid, 0.0)
+                    if balance > 0.01:
+                        global_due += balance
+                        global_rows.append("<tr><td>%s</td><td>%s</td><td class='text-end'>%.2f</td></tr>" % (
+                            html_escape(line.subscription_id.display_name or "Cotisation"),
+                            html_escape(line_period.display_name or "Cycle"), balance,
+                        ))
+            amount_received = global_due if default_amount_received in (None, False) else max(default_amount_received or 0.0, 0.0)
         values.update(
             {
                 "member_id":
@@ -319,8 +346,10 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
 
                 "meeting_id":
                     self.env.context.get(
-                        "default_meeting_id",
-                    ),
+                    "default_meeting_id",
+                ),
+                "global_due_amount": global_due,
+                "global_lines_html": ("<table class='table table-sm'><thead><tr><th>Cotisation</th><th>Cycle</th><th class='text-end'>Reste (pénalités incluses)</th></tr></thead><tbody>%s</tbody></table>" % "".join(global_rows)) if global_rows else False,
             }
         )
 
@@ -638,8 +667,65 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
     # ACTION - VALIDER LE PAIEMENT
     # ==========================================================
 
+    def _action_validate_global_meeting_payment(self):
+        """Collect all outstanding dues for one member during a meeting."""
+        self.ensure_one()
+        if not self.member_id or not self.meeting_id:
+            raise ValidationError(_("Le membre et la réunion sont obligatoires."))
+        amount_received = self.amount_received or 0.0
+        if amount_received <= 0:
+            raise ValidationError(_("Le montant reçu doit être strictement supérieur à zéro."))
+        PaymentLine = self.env["association.payment.line"]
+        SubscriptionLine = self.env["association.subscription.line"]
+        remaining = amount_received
+        allocation_values = []
+        candidates = []
+        lines = SubscriptionLine.search([
+            ("member_id", "=", self.member_id.id),
+            ("company_id", "=", self.meeting_id.company_id.id), ("active", "=", True),
+        ])
+        for line in lines:
+            for period in PaymentLine._get_unsettled_periods_for_line(line):
+                due = PaymentLine._get_period_due_for_line(line, period)
+                paid = PaymentLine._get_period_paid_for_line(line, period)
+                balance = max(due - paid, 0.0)
+                if balance > 0.01:
+                    candidates.append((period.due_date or fields.Date.today(), line.id, line, period, balance))
+        for _date, _line_id, line, period, balance in sorted(candidates, key=lambda item: (item[0], item[1], item[3].id)):
+            if remaining <= 0:
+                break
+            allocated = min(remaining, balance)
+            allocation_values.append((0, 0, {
+                "subscription_line_id": line.id,
+                "subscription_id": line.subscription_id.id,
+                "subscription_period_id": period.id,
+                "amount_paid": allocated,
+            }))
+            remaining -= allocated
+        if not allocation_values:
+            raise ValidationError(_("Aucun recouvrement non soldé n’a été trouvé pour ce membre."))
+        Payment = self.env["association.payment"]
+        payment = Payment.create({
+            "member_id": self.member_id.id,
+            "company_id": self.meeting_id.company_id.id,
+            "meeting_id": self.meeting_id.id,
+            "payment_date": fields.Date.context_today(self),
+            "amount": amount_received,
+            "payment_source": "meeting_cash",
+            "payment_method": self.payment_method or "cash",
+            "payment_reference": self.payment_reference or _("Encaissement global en réunion %s") % self.meeting_id.name,
+            "has_allocations": True,
+            "line_ids": allocation_values,
+        })
+        self.payment_id = payment.id
+        payment.action_collect()
+        return payment.action_confirm()
+
     def action_validate_payment(self):
         self.ensure_one()
+
+        if self.origin == "meeting":
+            return self._action_validate_global_meeting_payment()
 
         amount_received = self.amount_received or 0.0
         if amount_received <= 0:

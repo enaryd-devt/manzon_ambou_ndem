@@ -660,6 +660,9 @@ class AssociationMeeting(models.Model):
         readonly=True,
         tracking=True,
     )
+    minutes_shared = fields.Boolean(string="PV partagé aux membres", default=False, tracking=True)
+    minutes_attachment = fields.Binary(string="Procès-verbal à télécharger", attachment=True)
+    minutes_attachment_filename = fields.Char(string="Nom du fichier du PV")
 
     description = fields.Html(
         string="Description de la réunion",
@@ -699,6 +702,29 @@ class AssociationMeeting(models.Model):
         inverse_name="meeting_id",
         string="Sanctions et incidents",
     )
+    expense_ids = fields.One2many("association.expense", "meeting_id", string="Dépenses de réunion")
+    expense_total = fields.Monetary(string="Dépenses de réunion", compute="_compute_meeting_expenses", currency_field="currency_id")
+
+    @api.depends("expense_ids.amount", "expense_ids.state")
+    def _compute_meeting_expenses(self):
+        for meeting in self:
+            meeting.expense_total = sum(meeting.expense_ids.filtered(lambda expense: expense.state == "validated").mapped("amount"))
+
+    def action_create_meeting_expense(self):
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window", "name": _("Dépense de séance"),
+            "res_model": "association.meeting.expense.wizard", "view_mode": "form", "target": "new",
+            "context": {"default_meeting_id": self.id},
+        }
+
+    def action_share_minutes(self):
+        for meeting in self:
+            if not meeting.minutes_approved:
+                raise UserError(_("Le procès-verbal doit être approuvé avant son partage."))
+            meeting.write({"minutes_shared": True})
+            meeting.message_post(body=_("Le procès-verbal a été partagé avec les membres ordinaires."))
+        return True
 
     penalty_count = fields.Integer(
         string="Nombre de sanctions",
@@ -1038,6 +1064,8 @@ class AssociationMeeting(models.Model):
         "allocation_ids.beneficiary_id",
         "allocation_ids.state",
         "pot_settlement_state",
+        "expense_ids.amount",
+        "expense_ids.state",
     )
     def _compute_pot_statistics(self):
 
@@ -1078,7 +1106,7 @@ class AssociationMeeting(models.Model):
             meeting.pot_collected_amount = collected_amount
             meeting.pot_allocated_amount = allocated_amount
             meeting.pot_available_amount = max(
-                collected_amount - allocated_amount, 0.0
+                collected_amount - allocated_amount - meeting.expense_total, 0.0
             )
             if meeting.pot_settlement_state == "settled":
                 meeting.pot_available_amount = 0.0
@@ -2243,128 +2271,10 @@ class AssociationMeeting(models.Model):
 
         for meeting in self:
 
-            # ==================================================
-            # CONTRÔLE DE LA RÉUNION
-            # ==================================================
-
-            if meeting.state == "closed":
-
-                raise UserError(
-                    _(
-                        "Le procès-verbal d'une réunion clôturée "
-                        "ne peut plus être préparé."
-                    )
-                )
-            
-            # ==================================================
-            # CONTRÔLE DE L'HEURE EFFECTIVE DE CLÔTURE
-            # ==================================================
-
-            if not meeting.actual_end_time:
-
-                raise UserError(
-                    _(
-                        "Impossible de préparer le procès-verbal.\n\n"
-                        "Veuillez renseigner l'heure effective "
-                        "de clôture de la séance."
-                    )
-                )
-
-            # ==================================================
-            # CONTRÔLE DE LA LISTE D'APPEL
-            # ==================================================
-
-            pending_attendance = meeting.attendance_ids.filtered(
-                lambda attendance:
-                    attendance.state == "pending"
-            )
-
-            if pending_attendance:
-
-                attendance_lines = []
-
-                for attendance in pending_attendance:
-
-                    member_name = (
-                        attendance.member_id.display_name
-                        if attendance.member_id
-                        else _("Membre non renseigné")
-                    )
-
-                    attendance_lines.append(
-                        "• %s" % member_name
-                    )
-
-                raise UserError(
-                    _(
-                        "Impossible de préparer le procès-verbal.\n\n"
-                        "%s membre(s) sont encore en attente "
-                        "dans la liste d'appel.\n\n"
-                        "%s\n\n"
-                        "Veuillez compléter la liste d'appel "
-                        "avant de préparer le procès-verbal."
-                    )
-                    % (
-                        len(pending_attendance),
-                        "\n".join(attendance_lines),
-                    )
-                )
-
-            # ==================================================
-            # CONTRÔLE DES SANCTIONS / INCIDENTS
-            # ==================================================
-
-            draft_penalties = meeting.penalty_ids.filtered(
-                lambda penalty:
-                    penalty.state == "draft"
-            )
-
-            if draft_penalties:
-
-                penalty_lines = []
-
-                incident_selection = dict(
-                    meeting.penalty_ids._fields[
-                        "incident_type"
-                    ].selection
-                )
-
-                for penalty in draft_penalties:
-
-                    member_name = (
-                        penalty.member_id.display_name
-                        if penalty.member_id
-                        else _("Membre non renseigné")
-                    )
-
-                    incident_label = incident_selection.get(
-                        penalty.incident_type,
-                        _("Incident non défini"),
-                    )
-
-                    penalty_lines.append(
-                        "• %s — %s"
-                        % (
-                            member_name,
-                            incident_label,
-                        )
-                    )
-
-                raise UserError(
-                    _(
-                        "Impossible de préparer le procès-verbal.\n\n"
-                        "%s sanction(s) ou incident(s) "
-                        "sont encore en attente de décision.\n\n"
-                        "%s\n\n"
-                        "Chaque incident doit être VALIDÉ "
-                        "ou ANNULÉ avant la préparation "
-                        "du procès-verbal."
-                    )
-                    % (
-                        len(draft_penalties),
-                        "\n".join(penalty_lines),
-                    )
-                )
+            # Le procès-verbal est une photographie de la réunion. Il est
+            # donc toujours préparé avec les données disponibles au moment du
+            # clic : heure, liste d'appel et décisions peuvent être complétées
+            # ultérieurement dans le contenu généré.
 
             # ==================================================
             # FORMATAGE DE LA DATE
@@ -3341,6 +3251,7 @@ class AssociationMeeting(models.Model):
                     lambda member: (
                         member
                         and member.active
+                        and member.state == "active"
                         and member.company_id
                         == record.company_id
                     )
@@ -3887,64 +3798,11 @@ class AssociationMeeting(models.Model):
     # ==========================================================
 
     def action_approve_minutes(self):
-
-        for meeting in self:
-
-            if not meeting.minutes_prepared:
-
-                raise UserError(
-                    _(
-                        "Vous devez d'abord préparer "
-                        "le procès-verbal."
-                    )
-                )
-
-            if not meeting.minutes:
-
-                raise UserError(
-                    _(
-                        "Le procès-verbal est vide."
-                    )
-                )
-
-            pending_attendance = meeting.attendance_ids.filtered(
-                lambda attendance:
-                    attendance.state == "pending"
-            )
-
-            if pending_attendance:
-
-                raise UserError(
-                    _(
-                        "Impossible d'approuver le procès-verbal.\n\n"
-                        "%s membre(s) sont encore en attente "
-                        "dans la liste d'appel."
-                    )
-                    % len(pending_attendance)
-                )
-
-            draft_penalties = meeting.penalty_ids.filtered(
-                lambda penalty:
-                    penalty.state == "draft"
-            )
-
-            if draft_penalties:
-
-                raise UserError(
-                    _(
-                        "Impossible d'approuver le procès-verbal.\n\n"
-                        "%s sanction(s) ou incident(s) sont "
-                        "encore en brouillon."
-                    )
-                    % len(draft_penalties)
-                )
-
-            meeting.write(
-                {
-                    "minutes_approved": True,
-                    "minutes_approval_date": fields.Datetime.now(),
-                }
-            )
+        """Freeze the existing minutes as-is, without workflow prerequisites."""
+        self.write({
+            "minutes_approved": True,
+            "minutes_approval_date": fields.Datetime.now(),
+        })
 
         return True
     

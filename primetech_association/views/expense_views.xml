@@ -413,6 +413,8 @@
                                 readonly="state != 'draft'"
                             />
 
+                            <field name="meeting_id" readonly="state != 'draft'"/>
+
                             <field
                                 name="expense_type"
                                 readonly="state != 'draft'"

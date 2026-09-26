@@ -456,7 +456,7 @@
                         <field
                             name="member_line_ids"
                             nolabel="1"
-                            readonly="state != 'draft'">
+                            readonly="state in ('expired', 'cancelled')">
 
                             <list
                                 string="Membres du Bureau"

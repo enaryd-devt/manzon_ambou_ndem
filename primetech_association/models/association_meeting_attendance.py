@@ -302,6 +302,99 @@ class AssociationAttendance(models.Model):
         string="Motif de sanction",
         tracking=True,
     )
+    automatic_penalty_ids = fields.One2many(
+        "association.penalty", "attendance_id", string="Sanctions automatiques", readonly=True,
+    )
+
+    def _apply_automatic_discipline(self):
+        """Apply the association's configurable disciplinary grid once per attendance."""
+        Penalty = self.env["association.penalty"]
+        params = self.env["ir.config_parameter"].sudo()
+        late_amount = float(params.get_param("primetech_association.late_penalty_amount", 0.0) or 0.0)
+        absence_base = float(params.get_param("primetech_association.consecutive_absence_penalty_amount", 0.0) or 0.0)
+        for attendance in self:
+            if attendance.is_excused or attendance.state not in ("late", "absent"):
+                automatic_penalties = attendance.automatic_penalty_ids.filtered(
+                    lambda penalty: penalty.state not in ("cancelled", "lifted")
+                )
+                if automatic_penalties:
+                    automatic_penalties.action_cancel()
+                    attendance.penalty_required = False
+                    attendance.penalty_reason = False
+                continue
+            existing = Penalty.search_count([
+                ("attendance_id", "=", attendance.id), ("state", "!=", "cancelled"),
+            ])
+            if existing:
+                continue
+            values = {
+                "meeting_id": attendance.meeting_id.id,
+                "member_id": attendance.member_id.id,
+                "attendance_id": attendance.id,
+                "automatic": True,
+                "incident_date": fields.Datetime.now(),
+                "state": "validated",
+                "validated_by": self.env.user.id,
+                "validation_date": fields.Datetime.now(),
+            }
+            if attendance.state == "late":
+                if late_amount <= 0:
+                    continue
+                values.update({
+                    "incident_type": "late", "penalty_type": "fine", "amount": late_amount,
+                    "incident_description": _("Retard à la réunion du %s.") % attendance.meeting_date,
+                    "penalty_description": _("Sanction automatique pour retard."),
+                })
+            else:
+                previous = self.search([
+                    ("member_id", "=", attendance.member_id.id),
+                    ("state", "=", "absent"), ("is_excused", "=", False),
+                    ("meeting_date", "<", attendance.meeting_date),
+                ], order="meeting_date desc, id desc")
+                consecutive = 1
+                expected_date = attendance.meeting_date
+                for line in previous:
+                    # Every recorded absence immediately before this one counts;
+                    # a present/late attendance breaks the consecutive sequence.
+                    later = self.search_count([
+                        ("member_id", "=", attendance.member_id.id),
+                        ("meeting_date", ">", line.meeting_date),
+                        ("meeting_date", "<", expected_date),
+                        ("state", "in", ["present", "late"]),
+                    ])
+                    if later:
+                        break
+                    consecutive += 1
+                    expected_date = line.meeting_date
+                if consecutive == 1:
+                    values.update({
+                        "incident_type": "unjustified_absence", "penalty_type": "blame",
+                        "incident_description": _("Absence non justifiée à la réunion du %s.") % attendance.meeting_date,
+                        "penalty_description": _("Blâme automatique pour une première absence consécutive."),
+                    })
+                elif absence_base > 0:
+                    values.update({
+                        "incident_type": "unjustified_absence", "penalty_type": "fine",
+                        "amount": absence_base * (consecutive - 1),
+                        "incident_description": _("%s absences consécutives non justifiées.") % consecutive,
+                        "penalty_description": _("Sanction automatique : %s × montant de base.") % (consecutive - 1),
+                    })
+                else:
+                    continue
+            Penalty.create(values)
+            attendance.write({"penalty_required": True, "penalty_reason": values["penalty_description"]})
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records._apply_automatic_discipline()
+        return records
+
+    def write(self, vals):
+        result = super().write(vals)
+        if {"state", "is_excused", "meeting_id", "member_id"}.intersection(vals):
+            self._apply_automatic_discipline()
+        return result
 
     # ==========================================================
     # NOTES
@@ -957,6 +1050,9 @@ class AssociationAttendance(models.Model):
                         "à la même Filiale."
                     )
                 )
+
+            if record.member_id and (record.member_id.state != "active" or not record.member_id.active):
+                raise ValidationError(_("Un membre non actif ne peut pas participer à une réunion."))
 
     # ==========================================================
     # CONTRÔLE DES HEURES

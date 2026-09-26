@@ -17,5 +17,7 @@ from . import subscription_cycle_close_wizard
 from . import subscription_payment_wizard
 from . import meeting_subscription_cycle_start_wizard
 from . import member_account_subscription_payment_wizard
+from . import meeting_expense_wizard
+from . import member_activation_wizard
 
 from . import statement_report_wizard

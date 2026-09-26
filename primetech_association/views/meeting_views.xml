@@ -310,6 +310,9 @@
                         invisible="state != 'in_progress'"
                         confirm="Voulez-vous réellement clôturer cette réunion ?"
                     />
+                    <button name="action_share_minutes" string="Partager le PV" type="object"
+                        groups="primetech_association.group_association_meeting_secretary,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        class="btn-secondary" invisible="not minutes_approved or minutes_shared"/>
 
                     <button
                         name="action_approve_minutes"
@@ -317,7 +320,7 @@
                         type="object"
                         groups="primetech_association.group_association_meeting_president,primetech_association.group_association_manager,primetech_association.group_association_admin"
                         class="btn-secondary"
-                        invisible="state != 'closed' or minutes_approved"
+                        invisible="minutes_approved"
                     />
 
                     <button
@@ -887,7 +890,7 @@
                         <!-- ========================================================= -->
 
                         <page
-                            string="Cotisations"
+                            string="Trésorerie"
                             name="meeting_subscriptions"
                             groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin">
 
@@ -917,11 +920,11 @@
                                     <div>
 
                                         <div class="fw-bold lh-1">
-                                            Cotisations
+                                            Trésorerie de séance
                                         </div>
 
                                         <div class="text-muted small mt-1">
-                                            Encaissements et cagnotte du cycle courant
+                                            Encaissements, dépenses et cagnotte du cycle courant
                                         </div>
 
                                     </div>
@@ -930,6 +933,11 @@
 
 
                                 <div class="d-flex flex-wrap gap-1">
+
+                                    <button name="action_create_meeting_expense" type="object"
+                                        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                                        string="Dépense de séance" icon="fa-shopping-cart" class="btn-secondary"
+                                        invisible="state != 'in_progress' or pot_available_amount &lt;= 0"/>
 
                                     <button
                                         name="action_refresh_subscription_cycle"
@@ -1190,6 +1198,42 @@
                                 </div>
 
 
+                                <!-- DÉPENSES DE SÉANCE -->
+
+                                <div class="col-6 col-lg-3">
+
+                                    <div class="border rounded-3 px-2 py-1 h-100">
+
+                                        <div class="d-flex align-items-center justify-content-between">
+
+                                            <div>
+
+                                                <div class="text-muted small">
+                                                    Dépenses de séance
+                                                </div>
+
+                                                <div class="fw-bold fs-5 text-danger">
+                                                    <field
+                                                        name="expense_total"
+                                                        widget="monetary"
+                                                        options="{
+                                                            'currency_field': 'currency_id'
+                                                        }"/>
+                                                </div>
+
+                                            </div>
+
+                                            <i
+                                                class="fa fa-shopping-cart fa-lg text-danger"
+                                                title="Dépenses de séance"/>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+
                                 <!-- DISPONIBLE -->
 
                                 <div class="col-6 col-lg-3">
@@ -1382,6 +1426,7 @@
                                                 decoration-success="payment_state == 'paid'"
                                                 decoration-warning="payment_state == 'partial'"
                                                 decoration-danger="payment_state == 'not_paid'"/>
+                                            <field name="has_member_account" column_invisible="1"/>
 
                                             <!-- ===================================================== -->
                                             <!-- PAIEMENT DEPUIS LA RÉUNION                            -->
@@ -1415,6 +1460,7 @@
                                                 invisible="
                                                     payment_state == 'paid'
                                                     or balance &lt;= 0
+                                                    or not has_member_account
                                                 "/>
 
 
@@ -2633,7 +2679,6 @@
                                             string="Préparer le procès-verbal"
                                             icon="fa-magic"
                                             class="btn-primary"
-                                            invisible="state not in ('convoked', 'in_progress')"
                                         />
 
                                     </div>
@@ -2785,6 +2830,8 @@
                                         readonly="1"
                                     />
 
+                                    <field name="minutes_shared" readonly="1"/>
+
                                 </group>
 
                             </group>
@@ -2825,6 +2872,12 @@
                                     readonly="minutes_approved"
                                     placeholder="Complétez ici le déroulement de la séance..."
                                 />
+
+                                <group string="Partage avec les membres" invisible="not minutes_approved">
+                                    <field name="minutes_attachment" filename="minutes_attachment_filename" readonly="not minutes_approved"/>
+                                    <field name="minutes_attachment_filename" invisible="1"/>
+                                    <field name="minutes_shared" readonly="1"/>
+                                </group>
 
                             </div>
 

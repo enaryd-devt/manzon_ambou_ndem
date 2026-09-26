@@ -299,6 +299,39 @@ class AssociationMember(models.Model):
         index=True,
     )
 
+    # Conditions d’adhésion : les frais sont saisis comme montants reçus,
+    # tandis que les biens sont confirmés à leur remise par le nouveau membre.
+    registration_fee_amount = fields.Monetary(string="Frais d’inscription", currency_field="currency_id", default=0.0)
+    insurance_fee_amount = fields.Monetary(string="Frais d’assurance", currency_field="currency_id", default=0.0)
+    forfait_recovery_fee_amount = fields.Monetary(string="Recouvrement forfaitaire", currency_field="currency_id", default=0.0)
+    working_capital_catchup_amount = fields.Monetary(string="Rattrapage fonds de roulement échu", currency_field="currency_id", default=0.0)
+    jogging_provided = fields.Boolean(string="Jogging apporté")
+    traditional_outfit_provided = fields.Boolean(string="Tenue traditionnelle apportée")
+    sport_jersey_provided = fields.Boolean(string="Maillot de sport apporté")
+    committee_beer_case_provided = fields.Boolean(string="Casier de bière – Comité apporté")
+    ag_beer_case_provided = fields.Boolean(string="Casier de bière – AG apporté")
+    activation_requirements_complete = fields.Boolean(string="Conditions d’activation remplies", compute="_compute_activation_requirements")
+
+    @api.depends("registration_fee_amount", "insurance_fee_amount", "forfait_recovery_fee_amount", "working_capital_catchup_amount", "jogging_provided", "traditional_outfit_provided", "sport_jersey_provided", "committee_beer_case_provided", "ag_beer_case_provided")
+    def _compute_activation_requirements(self):
+        for member in self:
+            member.activation_requirements_complete = not member._activation_requirement_labels()
+
+    def _activation_requirement_labels(self):
+        self.ensure_one()
+        requirements = (
+            (self.registration_fee_amount > 0, _("Frais d’inscription")),
+            (self.insurance_fee_amount > 0, _("Frais d’assurance")),
+            (self.forfait_recovery_fee_amount > 0, _("Recouvrement forfaitaire")),
+            (self.working_capital_catchup_amount > 0, _("Rattrapage des fonds de roulement échus")),
+            (self.jogging_provided, _("Jogging")),
+            (self.traditional_outfit_provided, _("Tenue traditionnelle")),
+            (self.sport_jersey_provided, _("Maillot de sport")),
+            (self.committee_beer_case_provided, _("Casier de bière du Comité")),
+            (self.ag_beer_case_provided, _("Casier de bière de l’AG")),
+        )
+        return [label for complete, label in requirements if not complete]
+
     # ==========================================================
     # INFORMATIONS PROFESSIONNELLES
     # ==========================================================
@@ -1675,9 +1708,38 @@ class AssociationMember(models.Model):
 
     def action_activate(self):
         """
-        Activate member.
+        Open the admission validation assistant, then activate the member.
+
+        Admission fees and the required goods must be recorded at the exact
+        moment the membership is activated.  This prevents an active member
+        from being created without the associated treasury movement.
         """
+        if not self.env.context.get("confirm_membership_activation"):
+            self.ensure_one()
+            return {
+                "type": "ir.actions.act_window",
+                "name": _("Activer le membre"),
+                "res_model": "association.member.activation.wizard",
+                "view_mode": "form",
+                "target": "new",
+                "context": {
+                    "default_member_id": self.id,
+                    "default_registration_fee_amount": self.registration_fee_amount,
+                    "default_insurance_fee_amount": self.insurance_fee_amount,
+                    "default_forfait_recovery_fee_amount": self.forfait_recovery_fee_amount,
+                    "default_working_capital_catchup_amount": self.working_capital_catchup_amount,
+                    "default_jogging_provided": self.jogging_provided,
+                    "default_traditional_outfit_provided": self.traditional_outfit_provided,
+                    "default_sport_jersey_provided": self.sport_jersey_provided,
+                    "default_committee_beer_case_provided": self.committee_beer_case_provided,
+                    "default_ag_beer_case_provided": self.ag_beer_case_provided,
+                },
+            }
+
         for rec in self:
+            missing = rec._activation_requirement_labels()
+            if missing:
+                raise ValidationError(_("Impossible d’activer ce membre. Éléments manquants :\n- %s") % "\n- ".join(missing))
             rec.write({
                 "state": "active",
                 "active": True,

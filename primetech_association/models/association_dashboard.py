@@ -2,7 +2,7 @@
 
 from dateutil.relativedelta import relativedelta
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
 
 
 class AssociationDashboard(models.AbstractModel):
@@ -704,16 +704,42 @@ class AssociationDashboard(models.AbstractModel):
             "company": {"name": company.display_name},
             "currency": {"symbol": company.currency_id.symbol or ""},
             "member": False,
-            "treasury_accounts": [{"id": fund.id, "name": fund.display_name, "balance": fund.current_balance} for fund in funds],
-            "directory": [{
-                "id": item.id,
-                "name": item.display_name,
-                "code": item.member_code or "",
-                "state": member_state_labels.get(item.state, item.state or ""),
-            } for item in Member.search([("company_id", "=", company.id), ("active", "=", True)], order="name")],
+            "treasury_accounts": [],
+            "directory": [],
+            "shared_minutes": [],
         }
         if not member:
             return values
+        if member.state != "active" or not member.active:
+            values["member"] = {
+                "id": member.id,
+                "name": member.display_name,
+                "code": member.member_code or "",
+                "is_active": False,
+                "state": member_state_labels.get(member.state, member.state or ""),
+            }
+            return values
+
+        values["treasury_accounts"] = [{
+            "id": fund.id,
+            "name": fund.display_name,
+            "balance": fund.current_balance,
+        } for fund in funds]
+        values["directory"] = [{
+            "id": item.id,
+            "name": item.display_name,
+            "code": item.member_code or "",
+            "state": member_state_labels.get(item.state, item.state or ""),
+        } for item in Member.search([("company_id", "=", company.id), ("active", "=", True)], order="name")]
+        Meeting = self.env["association.meeting"].sudo()
+        values["shared_minutes"] = [{
+            "id": meeting.id,
+            "title": meeting.title or meeting.name,
+            "date": fields.Date.to_string(meeting.meeting_date) if meeting.meeting_date else "",
+            "has_attachment": bool(meeting.minutes_attachment),
+        } for meeting in Meeting.search([
+            ("company_id", "=", company.id), ("minutes_shared", "=", True), ("minutes_approved", "=", True),
+        ], order="meeting_date desc, id desc")]
         payments = Payment.search([("member_id", "=", member.id)], order="payment_date desc, id desc")
         penalties = Penalty.search([("member_id", "=", member.id)], order="incident_date desc, id desc")
         member_account = MemberAccount.search([("member_id", "=", member.id)], limit=1)
@@ -724,15 +750,26 @@ class AssociationDashboard(models.AbstractModel):
         payment_state_labels = dict(
             SubscriptionLine._fields["payment_state"]._description_selection(self.env)
         )
+        financial_sanctions = penalties.filtered(
+            lambda penalty: penalty.penalty_type == "fine" and (penalty.amount_remaining or 0.0) > 0
+        )
+        subscription_penalty_count = len(subscription_lines.filtered(
+            lambda line: (line.cycle_penalty_amount or 0.0) > 0
+        ))
         values["member"] = {
             "id": member.id, "name": member.display_name, "code": member.member_code or "",
+            "is_active": True,
             "account_balance": member_account.balance if member_account else 0.0,
             "account_name": member_account.name if member_account else "",
             "payments_total": sum(payments.filtered(lambda p: p.state in ("collected", "confirmed")).mapped("amount")),
             "payment_count": len(payments),
             "penalty_count": len(penalties),
             "payments": [{"id": p.id, "name": p.name or "", "date": fields.Date.to_string(p.payment_date) if p.payment_date else "", "amount": p.amount, "state": p.state or ""} for p in payments],
-            "financial_penalties": [{"id": p.id, "name": p.display_name, "amount": p.amount_remaining or 0.0, "state": p.state or ""} for p in penalties.filtered(lambda penalty: penalty.penalty_type == "fine")],
+            "financial_penalties": [{"id": p.id, "name": p.display_name, "amount": p.amount_remaining or 0.0, "state": p.state or ""} for p in financial_sanctions],
+            "financial_alert": {
+                "sanction_count": len(financial_sanctions),
+                "penalty_count": subscription_penalty_count,
+            },
             "sanctions": [{
                 "id": p.id,
                 "name": p.display_name,
@@ -867,3 +904,56 @@ class AssociationDashboard(models.AbstractModel):
                 "balance": line.balance_after_payment or 0.0,
             } for line in payment.line_ids],
         }
+
+    @api.model
+    def get_member_minutes_preview(self, meeting_id):
+        """Return a shared meeting minute only to its active ordinary member."""
+        company = self.env.company
+        member = self.env["association.member"].sudo().search([
+            ("user_id", "=", self.env.user.id),
+            ("company_id", "=", company.id),
+            ("state", "=", "active"),
+            ("active", "=", True),
+        ], limit=1)
+        if not member:
+            return False
+
+        meeting = self.env["association.meeting"].sudo().search([
+            ("id", "=", meeting_id),
+            ("company_id", "=", company.id),
+            ("minutes_shared", "=", True),
+            ("minutes_approved", "=", True),
+        ], limit=1)
+        if not meeting:
+            return False
+        return {
+            "id": meeting.id,
+            "title": meeting.title or meeting.name or _("Procès-verbal"),
+            "date": fields.Date.to_string(meeting.meeting_date) if meeting.meeting_date else "",
+            "content": meeting.minutes or _("Le contenu de ce procès-verbal n’est pas disponible."),
+            "has_attachment": bool(meeting.minutes_attachment),
+        }
+
+    @api.model
+    def get_member_minutes_download_action(self, meeting_id):
+        """Build the server PDF action for a minute visible to this member."""
+        company = self.env.company
+        member = self.env["association.member"].sudo().search([
+            ("user_id", "=", self.env.user.id),
+            ("company_id", "=", company.id),
+            ("state", "=", "active"),
+            ("active", "=", True),
+        ], limit=1)
+        if not member:
+            return False
+        meeting = self.env["association.meeting"].sudo().search([
+            ("id", "=", meeting_id),
+            ("company_id", "=", company.id),
+            ("minutes_shared", "=", True),
+            ("minutes_approved", "=", True),
+        ], limit=1)
+        if not meeting:
+            return False
+        return self.env.ref(
+            "primetech_association.action_report_meeting_minutes"
+        ).report_action(meeting)

@@ -50,6 +50,11 @@ class AssociationPenalty(models.Model):
         tracking=True,
         index=True,
     )
+    attendance_id = fields.Many2one(
+        "association.attendance", string="Ligne de présence d'origine",
+        readonly=True, copy=False, ondelete="set null", index=True,
+    )
+    automatic = fields.Boolean(string="Sanction automatique", default=False, readonly=True, copy=False)
 
     meeting_date = fields.Date(
         related="meeting_id.meeting_date",
@@ -159,6 +164,7 @@ class AssociationPenalty(models.Model):
     penalty_type = fields.Selection(
         selection=[
             ("observation", "Observation"),
+            ("blame", "Blâme"),
             ("warning", "Avertissement"),
             ("fine", "Sanction financière"),
             ("apology", "Présentation d'excuses"),

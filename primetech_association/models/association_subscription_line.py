@@ -296,6 +296,9 @@ class AssociationSubscriptionLine(models.Model):
         currency_field="currency_id",
         compute="_compute_member_account_balance",
     )
+    has_member_account = fields.Boolean(
+        string="Compte membre disponible", compute="_compute_member_account_balance",
+    )
 
     temporary_member_account_balance = fields.Monetary(
         string="Solde temporaire du compte",
@@ -1017,6 +1020,7 @@ class AssociationSubscriptionLine(models.Model):
 
         for record in self:
             record.member_account_balance = 0.0
+            record.has_member_account = False
 
             if not record.member_id:
                 continue
@@ -1038,6 +1042,7 @@ class AssociationSubscriptionLine(models.Model):
             )
 
             if account:
+                record.has_member_account = True
                 record.member_account_balance = (
                     account.balance or 0.0
                 )
@@ -1133,19 +1138,23 @@ class AssociationSubscriptionLine(models.Model):
 
         self.ensure_one()
 
+        meeting_id = self.env.context.get("default_meeting_id")
+
         return {
             "type": "ir.actions.act_window",
-            "name": _("Paiement de cotisation"),
+            "name": _("Encaissement global du membre") if meeting_id else _("Paiement de cotisation"),
             "res_model":
                 "association.subscription.payment.wizard",
             "view_mode": "form",
             "target": "new",
             "context": {
                 "default_origin":
-                    "subscription",
+                    "meeting" if meeting_id else "subscription",
 
                 "default_subscription_line_id":
                     self.id,
+
+                "default_meeting_id": meeting_id or False,
             },
         }   
     # ==========================================================
@@ -1728,3 +1737,6 @@ class AssociationSubscriptionLine(models.Model):
                         "appartenir à la même filiale."
                     )
                 )
+
+            if record.member_id.state != "active" or not record.member_id.active:
+                raise ValidationError(_("Seuls les membres actifs peuvent participer à une cotisation."))

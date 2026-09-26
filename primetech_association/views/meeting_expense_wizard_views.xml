@@ -1,0 +1,15 @@
+<odoo>
+  <record id="view_association_meeting_expense_wizard_form" model="ir.ui.view">
+    <field name="name">association.meeting.expense.wizard.form</field>
+    <field name="model">association.meeting.expense.wizard</field>
+    <field name="arch" type="xml">
+      <form string="Dépense de séance">
+        <sheet>
+          <div class="alert alert-info" role="alert">Cette dépense est directement déduite de l’argent encaissé pendant la séance.</div>
+          <group><group><field name="meeting_id"/><field name="available_amount" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/></group><group><field name="expense_kind"/><field name="beneficiary_name"/><field name="amount" widget="monetary" options="{'currency_field': 'currency_id'}"/><field name="note" placeholder="Ex. 12 bouteilles d’eau"/></group></group>
+        </sheet>
+        <footer><button name="action_confirm" type="object" string="Valider la dépense" class="btn-primary"/><button string="Annuler" special="cancel" class="btn-secondary"/></footer>
+      </form>
+    </field>
+  </record>
+</odoo>
