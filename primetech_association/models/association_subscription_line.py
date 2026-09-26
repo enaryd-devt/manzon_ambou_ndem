@@ -1064,6 +1064,14 @@ class AssociationSubscriptionLine(models.Model):
                 )
             )
 
+        if subscription.state != "running":
+            raise UserError(
+                _(
+                    "La cotisation %(subscription)s n'est pas en cours et ne peut pas recevoir de paiement."
+                )
+                % {"subscription": subscription.display_name}
+            )
+
         # ======================================================
         # RECHERCHE DIRECTE DU CYCLE EN COURS
         #
@@ -1138,6 +1146,8 @@ class AssociationSubscriptionLine(models.Model):
 
         self.ensure_one()
 
+        self._check_payment_cycle()
+
         meeting_id = self.env.context.get("default_meeting_id")
 
         return {
@@ -1163,6 +1173,8 @@ class AssociationSubscriptionLine(models.Model):
 
     def action_pay_from_member_account(self):
         self.ensure_one()
+
+        self._check_payment_cycle()
 
         if not self.env.context.get("skip_member_account_confirmation"):
             wizard = self.env[

@@ -229,6 +229,11 @@
                     string="Annulées"
                     domain="[('state', '=', 'cancelled')]"/>
 
+                <filter
+                    name="filter_archived"
+                    string="Archivées"
+                    domain="[('active', '=', False)]"/>
+
                 <separator/>
 
                 <filter
@@ -334,6 +339,8 @@
                 <field
                     name="state"
                     widget="badge"/>
+
+                <field name="active" optional="hide"/>
 
                 <field
                     name="company_id"
@@ -450,6 +457,26 @@
                         icon="fa-undo"
                         groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
                         invisible="state not in ('confirmed', 'cancelled')"/>
+
+                    <field name="active" invisible="1"/>
+
+                    <button
+                        name="toggle_active"
+                        string="Archiver"
+                        type="object"
+                        class="btn-secondary"
+                        icon="fa-archive"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        invisible="not active"/>
+
+                    <button
+                        name="toggle_active"
+                        string="Désarchiver"
+                        type="object"
+                        class="btn-primary"
+                        icon="fa-undo"
+                        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        invisible="active"/>
 
                     <field
                         name="state"

@@ -184,6 +184,12 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
             subscription_line.subscription_id
         )
 
+        if subscription.state != "running":
+            raise ValidationError(
+                _("La cotisation %(subscription)s n'est pas en cours et ne peut pas être réglée.")
+                % {"subscription": subscription.display_name}
+            )
+
         # ======================================================
         # PREMIER CYCLE NON SOLDÉ
         # ======================================================
@@ -216,11 +222,7 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
                 and requested_period.subscription_id == subscription
                 and requested_period.company_id
                 == subscription_line.company_id
-                and requested_period.state
-                in (
-                    "running",
-                    "closed",
-                )
+                and requested_period.state == "running"
             ):
 
                 period = requested_period
@@ -237,7 +239,7 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
 
             raise ValidationError(
                 _(
-                    "Aucun cycle en cours ou terminé avec "
+                    "Aucun cycle en cours avec "
                     "un solde restant n'a été trouvé pour "
                     "la cotisation %(subscription)s."
                 )
@@ -683,6 +685,8 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
         lines = SubscriptionLine.search([
             ("member_id", "=", self.member_id.id),
             ("company_id", "=", self.meeting_id.company_id.id), ("active", "=", True),
+            ("subscription_id.state", "=", "running"),
+            ("subscription_id.current_period_id.state", "=", "running"),
         ])
         for line in lines:
             for period in PaymentLine._get_unsettled_periods_for_line(line):
@@ -744,6 +748,11 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
             raise ValidationError(
                 _("Aucune cotisation n'est associée à la ligne du membre.")
             )
+        if subscription.state != "running":
+            raise ValidationError(
+                _("La cotisation %(subscription)s n'est pas en cours et ne peut pas être réglée.")
+                % {"subscription": subscription.display_name}
+            )
         if not member:
             raise ValidationError(
                 _("Aucun membre n'est associé à la ligne de cotisation.")
@@ -767,10 +776,7 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
 
         if (
             period
-            and period.state not in (
-                "running",
-                "closed",
-            )
+            and period.state != "running"
         ):
             period = False
 
@@ -789,7 +795,7 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
         if not period:
             raise ValidationError(
                 _(
-                    "Aucun cycle en cours ou terminé avec "
+                    "Aucun cycle en cours avec "
                     "un solde restant n'a été trouvé pour la cotisation "
                     "%(subscription)s."
                 )

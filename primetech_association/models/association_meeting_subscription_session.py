@@ -31,6 +31,7 @@ class AssociationMeetingSubscriptionSession(models.Model):
     subscription_id = fields.Many2one(
         "association.subscription", required=True, ondelete="restrict",
         string="Cotisation", tracking=True, index=True,
+        domain="[('state', '=', 'running')]",
     )
     period_id = fields.Many2one(
         "association.subscription.period", ondelete="restrict",
@@ -101,6 +102,10 @@ class AssociationMeetingSubscriptionSession(models.Model):
     @api.constrains("subscription_id", "period_id", "meeting_id")
     def _check_session_values(self):
         for session in self:
+            if session.subscription_id and session.subscription_id.state != "running":
+                raise ValidationError(
+                    _("Seules les cotisations en cours peuvent être ajoutées à une réunion.")
+                )
             if not session.period_id:
                 continue
             if session.period_id.subscription_id != session.subscription_id:
@@ -110,6 +115,10 @@ class AssociationMeetingSubscriptionSession(models.Model):
             if session.period_id.company_id != session.meeting_id.company_id:
                 raise ValidationError(
                     _("Le cycle et la réunion doivent appartenir à la même filiale.")
+                )
+            if session.period_id.state != "running":
+                raise ValidationError(
+                    _("Seul le cycle en cours peut être utilisé pendant une réunion.")
                 )
 
     @api.onchange("subscription_id")
@@ -187,6 +196,8 @@ class AssociationMeetingSubscriptionSession(models.Model):
 
     def action_start_collection(self):
         for session in self:
+            if session.subscription_id.state != "running":
+                raise UserError(_("Cette cotisation n'est plus en cours."))
             if session.meeting_id.state == "closed":
                 raise UserError(_("La réunion est déjà clôturée."))
             if not session.period_id:

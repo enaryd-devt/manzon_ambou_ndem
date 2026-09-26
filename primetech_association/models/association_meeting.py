@@ -823,6 +823,7 @@ class AssociationMeeting(models.Model):
         comodel_name="association.subscription",
         string="Cotisation",
         tracking=True,
+        domain="[('state', '=', 'running')]",
     )
 
     subscription_period_id = fields.Many2one(

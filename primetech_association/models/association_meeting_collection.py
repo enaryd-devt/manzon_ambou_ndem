@@ -41,6 +41,8 @@ class AssociationMeetingCollection(models.Model):
                 raise UserError(_("La session de cotisation est verrouillée."))
         records = super().create(vals_list)
         for record in records:
+            if record.subscription_id.state != "running":
+                raise UserError(_("Seules les cotisations en cours peuvent être encaissées en réunion."))
             if not record.initial_due_amount:
                 record.initial_due_amount = record.amount_due
         return records
@@ -461,6 +463,14 @@ class AssociationMeetingCollection(models.Model):
                     "Aucune cotisation n'est associée "
                     "à cette ligne."
                 )
+            )
+
+        if self.subscription_id.state != "running":
+            raise UserError(
+                _(
+                    "La cotisation %(subscription)s n'est pas en cours et ne peut pas être encaissée."
+                )
+                % {"subscription": self.subscription_id.display_name}
             )
 
         amount_received = self.amount or 0.0

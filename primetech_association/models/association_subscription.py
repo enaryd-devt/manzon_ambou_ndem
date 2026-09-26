@@ -398,6 +398,28 @@ class AssociationSubscription(models.Model):
         today = fields.Date.context_today(self)
         for subscription in self:
             lines = subscription.line_ids
+            # Disabling the rule cancels the penalty debt still displayed on
+            # every member row.  Confirmed payments are left untouched; only
+            # the amount still due is recalculated from the base contribution.
+            if not subscription.penalty_enabled:
+                lines.write({
+                    "penalty_amount": 0.0,
+                    "penalty_applied": False,
+                    "penalty_date": False,
+                    "penalty_reason": False,
+                })
+                lines._compute_penalty_deadline()
+                lines._compute_current_cycle_payment()
+                periods = subscription.period_ids.filtered(
+                    lambda period: period.state == "running"
+                )
+                if periods:
+                    self.env["association.subscription.penalty.recap"]._sync_for_lines_period(
+                        lines, periods
+                    )
+                    periods._apply_late_penalty()
+                continue
+
             # An applied penalty is a locked debt: later configuration
             # changes must never rewrite the amount owed by the member.
             configurable_lines = lines.filtered(lambda line: not line.penalty_applied)
@@ -490,6 +512,15 @@ class AssociationSubscription(models.Model):
         today = fields.Date.context_today(self)
         for subscription in self:
             for line in subscription.line_ids:
+                if not subscription.penalty_enabled:
+                    line.penalty_amount = 0.0
+                    line.penalty_applied = False
+                    line.penalty_date = False
+                    line.penalty_reason = False
+                    line._compute_penalty_deadline()
+                    line._compute_current_cycle_payment()
+                    line._compute_penalty_grace_days_remaining()
+                    continue
                 # Once applied, the penalty is part of the member's locked
                 # debt and must not change with subsequent form edits.
                 if line.penalty_applied:

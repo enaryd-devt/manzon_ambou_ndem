@@ -746,6 +746,8 @@ class AssociationDashboard(models.AbstractModel):
         subscription_lines = SubscriptionLine.search([
             ("member_id", "=", member.id),
             ("active", "=", True),
+            ("subscription_id.state", "=", "running"),
+            ("subscription_id.current_period_id.state", "=", "running"),
         ], order="subscription_id, id")
         payment_state_labels = dict(
             SubscriptionLine._fields["payment_state"]._description_selection(self.env)

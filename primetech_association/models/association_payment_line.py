@@ -493,7 +493,7 @@ class AssociationPaymentLine(models.Model):
         subscription_line,
         excluded_period_ids=None,
     ):
-        """Return running or closed cycles that still have a balance."""
+        """Return the usable current cycle of a running subscription only."""
 
         Period = self.env[
             "association.subscription.period"
@@ -505,6 +505,11 @@ class AssociationPaymentLine(models.Model):
         subscription = subscription_line.subscription_id
 
         if not subscription:
+            return Period
+
+        # A closed, draft or cancelled subscription is historical data: it
+        # remains visible, but cannot receive any new allocation.
+        if subscription.state != "running":
             return Period
 
         excluded_period_ids = set(
@@ -524,14 +529,7 @@ class AssociationPaymentLine(models.Model):
                     "=",
                     subscription_line.company_id.id,
                 ),
-                (
-                    "state",
-                    "in",
-                    [
-                        "running",
-                        "closed",
-                    ],
-                ),
+                ("state", "=", "running"),
             ],
             order="sequence asc, id asc",
         )
@@ -833,7 +831,7 @@ class AssociationPaymentLine(models.Model):
         "subscription_line_id.payment_line_ids.subscription_period_id",
     )
     def _compute_eligible_period_ids(self):
-        """Offer running or closed cycles with a remaining balance."""
+        """Offer running cycles with a remaining balance only."""
 
         SubscriptionLine = self.env[
             "association.subscription.line"
@@ -901,10 +899,8 @@ class AssociationPaymentLine(models.Model):
 
             if (
                 record.subscription_period_id
-                and record.subscription_period_id.state in (
-                    "running",
-                    "closed",
-                )
+                and record.subscription_id.state == "running"
+                and record.subscription_period_id.state == "running"
                 and record.subscription_period_id.subscription_id
                 == record.subscription_id
             ):
@@ -924,6 +920,14 @@ class AssociationPaymentLine(models.Model):
             if not record.subscription_id:
                 record.subscription_line_id = False
                 continue
+
+            if record.subscription_id.state != "running":
+                raise ValidationError(
+                    _(
+                        "La cotisation %(subscription)s n'est pas en cours et ne peut pas être utilisée pour un paiement."
+                    )
+                    % {"subscription": record.subscription_id.display_name}
+                )
 
             if not record.payment_id.member_id:
                 record.subscription_line_id = False
@@ -978,16 +982,11 @@ class AssociationPaymentLine(models.Model):
 
             if (
                 record.subscription_period_id
-                and record.subscription_period_id.state
-                not in (
-                    "running",
-                    "closed",
-                )
+                and record.subscription_period_id.state != "running"
             ):
                 raise ValidationError(
                     _(
-                        "Le cycle sélectionné doit être en cours "
-                        "ou terminé."
+                        "Le cycle sélectionné doit être en cours."
                     )
                 )
 
@@ -1692,11 +1691,8 @@ class AssociationPaymentLine(models.Model):
                 and (
                     record.subscription_period_id.subscription_id
                     != record.subscription_id
-                    or record.subscription_period_id.state
-                    not in (
-                        "running",
-                        "closed",
-                    )
+                    or record.subscription_id.state != "running"
+                    or record.subscription_period_id.state != "running"
                 )
             ):
 
