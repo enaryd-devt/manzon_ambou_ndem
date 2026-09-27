@@ -712,6 +712,14 @@ class AssociationMeeting(models.Model):
 
     def action_create_meeting_expense(self):
         self.ensure_one()
+        if self.state != "in_progress":
+            raise UserError(
+                _("Une dépense de séance ne peut être saisie que pendant la réunion.")
+            )
+        if (self.pot_available_amount or 0.0) <= 0.01:
+            raise UserError(
+                _("Aucun montant collecté n'est disponible pour cette dépense de séance.")
+            )
         return {
             "type": "ir.actions.act_window", "name": _("Dépense de séance"),
             "res_model": "association.meeting.expense.wizard", "view_mode": "form", "target": "new",
