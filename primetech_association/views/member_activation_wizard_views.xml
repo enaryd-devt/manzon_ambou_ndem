@@ -10,11 +10,15 @@
                         Saisissez les frais d’adhésion et choisissez le compte de trésorerie qui les recevra.
                         Ils seront recouvrés après les sanctions financières et avant les cotisations.
                     </div>
+                    <div class="alert alert-warning" role="alert">
+                        <field name="is_former_member" class="oe_inline"/>
+                        <span class="ms-2">Ancien membre de l’association : exonérer tous les frais d’adhésion exigibles.</span>
+                    </div>
                     <group>
                         <field name="member_id"/>
-                        <field name="fund_id"/>
+                        <field name="fund_id" invisible="is_former_member" required="not is_former_member"/>
                     </group>
-                    <group string="Frais d’adhésion à recouvrer">
+                    <group string="Frais d’adhésion à recouvrer" invisible="is_former_member">
                         <group>
                             <field name="registration_fee_amount"/>
                             <field name="insurance_fee_amount"/>
@@ -29,10 +33,14 @@
                             <field name="ag_beer_case_amount"/>
                         </group>
                     </group>
-                    <field name="total_fee_amount" readonly="1"/>
+                    <field name="total_fee_amount" readonly="1" invisible="is_former_member"/>
+                    <div class="alert alert-success" role="alert" invisible="not is_former_member">
+                        Aucun frais d’adhésion ne sera créé pour cet ancien membre.
+                    </div>
                 </sheet>
                 <footer>
-                    <button name="action_confirm" type="object" string="Créer les frais et activer" class="btn-primary"/>
+                    <button name="action_confirm" type="object" string="Créer les frais et activer" class="btn-primary" invisible="is_former_member"/>
+                    <button name="action_confirm" type="object" string="Activer sans frais" class="btn-primary" invisible="not is_former_member"/>
                     <button string="Annuler" special="cancel" class="btn-secondary"/>
                 </footer>
             </form>

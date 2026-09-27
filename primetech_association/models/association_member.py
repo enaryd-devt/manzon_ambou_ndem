@@ -299,6 +299,13 @@ class AssociationMember(models.Model):
         index=True,
     )
 
+    is_former_member = fields.Boolean(
+        string="Ancien membre de l’association",
+        default=False,
+        tracking=True,
+        help="Un ancien membre est réactivé sans frais d’adhésion exigibles.",
+    )
+
     # Conditions d’adhésion : tous les éléments sont suivis par montant.
     registration_fee_amount = fields.Monetary(string="Frais d’inscription", currency_field="currency_id", default=0.0)
     insurance_fee_amount = fields.Monetary(string="Frais d’assurance", currency_field="currency_id", default=0.0)
@@ -316,13 +323,15 @@ class AssociationMember(models.Model):
     ag_beer_case_amount = fields.Monetary(string="Montant du casier de bière – AG", currency_field="currency_id", default=0.0)
     activation_requirements_complete = fields.Boolean(string="Conditions d’activation remplies", compute="_compute_activation_requirements")
 
-    @api.depends("registration_fee_amount", "insurance_fee_amount", "forfait_recovery_fee_amount", "working_capital_catchup_amount", "jogging_amount", "traditional_outfit_amount", "sport_jersey_amount", "committee_beer_case_amount", "ag_beer_case_amount")
+    @api.depends("is_former_member", "registration_fee_amount", "insurance_fee_amount", "forfait_recovery_fee_amount", "working_capital_catchup_amount", "jogging_amount", "traditional_outfit_amount", "sport_jersey_amount", "committee_beer_case_amount", "ag_beer_case_amount")
     def _compute_activation_requirements(self):
         for member in self:
             member.activation_requirements_complete = not member._activation_requirement_labels()
 
     def _activation_requirement_labels(self):
         self.ensure_one()
+        if self.is_former_member:
+            return []
         requirements = (
             (self.registration_fee_amount > 0, _("Frais d’inscription")),
             (self.insurance_fee_amount > 0, _("Frais d’assurance")),
@@ -1728,6 +1737,7 @@ class AssociationMember(models.Model):
                 "target": "new",
                 "context": {
                     "default_member_id": self.id,
+                    "default_is_former_member": self.is_former_member,
                     "default_registration_fee_amount": self.registration_fee_amount,
                     "default_insurance_fee_amount": self.insurance_fee_amount,
                     "default_forfait_recovery_fee_amount": self.forfait_recovery_fee_amount,
