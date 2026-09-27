@@ -50,6 +50,7 @@ export class AssociationDashboard extends Component {
                 subscriptionDetail: false,
                 treasuryDetail: false,
                 minutesPreview: false,
+                recoveryReportPreview: false,
             },
             filters: {period: "all", months: 6, date_from: "", date_to: ""},
 
@@ -388,6 +389,25 @@ export class AssociationDashboard extends Component {
 
     closeMemberMinutes() {
         this.state.minutesPreview = false;
+    }
+
+    async downloadSharedRecoveryReport(report) {
+        if (!report?.id) return;
+        const reportAction = await this.orm.call(
+            "association.dashboard", "get_member_recovery_report_download_action", [report.id]
+        );
+        if (reportAction) return this.action.doAction(reportAction);
+    }
+
+    async openMemberRecoveryReport(sessionId) {
+        if (!sessionId) return;
+        this.state.recoveryReportPreview = await this.orm.call(
+            "association.dashboard", "get_member_recovery_report_preview", [sessionId]
+        );
+    }
+
+    closeMemberRecoveryReport() {
+        this.state.recoveryReportPreview = false;
     }
 
     scrollToMemberSanctions() {

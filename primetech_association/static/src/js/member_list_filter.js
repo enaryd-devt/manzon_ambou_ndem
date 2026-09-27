@@ -35,6 +35,7 @@ function filterAllActiveScopes() {
     });
 }
 
+
 document.addEventListener("input", (event) => {
     if (!(event.target instanceof Element)) {
         return;
@@ -46,6 +47,7 @@ document.addEventListener("input", (event) => {
         filterScope(input);
     }
 });
+
 
 let refreshScheduled = false;
 

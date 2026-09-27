@@ -517,6 +517,11 @@ class AssociationPaymentLine(models.Model):
             or []
         )
 
+        # Toute dette non soldée reste recouvrable après la clôture du cycle.
+        # L'ordre par séquence garantit le recouvrement du plus ancien cycle
+        # vers le plus récent avant le cycle courant.
+        period_states = ["closed", "running"]
+
         periods = Period.search(
             [
                 (
@@ -529,7 +534,7 @@ class AssociationPaymentLine(models.Model):
                     "=",
                     subscription_line.company_id.id,
                 ),
-                ("state", "=", "running"),
+                ("state", "in", period_states),
             ],
             order="sequence asc, id asc",
         )
@@ -982,11 +987,11 @@ class AssociationPaymentLine(models.Model):
 
             if (
                 record.subscription_period_id
-                and record.subscription_period_id.state != "running"
+                and record.subscription_period_id.state not in ("running", "closed")
             ):
                 raise ValidationError(
                     _(
-                        "Le cycle sélectionné doit être en cours."
+                        "Le cycle sélectionné doit être en cours, ou être un cycle passé explicitement repris pour ce membre."
                     )
                 )
 

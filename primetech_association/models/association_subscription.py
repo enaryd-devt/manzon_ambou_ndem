@@ -100,6 +100,7 @@ class AssociationSubscription(models.Model):
             ("quarterly", "Cotisation trimestrielle"),
             ("annual", "Cotisation annuelle"),
             ("special", "Cotisation spéciale"),
+            ("recovery", "Recouvrement"),
         ],
         string="Type de cotisation",
         required=True,
@@ -212,6 +213,14 @@ class AssociationSubscription(models.Model):
         comodel_name="association.subscription.period",
         string="Cycle courant",
         compute="_compute_period_statistics",
+        store=True,
+        index=True,
+    )
+
+    is_recovery = fields.Boolean(
+        string="Recouvrement individuel",
+        compute="_compute_is_recovery",
+        store=True,
     )
 
     # ==========================================================
@@ -265,6 +274,11 @@ class AssociationSubscription(models.Model):
         string="Nombre de paiements",
         compute="_compute_payment_count",
     )
+
+    @api.depends("subscription_type")
+    def _compute_is_recovery(self):
+        for subscription in self:
+            subscription.is_recovery = subscription.subscription_type == "recovery"
 
     # ==========================================================
     # GESTION DES PÉNALITÉS
@@ -753,9 +767,17 @@ class AssociationSubscription(models.Model):
     @api.onchange("amount")
     def _onchange_amount(self):
         for record in self:
-            if record.state == "draft":
+            if record.state == "draft" and record.subscription_type == "recovery":
                 for line in record.line_ids:
-                    line.amount_due = record.amount
+                    line.recovery_amount = record.amount
+
+    @api.onchange("subscription_type")
+    def _onchange_subscription_type(self):
+        for record in self:
+            if record.subscription_type == "recovery":
+                for line in record.line_ids:
+                    if not line.recovery_amount:
+                        line.recovery_amount = record.amount
 
     # ==========================================================
     # GÉNÉRER LES MEMBRES
@@ -792,7 +814,7 @@ class AssociationSubscription(models.Model):
                 values_list.append({
                     "subscription_id": record.id,
                     "member_id": member.id,
-                    "amount_due": record.amount,
+                    "recovery_amount": record.amount if record.is_recovery else 0.0,
                 })
 
             if not values_list:
@@ -835,13 +857,19 @@ class AssociationSubscription(models.Model):
                     )
                 )
 
-            if record.amount <= 0:
+            if record.subscription_type != "recovery" and record.amount <= 0:
                 raise ValidationError(
                     _(
                         "Le montant de la cotisation doit être "
                         "strictement supérieur à zéro."
                     )
                 )
+
+            if record.is_recovery:
+                if not record.due_date:
+                    raise ValidationError(_("Une date d'échéance est obligatoire pour un recouvrement."))
+                if any(line.recovery_amount <= 0 for line in record.line_ids):
+                    raise ValidationError(_("Chaque membre doit avoir un montant de recouvrement strictement positif."))
 
             record.state = "confirmed"
 
@@ -879,6 +907,12 @@ class AssociationSubscription(models.Model):
             record.write({
                 "state": "running",
             })
+
+            if record.is_recovery:
+                record.message_post(
+                    body=_("Le recouvrement a été démarré. Les montants sont individuels et aucun cycle n'est créé.")
+                )
+                continue
 
             period = record._create_first_period()
 
@@ -1763,4 +1797,17 @@ class AssociationSubscription(models.Model):
             "context": {
                 "default_subscription_id": self.id,
             },
+        }
+
+    def action_add_member(self):
+        self.ensure_one()
+        if self.state != "running":
+            raise ValidationError(_("Un membre peut être ajouté uniquement à une cotisation en cours."))
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Ajouter un membre"),
+            "res_model": "association.subscription.member.add.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {"default_subscription_id": self.id},
         }

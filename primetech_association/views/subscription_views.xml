@@ -381,6 +381,7 @@
                         groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
                         invisible="state != 'draft'"/>
 
+
                     <button
                         name="action_confirm"
                         string="Confirmer"
@@ -416,7 +417,7 @@
                         icon="fa-lock"
                         groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
                         confirm="Les pénalités arrivées à échéance seront ajoutées définitivement aux montants dus. Continuer ?"
-                        invisible="state != 'running' or not penalty_enabled"/>
+                        invisible="state != 'running' or not penalty_enabled or subscription_type == 'recovery'"/>
 
                         <button
                             name="action_close_current_period"
@@ -425,7 +426,7 @@
                             class="btn-secondary"
                             icon="fa-check-circle"
                             groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
-                            invisible="state != 'running' or not current_period_id"
+                            invisible="state != 'running' or not current_period_id or subscription_type == 'recovery'"
                             confirm="Voulez-vous lancer la procédure de clôture du cycle courant ?"
                         />
 
@@ -436,7 +437,7 @@
                             class="btn-primary"
                             icon="fa-forward"
                             groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
-                            invisible="state != 'running' or current_period_id"
+                            invisible="state != 'running' or current_period_id or subscription_type == 'recovery'"
                             confirm="Voulez-vous ouvrir le cycle suivant ?"
                         />
 
@@ -1149,6 +1150,11 @@
                                     readonly="state != 'draft'"
                                     help="Compte proposé à la clôture du cycle si un reliquat doit être versé en trésorerie. Aucun encaissement individuel n'y est enregistré."/>
 
+                                <field name="amount"
+                                       string="Montant proposé"
+                                       invisible="subscription_type != 'recovery'"
+                                       readonly="state != 'draft'"/>
+
                                 <field
                                     name="penalty_enabled"
                                     string="Appliquer les pénalités"
@@ -1161,7 +1167,7 @@
                             <!-- CYCLE                                                 -->
                             <!-- ===================================================== -->
 
-                            <group string="Cycle">
+                            <group string="Cycle" invisible="subscription_type == 'recovery'">
 
                                 <field
                                     name="period_start_date"
@@ -1187,6 +1193,16 @@
                                        required="due_timing == 'custom_days'"
                                        readonly="state != 'draft'"/>
 
+                            </group>
+
+                            <group string="Échéance" invisible="subscription_type != 'recovery'">
+                                <field name="due_date"
+                                       string="Date d'échéance"
+                                       required="subscription_type == 'recovery'"
+                                       readonly="state != 'draft'"/>
+                                <div class="o_form_label text-muted">
+                                    Le montant est renseigné individuellement pour chaque membre dans l'onglet Membres.
+                                </div>
                             </group>
 
                         </group>
@@ -1319,6 +1335,15 @@
 
                             <div class="pt-member-filter-scope">
 
+                                <button
+                                    name="action_add_member"
+                                    string="Ajouter un membre"
+                                    type="object"
+                                    class="btn-primary"
+                                    icon="fa-user-plus"
+                                    groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                                    invisible="state != 'running'"/>
+
                                 <div class="pt-member-list-searchbar">
                                     <i class="fa fa-search"/>
                                     <input
@@ -1333,6 +1358,8 @@
 
                                     <list
                                         editable="bottom"
+                                        create="0"
+                                        limit="2000"
                                         decoration-success="payment_state == 'paid'"
                                         decoration-warning="payment_state == 'partial'"
                                         decoration-danger="payment_state == 'not_paid'">
@@ -1383,6 +1410,13 @@
                                         options="{'currency_field': 'currency_id'}"
                                         readonly="1"
                                         optional="show"/>
+
+                                    <field name="recovery_amount"
+                                           string="Montant individuel"
+                                           widget="monetary"
+                                           options="{'currency_field': 'currency_id'}"
+                                           invisible="parent.subscription_type != 'recovery'"
+                                           readonly="parent.state != 'draft'"/>
 
                                     <field
                                         name="penalty_amount"
@@ -1450,6 +1484,7 @@
                                             payment_state == 'paid'
                                             or balance &lt;= 0
                                             or not has_member_account
+                                            or parent.subscription_type == 'recovery'
                                         "/>
 
                                     <field
@@ -1574,7 +1609,8 @@
 
                         <page
                             string="Historique des cycles"
-                            name="subscription_history">
+                            name="subscription_history"
+                            invisible="subscription_type == 'recovery'">
 
                             <field
                                 name="period_ids"

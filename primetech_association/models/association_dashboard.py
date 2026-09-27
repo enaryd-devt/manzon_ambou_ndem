@@ -707,6 +707,7 @@ class AssociationDashboard(models.AbstractModel):
             "treasury_accounts": [],
             "directory": [],
             "shared_minutes": [],
+            "shared_recovery_reports": [],
         }
         if not member:
             return values
@@ -740,6 +741,18 @@ class AssociationDashboard(models.AbstractModel):
         } for meeting in Meeting.search([
             ("company_id", "=", company.id), ("minutes_shared", "=", True), ("minutes_approved", "=", True),
         ], order="meeting_date desc, id desc")]
+        Session = self.env["association.meeting.subscription.session"].sudo()
+        values["shared_recovery_reports"] = [{
+            "id": session.id,
+            "title": _("Rapport de recouvrement - %s") % (
+                session.period_id.display_name or session.subscription_id.display_name or "",
+            ),
+            "date": fields.Date.to_string(session.closed_at.date()) if session.closed_at else "",
+            "meeting": session.meeting_id.title or session.meeting_id.name or "",
+        } for session in Session.search([
+            ("company_id", "=", company.id), ("state", "=", "closed"),
+            ("report_shared", "=", True),
+        ], order="closed_at desc, id desc")]
         payments = Payment.search([("member_id", "=", member.id)], order="payment_date desc, id desc")
         penalties = Penalty.search([("member_id", "=", member.id)], order="incident_date desc, id desc")
         member_account = MemberAccount.search([("member_id", "=", member.id)], limit=1)
@@ -959,3 +972,44 @@ class AssociationDashboard(models.AbstractModel):
         return self.env.ref(
             "primetech_association.action_report_meeting_minutes"
         ).report_action(meeting)
+
+    @api.model
+    def _get_shared_recovery_session(self, session_id):
+        company = self.env.company
+        member = self.env["association.member"].sudo().search([
+            ("user_id", "=", self.env.user.id), ("company_id", "=", company.id),
+            ("state", "=", "active"), ("active", "=", True),
+        ], limit=1)
+        if not member:
+            return self.env["association.meeting.subscription.session"]
+        return self.env["association.meeting.subscription.session"].sudo().search([
+            ("id", "=", session_id), ("company_id", "=", company.id),
+            ("state", "=", "closed"), ("report_shared", "=", True),
+        ], limit=1)
+
+    @api.model
+    def get_member_recovery_report_preview(self, session_id):
+        session = self._get_shared_recovery_session(session_id)
+        if not session:
+            return False
+        return {
+            "id": session.id,
+            "title": _("Rapport de recouvrement - %s") % (
+                session.period_id.display_name or session.subscription_id.display_name or "",
+            ),
+            "date": fields.Date.to_string(session.closed_at.date()) if session.closed_at else "",
+            "meeting": session.meeting_id.title or session.meeting_id.name or "",
+            "expected": session.closed_expected_amount or 0.0,
+            "collected": session.closed_collected_amount or 0.0,
+            "participants": len(session.snapshot_ids),
+            "currency": session.currency_id.symbol or "",
+        }
+
+    @api.model
+    def get_member_recovery_report_download_action(self, session_id):
+        session = self._get_shared_recovery_session(session_id)
+        if not session:
+            return False
+        return self.env.ref(
+            "primetech_association.action_report_meeting_subscription_session"
+        ).report_action(session)

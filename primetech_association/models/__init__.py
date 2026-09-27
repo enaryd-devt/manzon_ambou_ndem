@@ -18,6 +18,7 @@ from . import association_member_function
 from . import association_skill
 
 from . import association_member
+from . import association_membership_fee
 from . import association_committee
 from . import association_committee_line
 
@@ -44,6 +45,7 @@ from . import association_meeting_officer
 from . import association_meeting_attendance
 from . import association_meeting_resolution
 from . import association_meeting_collection
+from . import association_meeting_member_situation
 from . import association_meeting_allocation
 
 from . import association_penalty

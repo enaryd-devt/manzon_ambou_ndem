@@ -14,9 +14,9 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="session">
                 <t t-call="web.external_layout">
-                    <div class="page">
+                    <div class="page" style="padding-top: 18mm;">
                         <style>
-                            .subscription-report-header { border-bottom: 3px solid #1f4e78; margin-bottom: 18px; padding-bottom: 10px; }
+                            .subscription-report-header { border-bottom: 1px solid #d9dde3; margin-bottom: 13px; padding-bottom: 7px; }
                             .subscription-report-title { color: #1f4e78; font-size: 22px; font-weight: 700; margin: 0; }
                             .subscription-report-subtitle { color: #6c757d; font-size: 11px; margin: 4px 0 0; }
                             .subscription-report-section { color: #1f4e78; font-size: 14px; font-weight: 700; margin: 20px 0 8px; }
@@ -99,6 +99,14 @@
                         </table>
 
                         <h3 class="subscription-report-section">Décision de clôture</h3>
+                        <h3 class="subscription-report-section">Détail des recouvrements par membre</h3>
+                        <t t-foreach="session.snapshot_ids" t-as="member_line">
+                            <div style="margin: 0 0 10px; padding: 7px 9px; border: 1px solid #d9dde3; page-break-inside: avoid;">
+                                <div style="font-weight: 700; color: #1f4e78; margin-bottom: 4px;"><span t-field="member_line.member_name"/> — dû : <span t-field="member_line.amount_due"/> · réglé : <span t-field="member_line.amount_paid"/> · reste : <span t-field="member_line.balance"/></div>
+                                <table class="subscription-report-table" t-if="session.get_member_recovery_details(member_line.member_id)"><thead><tr><th>Référence</th><th>Date</th><th>Mode</th><th>Détail</th><th class="amount">Montant</th></tr></thead><tbody><tr t-foreach="session.get_member_recovery_details(member_line.member_id)" t-as="payment"><td><span t-field="payment.name"/></td><td><span t-field="payment.payment_date"/></td><td><span t-field="payment.payment_method"/></td><td><span t-field="payment.payment_reference"/></td><td class="amount"><span t-field="payment.amount"/></td></tr></tbody></table>
+                                <div t-if="not session.get_member_recovery_details(member_line.member_id)" class="subscription-report-empty">Aucun règlement validé pour ce membre durant cette réunion.</div>
+                            </div>
+                        </t>
                         <div class="subscription-report-note"><span t-field="session.closure_note"/></div>
                     </div>
                 </t>

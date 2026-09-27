@@ -103,6 +103,7 @@ Bonnes pratiques
 
         "security/association_security.xml",
         "security/ir.model.access.csv",
+        "security/subscription_member_add_wizard_security.xml",
 
         # =====================================================
         # DATA
@@ -122,6 +123,7 @@ Bonnes pratiques
         "views/member_views.xml",
         "views/member_card_wizard_views.xml",
         "views/member_activation_wizard_views.xml",
+        "views/membership_fee_views.xml",
         "views/member_card_views.xml",
 
         "views/committee_views.xml",
@@ -165,6 +167,7 @@ Bonnes pratiques
         "views/member_function_views.xml",
 
         "views/subscription_payment_wizard_views.xml",
+        "views/subscription_member_add_wizard_views.xml",
 
         "views/member_account_views.xml",
         "views/member_account_transaction_views.xml",
@@ -174,6 +177,9 @@ Bonnes pratiques
         "views/subscription_cycle_close_wizard_views.xml",
         "views/meeting_subscription_cycle_start_wizard_views.xml",
         "views/meeting_expense_wizard_views.xml",
+        "views/meeting_available_amount_wizard_views.xml",
+        "views/meeting_cycle_finish_wizard_views.xml",
+        "views/meeting_penalty_payment_wizard_views.xml",
         "views/member_account_subscription_payment_wizard_views.xml",
 
         # =====================================================
@@ -201,6 +207,7 @@ Bonnes pratiques
             "primetech_association/static/src/scss/member_list_filter.scss",
 
             "primetech_association/static/src/js/refresh_subscription_table.js",
+            "primetech_association/static/src/js/meeting_live_sync.js",
             "primetech_association/static/src/js/member_list_filter.js",
         ],
     },

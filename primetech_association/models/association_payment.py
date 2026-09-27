@@ -213,6 +213,29 @@ class AssociationPayment(models.Model):
         compute="_compute_payment_totals",
     )
 
+    priority_allocation_amount = fields.Monetary(
+        string="Montant affecté aux créances prioritaires",
+        currency_field="currency_id",
+        readonly=True,
+        copy=False,
+        default=0.0,
+    )
+
+    priority_allocation_payload = fields.Json(
+        string="Détail des créances prioritaires",
+        readonly=True,
+        copy=False,
+    )
+
+
+    membership_fee_allocation_amount = fields.Monetary(
+        string="Montant affecté aux frais d’adhésion",
+        currency_field="currency_id", readonly=True, copy=False, default=0.0,
+    )
+
+    membership_fee_allocation_payload = fields.Json(
+        string="Détail des frais d’adhésion réglés", readonly=True, copy=False,
+    )
 
     # ==========================================================
     # CYCLE DE COTISATION
@@ -618,6 +641,8 @@ class AssociationPayment(models.Model):
         "amount",
         "line_ids",
         "line_ids.amount_paid",
+        "priority_allocation_amount",
+        "membership_fee_allocation_amount",
     )
     def _compute_payment_totals(self):
 
@@ -627,7 +652,7 @@ class AssociationPayment(models.Model):
                 record.line_ids.mapped(
                     "amount_paid"
                 )
-            )
+            ) + (record.priority_allocation_amount or 0.0) + (record.membership_fee_allocation_amount or 0.0)
 
             record.line_count = len(
                 record.line_ids
@@ -931,12 +956,7 @@ class AssociationPayment(models.Model):
                 }
             )
 
-            if hasattr(
-                transaction,
-                "action_confirm",
-            ):
-
-                transaction.action_confirm()
+            transaction.action_validate()
     
     
     # ==========================================================
@@ -1103,12 +1123,14 @@ class AssociationPayment(models.Model):
         "amount",
         "line_ids",
         "line_ids.amount_paid",
+        "priority_allocation_amount",
+        "membership_fee_allocation_amount",
     )
     def _check_allocated_amount(self):
         for record in self:
             allocated_amount = sum(
                 record.line_ids.mapped("amount_paid")
-            )
+            ) + (record.priority_allocation_amount or 0.0) + (record.membership_fee_allocation_amount or 0.0)
 
             if allocated_amount > record.amount:
                 raise ValidationError(
@@ -1123,9 +1145,65 @@ class AssociationPayment(models.Model):
                     }
                 )
 
+    def _apply_priority_recoveries(self):
+        """Apply the frozen sanction/admission-fee allocations of a payment."""
+        Penalty = self.env["association.penalty"]
+        for record in self:
+            for allocation in record.priority_allocation_payload or []:
+                penalty = Penalty.browse(allocation.get("penalty_id")).exists()
+                amount = float(allocation.get("amount") or 0.0)
+                if not penalty or amount <= 0:
+                    continue
+                settled_amount = min(amount, penalty.amount_remaining or 0.0)
+                if settled_amount <= 0:
+                    continue
+                penalty.write({"amount_paid": (penalty.amount_paid or 0.0) + settled_amount})
+                penalty.message_post(body=_(
+                    "Règlement de %(amount).2f %(currency)s enregistré par le paiement %(payment)s."
+                ) % {
+                    "amount": settled_amount,
+                    "currency": record.currency_id.name or "",
+                    "payment": record.display_name,
+                })
+
     # ==========================================================
     # CRÉDITER ET VALIDER LE COMPTE MEMBRE
     # ==========================================================
+
+    def _apply_membership_fee_recoveries(self):
+        """Règle les frais d’adhésion et alimente leur compte de trésorerie."""
+        Fee = self.env["association.membership.fee"]
+        Transaction = self.env["association.fund.transaction"]
+        for record in self:
+            for allocation in record.membership_fee_allocation_payload or []:
+                fee = Fee.browse(allocation.get("membership_fee_id")).exists()
+                amount = float(allocation.get("amount") or 0.0)
+                if not fee or amount <= 0 or fee.state == "cancelled":
+                    continue
+                settled = min(amount, fee.amount_remaining or 0.0)
+                if settled <= 0:
+                    continue
+                fee.register_payment(settled)
+                existing = Transaction.search([
+                    ("origin_model", "=", "association.membership.fee"),
+                    ("origin_res_id", "=", fee.id),
+                    ("payment_id", "=", record.id),
+                    ("state", "!=", "cancelled"),
+                ], limit=1)
+                if not existing:
+                    transaction = Transaction.create({
+                        "fund_id": fee.fund_id.id,
+                        "transaction_type": "in",
+                        "amount": settled,
+                        "transaction_date": record.payment_date,
+                        "description": _("Frais d’adhésion encaissé - %(member)s - %(fee)s") % {"member": fee.member_id.display_name, "fee": fee.name},
+                        "company_id": record.company_id.id,
+                        "payment_id": record.id,
+                        "origin_model": "association.membership.fee",
+                        "origin_res_id": fee.id,
+                        "origin_reference": record.name,
+                    })
+                    transaction.action_validate()
 
     def _credit_member_account(
         self,
@@ -1402,6 +1480,20 @@ class AssociationPayment(models.Model):
 
             for subscription_line in subscription_lines:
 
+                if subscription_line.subscription_id.subscription_type == "recovery":
+                    already_added = any(
+                        existing_line.subscription_line_id == subscription_line
+                        and not existing_line.subscription_period_id
+                        for existing_line in record.line_ids
+                    )
+                    if subscription_line.balance > 0.01 and not already_added:
+                        new_lines.append((0, 0, {
+                            "subscription_line_id": subscription_line.id,
+                            "subscription_id": subscription_line.subscription_id.id,
+                            "amount_paid": 0.0,
+                        }))
+                    continue
+
                 periods = PaymentLine._get_unsettled_periods_for_line(
                     subscription_line
                 )
@@ -1663,10 +1755,21 @@ class AssociationPayment(models.Model):
             # MONTANT AFFECTÉ
             # ======================================================
 
-            allocated_amount = sum(
+            subscription_allocated_amount = sum(
                 record.line_ids.mapped(
                     "amount_paid"
                 )
+            )
+            priority_allocated_amount = record.priority_allocation_amount or 0.0
+            membership_fee_allocated_amount = (
+                record.membership_fee_allocation_amount or 0.0
+            )
+            # Les frais d'adhésion font partie intégrante du recouvrement :
+            # ils ne doivent jamais être interprétés comme un surplus.
+            allocated_amount = (
+                subscription_allocated_amount
+                + priority_allocated_amount
+                + membership_fee_allocated_amount
             )
 
             # ======================================================
@@ -1698,7 +1801,11 @@ class AssociationPayment(models.Model):
 
             if record.has_allocations:
 
-                if not record.line_ids:
+                if (
+                    not record.line_ids
+                    and priority_allocated_amount <= 0
+                    and membership_fee_allocated_amount <= 0
+                ):
 
                     raise ValidationError(
                         _(
@@ -1751,6 +1858,34 @@ class AssociationPayment(models.Model):
 
                 period = line.subscription_period_id
 
+                if subscription.subscription_type == "recovery":
+                    previous_lines = self.env["association.payment.line"].search([
+                        ("subscription_line_id", "=", subscription_line.id),
+                        ("payment_id.state", "=", "confirmed"),
+                        ("payment_id", "!=", record.id),
+                        ("subscription_period_id", "=", False),
+                    ])
+                    already_paid = sum(previous_lines.mapped("amount_paid"))
+                    remaining_amount = max(
+                        (subscription_line.recovery_amount or 0.0)
+                        + (subscription_line.penalty_amount or 0.0)
+                        - already_paid,
+                        0.0,
+                    )
+                    if remaining_amount <= 0 or (line.amount_paid or 0.0) > remaining_amount:
+                        raise ValidationError(
+                            _("Le montant affecté au recouvrement de %(member)s dépasse son reste à payer.")
+                            % {"member": subscription_line.member_id.display_name}
+                        )
+                    recovery_key = (subscription_line.id, False)
+                    allocated_by_cycle[recovery_key] = allocated_by_cycle.get(recovery_key, 0.0) + (line.amount_paid or 0.0)
+                    if allocated_by_cycle[recovery_key] > remaining_amount + 0.01:
+                        raise ValidationError(
+                            _("Le montant total affecté au recouvrement de %(member)s dépasse son reste à payer.")
+                            % {"member": subscription_line.member_id.display_name}
+                        )
+                    continue
+
                 # ==================================================
                 # CONTRÔLE DU CYCLE
                 # ==================================================
@@ -1769,10 +1904,7 @@ class AssociationPayment(models.Model):
                         }
                     )
 
-                if period.state not in (
-                    "running",
-                    "closed",
-                ):
+                if period.state not in ("running", "closed"):
 
                     raise ValidationError(
                         _(
@@ -2002,6 +2134,8 @@ class AssociationPayment(models.Model):
                     "state": "confirmed",
                 }
             )
+            record._apply_priority_recoveries()
+            record._apply_membership_fee_recoveries()
             penalty_transactions = record._create_penalty_fund_transactions()
 
             SubscriptionPenaltyRecap = self.env[

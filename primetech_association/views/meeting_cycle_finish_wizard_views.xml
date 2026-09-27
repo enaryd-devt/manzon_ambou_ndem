@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="view_meeting_cycle_finish_wizard_form" model="ir.ui.view">
+    <field name="name">association.meeting.cycle.finish.wizard.form</field>
+    <field name="model">association.meeting.cycle.finish.wizard</field>
+    <field name="arch" type="xml">
+      <form string="Terminer les cotisations">
+        <sheet>
+          <field name="currency_id" invisible="1"/>
+          <group><field name="meeting_id"/><field name="period_id"/><field name="available_amount"/><field name="allocated_amount"/></group>
+          <div class="alert alert-info">Répartissez la caisse disponible entre un ou plusieurs bénéficiaires, ou versez-la dans un ou plusieurs comptes de trésorerie. Le total doit correspondre au montant disponible.</div>
+          <field name="allocation_line_ids" nolabel="1"><list editable="bottom"><field name="company_id" column_invisible="1"/><field name="currency_id" column_invisible="1"/><field name="destination"/><field name="beneficiary_id" invisible="destination != 'beneficiary'" required="destination == 'beneficiary'"/><field name="fund_id" invisible="destination != 'treasury'" required="destination == 'treasury'"/><field name="amount"/><field name="note"/></list></field>
+          <field name="apply_penalties"/>
+        </sheet>
+        <footer><button name="action_confirm" type="object" string="Affecter et terminer le cycle" class="btn-primary"/><button string="Annuler" special="cancel" class="btn-secondary"/></footer>
+      </form>
+    </field>
+  </record>
+</odoo>

@@ -38,6 +38,9 @@
     <menuitem id="menu_payment" name="Encaissements" parent="menu_finance_collections"
         action="action_payment" sequence="20"
         groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"/>
+    <menuitem id="menu_membership_fee" name="Frais d’adhésion" parent="menu_finance_collections"
+        action="action_membership_fee" sequence="25"
+        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"/>
     <menuitem id="menu_subscription_penalty_recap" name="Pénalités de cotisation"
         parent="menu_finance_collections" action="action_subscription_penalty_recap_server"
         sequence="30"

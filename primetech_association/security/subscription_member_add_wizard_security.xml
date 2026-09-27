@@ -1,0 +1,23 @@
+<odoo>
+    <record id="access_subscription_member_add_wizard_treasurer" model="ir.model.access">
+        <field name="name">association.subscription.member.add.wizard.treasurer</field>
+        <field name="model_id" ref="model_association_subscription_member_add_wizard"/>
+        <field name="group_id" ref="group_association_meeting_treasurer"/>
+        <field name="perm_read" eval="1"/><field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/><field name="perm_unlink" eval="1"/>
+    </record>
+    <record id="access_subscription_member_add_wizard_manager" model="ir.model.access">
+        <field name="name">association.subscription.member.add.wizard.manager</field>
+        <field name="model_id" ref="model_association_subscription_member_add_wizard"/>
+        <field name="group_id" ref="group_association_manager"/>
+        <field name="perm_read" eval="1"/><field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/><field name="perm_unlink" eval="1"/>
+    </record>
+    <record id="access_subscription_member_add_wizard_admin" model="ir.model.access">
+        <field name="name">association.subscription.member.add.wizard.admin</field>
+        <field name="model_id" ref="model_association_subscription_member_add_wizard"/>
+        <field name="group_id" ref="group_association_admin"/>
+        <field name="perm_read" eval="1"/><field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/><field name="perm_unlink" eval="1"/>
+    </record>
+</odoo>

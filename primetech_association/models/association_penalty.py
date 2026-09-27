@@ -45,7 +45,6 @@ class AssociationPenalty(models.Model):
     meeting_id = fields.Many2one(
         comodel_name="association.meeting",
         string="Réunion",
-        required=True,
         ondelete="restrict",
         tracking=True,
         index=True,
@@ -194,6 +193,27 @@ class AssociationPenalty(models.Model):
         tracking=True,
     )
 
+    recovery_origin = fields.Selection(
+        selection=[
+            ("sanction", "Sanction financière"),
+            ("activation_fee", "Frais d’activation"),
+        ],
+        string="Origine du recouvrement",
+        required=True,
+        default="sanction",
+        readonly=True,
+        copy=False,
+        index=True,
+    )
+
+    recovery_priority = fields.Integer(
+        string="Priorité de recouvrement",
+        default=10,
+        readonly=True,
+        copy=False,
+        index=True,
+    )
+
     currency_id = fields.Many2one(
         comodel_name="res.currency",
         related="company_id.currency_id",
@@ -229,6 +249,43 @@ class AssociationPenalty(models.Model):
         store=True,
         index=True,
     )
+
+    meeting_recovery_open = fields.Boolean(
+        string="Recouvrement en séance ouvert",
+        compute="_compute_meeting_recovery_open",
+    )
+
+    @api.depends("meeting_id.state", "meeting_id.pot_settlement_state")
+    def _compute_meeting_recovery_open(self):
+        for penalty in self:
+            meeting = penalty.meeting_id
+            penalty.meeting_recovery_open = bool(
+                meeting and meeting.state == "in_progress"
+                and meeting.pot_settlement_state == "open"
+            )
+
+    def action_open_meeting_payment(self):
+        """Open the in-session cash payment for this exact financial sanction."""
+        self.ensure_one()
+        if self.penalty_type != "fine" or self.recovery_origin != "sanction":
+            raise UserError(_("Seule une sanction financière peut être encaissée ici."))
+        if self.state not in ("validated", "executed") or self.amount_remaining <= 0.01:
+            raise UserError(_("Cette sanction n'a plus de montant à régler."))
+        if not self.meeting_recovery_open:
+            raise UserError(_(
+                "Cette sanction ne peut être encaissée qu'avant la clôture des recouvrements de la réunion."
+            ))
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Encaisser une sanction financière"),
+            "res_model": "association.meeting.penalty.payment.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {
+                "default_penalty_id": self.id,
+                "default_amount_received": self.amount_remaining,
+            },
+        }
 
     # ==========================================================
     # SUSPENSION
@@ -562,6 +619,13 @@ class AssociationPenalty(models.Model):
                 vals["corrective_action_required"] = True
 
             penalty_type = vals.get("penalty_type") or "observation"
+
+            if vals.get("recovery_origin") == "activation_fee":
+                vals["penalty_type"] = "fine"
+                vals["recovery_priority"] = 20
+                penalty_type = "fine"
+            else:
+                vals.setdefault("recovery_priority", 10)
 
             if penalty_type != "fine":
 

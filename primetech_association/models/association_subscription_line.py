@@ -83,6 +83,15 @@ class AssociationSubscriptionLine(models.Model):
         string="Cycle courant",
         related="subscription_id.current_period_id",
         readonly=True,
+        store=True,
+        index=True,
+    )
+
+    include_past_periods = fields.Boolean(
+        string="Cycles passés à recouvrer",
+        default=False,
+        copy=False,
+        help="Inclut les cycles terminés antérieurs dans la situation du membre.",
     )
 
     # ==========================================================
@@ -141,6 +150,14 @@ class AssociationSubscriptionLine(models.Model):
         currency_field="currency_id",
         compute="_compute_current_cycle_payment",
         store=True,
+    )
+
+    recovery_amount = fields.Monetary(
+        string="Montant à recouvrer",
+        currency_field="currency_id",
+        default=0.0,
+        copy=True,
+        help="Montant individuel demandé à ce membre pour un recouvrement.",
     )
 
     amount_paid = fields.Monetary(
@@ -388,6 +405,7 @@ class AssociationSubscriptionLine(models.Model):
 
     @api.depends(
         "subscription_id.amount",
+        "subscription_id.subscription_type",
         "subscription_id.current_period_id",
         "subscription_id.current_period_id.period_start_date",
         "subscription_id.current_period_id.period_end_date",
@@ -399,6 +417,7 @@ class AssociationSubscriptionLine(models.Model):
         "payment_line_ids.payment_id.payment_date",
         "payment_line_ids.payment_id.subscription_period_id",
         "payment_line_ids.subscription_period_id",
+        "recovery_amount",
     )
     def _compute_current_cycle_payment(self):
 
@@ -413,6 +432,23 @@ class AssociationSubscriptionLine(models.Model):
             payment_date = False
 
             subscription = record.subscription_id
+
+            if subscription.subscription_type == "recovery":
+                payment_lines = PaymentLine.search([
+                    ("subscription_line_id", "=", record.id),
+                    ("payment_id.state", "=", "confirmed"),
+                    ("subscription_period_id", "=", False),
+                    ("payment_id.subscription_period_id", "=", False),
+                ])
+                amount_due = (record.recovery_amount or 0.0) + (record.penalty_amount or 0.0)
+                amount_paid = sum(payment_lines.mapped("amount_paid"))
+                dates = [payment.payment_date for payment in payment_lines.mapped("payment_id") if payment.payment_date]
+                record.amount_due = amount_due
+                record.amount_paid = amount_paid
+                record.balance = max(amount_due - amount_paid, 0.0)
+                record.payment_date = max(dates) if dates else False
+                record.payment_state = "paid" if amount_due and amount_paid >= amount_due else ("partial" if amount_paid else "not_paid")
+                continue
 
             # ======================================================
             # RECHERCHE DU CYCLE RÉELLEMENT ACTIF
@@ -1071,6 +1107,11 @@ class AssociationSubscriptionLine(models.Model):
                 )
                 % {"subscription": subscription.display_name}
             )
+
+        if subscription.subscription_type == "recovery":
+            if self.payment_state == "paid" or self.balance <= 0:
+                raise ValidationError(_("Ce recouvrement ne présente aucun reste à payer."))
+            return False
 
         # ======================================================
         # RECHERCHE DIRECTE DU CYCLE EN COURS

@@ -90,6 +90,10 @@ class AssociationMeetingSubscriptionSession(models.Model):
     closed_by_id = fields.Many2one("res.users", readonly=True, copy=False)
     closed_at = fields.Datetime(readonly=True, copy=False)
     closure_note = fields.Text(string="Décision de clôture", readonly=True, copy=False)
+    report_shared = fields.Boolean(
+        string="Rapport de recouvrement partagé aux membres",
+        default=False, readonly=True, copy=False, tracking=True,
+    )
 
     _sql_constraints = [
         (
@@ -285,7 +289,7 @@ class AssociationMeetingSubscriptionSession(models.Model):
     def _close_without_treasury_transfer(self):
         """Close an empty or fully allocated temporary meeting cash directly."""
         self.ensure_one()
-        if self.period_id.available_amount > 0.01:
+        if self.meeting_id.pot_available_amount > 0.01:
             raise ValidationError(_("Un reliquat doit être traité avant la clôture."))
         self.period_id.write({"state": "closed"})
         self.subscription_id.line_ids.write({"amount_received": 0.0})
@@ -403,8 +407,34 @@ class AssociationMeetingSubscriptionSession(models.Model):
             "primetech_association.action_report_meeting_subscription_session"
         ).report_action(self)
 
+    def action_share_report(self):
+        """Publier le rapport définitif dans l'espace des membres ordinaires."""
+        for session in self:
+            if session.state != "closed":
+                raise UserError(_("Le rapport ne peut être partagé qu'après la clôture."))
+            session.write({"report_shared": True})
+        return True
+
+    def action_unshare_report(self):
+        self.write({"report_shared": False})
+        return True
+
+    def get_member_recovery_details(self, member):
+        """Return every confirmed recovery of a member in this meeting."""
+        self.ensure_one()
+        member_id = member.id if hasattr(member, "id") else member
+        return self.env["association.payment"].search([
+            ("meeting_id", "=", self.meeting_id.id),
+            ("member_id", "=", member_id),
+            ("state", "=", "confirmed"),
+        ], order="payment_date, id")
+
     def write(self, vals):
-        protected_fields = set(vals) - {"message_follower_ids", "message_ids"}
+        # A closed session remains financially immutable.  Publishing or
+        # withdrawing its already frozen PDF is a communication setting only.
+        protected_fields = set(vals) - {
+            "message_follower_ids", "message_ids", "report_shared",
+        }
         if protected_fields:
             for session in self:
                 if session.state == "closed" and vals.get("state") != "closed":
@@ -412,3 +442,31 @@ class AssociationMeetingSubscriptionSession(models.Model):
                         _("Une session clôturée est verrouillée et ne peut plus être modifiée.")
                     )
         return super().write(vals)
+
+
+class ReportMeetingSubscriptionSession(models.AbstractModel):
+    """Render a published recovery report without exposing operational data."""
+
+    _name = "report.primetech_association.report_meeting_subscription_session_document"
+    _description = "Rapport de recouvrement partagé"
+    _auto = False
+    # Odoo validates a SQL table identifier even for an AbstractModel.  Keep
+    # this technical identifier short; this report model never creates a table.
+    _table = "pt_assoc_recovery_report"
+
+    @api.model
+    def _get_report_values(self, docids, data=None):
+        Session = self.env["association.meeting.subscription.session"]
+        if self.env.user.has_group("primetech_association.group_association_member"):
+            docs = Session.search([
+                ("id", "in", docids),
+                ("state", "=", "closed"),
+                ("report_shared", "=", True),
+            ])
+        else:
+            docs = Session.browse(docids).exists()
+        return {
+            "doc_ids": docs.ids,
+            "doc_model": "association.meeting.subscription.session",
+            "docs": docs.sudo(),
+        }

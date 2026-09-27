@@ -299,8 +299,7 @@ class AssociationMember(models.Model):
         index=True,
     )
 
-    # Conditions d’adhésion : les frais sont saisis comme montants reçus,
-    # tandis que les biens sont confirmés à leur remise par le nouveau membre.
+    # Conditions d’adhésion : tous les éléments sont suivis par montant.
     registration_fee_amount = fields.Monetary(string="Frais d’inscription", currency_field="currency_id", default=0.0)
     insurance_fee_amount = fields.Monetary(string="Frais d’assurance", currency_field="currency_id", default=0.0)
     forfait_recovery_fee_amount = fields.Monetary(string="Recouvrement forfaitaire", currency_field="currency_id", default=0.0)
@@ -310,9 +309,14 @@ class AssociationMember(models.Model):
     sport_jersey_provided = fields.Boolean(string="Maillot de sport apporté")
     committee_beer_case_provided = fields.Boolean(string="Casier de bière – Comité apporté")
     ag_beer_case_provided = fields.Boolean(string="Casier de bière – AG apporté")
+    jogging_amount = fields.Monetary(string="Montant du jogging", currency_field="currency_id", default=0.0)
+    traditional_outfit_amount = fields.Monetary(string="Montant de la tenue traditionnelle", currency_field="currency_id", default=0.0)
+    sport_jersey_amount = fields.Monetary(string="Montant du maillot de sport", currency_field="currency_id", default=0.0)
+    committee_beer_case_amount = fields.Monetary(string="Montant du casier de bière – Comité", currency_field="currency_id", default=0.0)
+    ag_beer_case_amount = fields.Monetary(string="Montant du casier de bière – AG", currency_field="currency_id", default=0.0)
     activation_requirements_complete = fields.Boolean(string="Conditions d’activation remplies", compute="_compute_activation_requirements")
 
-    @api.depends("registration_fee_amount", "insurance_fee_amount", "forfait_recovery_fee_amount", "working_capital_catchup_amount", "jogging_provided", "traditional_outfit_provided", "sport_jersey_provided", "committee_beer_case_provided", "ag_beer_case_provided")
+    @api.depends("registration_fee_amount", "insurance_fee_amount", "forfait_recovery_fee_amount", "working_capital_catchup_amount", "jogging_amount", "traditional_outfit_amount", "sport_jersey_amount", "committee_beer_case_amount", "ag_beer_case_amount")
     def _compute_activation_requirements(self):
         for member in self:
             member.activation_requirements_complete = not member._activation_requirement_labels()
@@ -324,11 +328,11 @@ class AssociationMember(models.Model):
             (self.insurance_fee_amount > 0, _("Frais d’assurance")),
             (self.forfait_recovery_fee_amount > 0, _("Recouvrement forfaitaire")),
             (self.working_capital_catchup_amount > 0, _("Rattrapage des fonds de roulement échus")),
-            (self.jogging_provided, _("Jogging")),
-            (self.traditional_outfit_provided, _("Tenue traditionnelle")),
-            (self.sport_jersey_provided, _("Maillot de sport")),
-            (self.committee_beer_case_provided, _("Casier de bière du Comité")),
-            (self.ag_beer_case_provided, _("Casier de bière de l’AG")),
+            (self.jogging_amount > 0, _("Jogging")),
+            (self.traditional_outfit_amount > 0, _("Tenue traditionnelle")),
+            (self.sport_jersey_amount > 0, _("Maillot de sport")),
+            (self.committee_beer_case_amount > 0, _("Casier de bière du Comité")),
+            (self.ag_beer_case_amount > 0, _("Casier de bière de l’AG")),
         )
         return [label for complete, label in requirements if not complete]
 
@@ -1733,13 +1737,15 @@ class AssociationMember(models.Model):
                     "default_sport_jersey_provided": self.sport_jersey_provided,
                     "default_committee_beer_case_provided": self.committee_beer_case_provided,
                     "default_ag_beer_case_provided": self.ag_beer_case_provided,
+                    "default_jogging_amount": self.jogging_amount,
+                    "default_traditional_outfit_amount": self.traditional_outfit_amount,
+                    "default_sport_jersey_amount": self.sport_jersey_amount,
+                    "default_committee_beer_case_amount": self.committee_beer_case_amount,
+                    "default_ag_beer_case_amount": self.ag_beer_case_amount,
                 },
             }
 
         for rec in self:
-            missing = rec._activation_requirement_labels()
-            if missing:
-                raise ValidationError(_("Impossible d’activer ce membre. Éléments manquants :\n- %s") % "\n- ".join(missing))
             rec.write({
                 "state": "active",
                 "active": True,

@@ -318,12 +318,18 @@ class AssociationAttendance(models.Model):
                     lambda penalty: penalty.state not in ("cancelled", "lifted")
                 )
                 if automatic_penalties:
-                    automatic_penalties.action_cancel()
+                    # Une justification retire immédiatement la sanction
+                    # automatique, même lorsqu'elle venait d'être validée.
+                    automatic_penalties.write({
+                        "state": "lifted",
+                        "lifted_by": self.env.user.id,
+                        "lifted_date": fields.Datetime.now(),
+                    })
                     attendance.penalty_required = False
                     attendance.penalty_reason = False
                 continue
             existing = Penalty.search_count([
-                ("attendance_id", "=", attendance.id), ("state", "!=", "cancelled"),
+                ("attendance_id", "=", attendance.id), ("state", "not in", ("cancelled", "lifted")),
             ])
             if existing:
                 continue
@@ -338,8 +344,6 @@ class AssociationAttendance(models.Model):
                 "validation_date": fields.Datetime.now(),
             }
             if attendance.state == "late":
-                if late_amount <= 0:
-                    continue
                 values.update({
                     "incident_type": "late", "penalty_type": "fine", "amount": late_amount,
                     "incident_description": _("Retard à la réunion du %s.") % attendance.meeting_date,
@@ -388,6 +392,7 @@ class AssociationAttendance(models.Model):
     def create(self, vals_list):
         records = super().create(vals_list)
         records._apply_automatic_discipline()
+        records.mapped("meeting_id")._broadcast_live_sync()
         return records
 
     def write(self, vals):
@@ -431,6 +436,7 @@ class AssociationAttendance(models.Model):
         default=False,
         tracking=True,
     )
+
 
     late_minutes = fields.Integer(
         string="Minutes de retard",
@@ -1170,7 +1176,11 @@ class AssociationAttendance(models.Model):
                     )
         self._check_meeting_not_closed()
 
-        return super().write(vals)
+        result = super().write(vals)
+        if {"state", "is_present", "is_absent", "is_late", "is_excused", "arrival_time"}.intersection(vals):
+            self._apply_automatic_discipline()
+        self.mapped("meeting_id")._broadcast_live_sync()
+        return result
 
     # ==========================================================
     # PROTECTION SUPPRESSION

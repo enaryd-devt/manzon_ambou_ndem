@@ -78,6 +78,11 @@ class AssociationExpense(models.Model):
         help="Renseignez cette réunion pour que la dépense soit déduite de sa caisse.",
     )
 
+    subscription_period_id = fields.Many2one(
+        related="meeting_id.subscription_period_id", string="Cycle de cotisation",
+        readonly=True, store=True, index=True,
+    )
+
     expense_type = fields.Selection(
         selection=[
             ("purchase", "Achat"),

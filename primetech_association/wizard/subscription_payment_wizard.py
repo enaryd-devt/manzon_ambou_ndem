@@ -145,6 +145,11 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
         string="Référence",
     )
 
+    use_member_account = fields.Boolean(
+        string="Régler depuis le compte membre",
+        default=False,
+    )
+
     payment_id = fields.Many2one(
         comodel_name="association.payment",
         string="Paiement généré",
@@ -198,6 +203,29 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
             "association.payment.line"
         ]
 
+        # Un recouvrement est une dette unique par membre : il ne possède
+        # volontairement aucun cycle. Les montants calculés sur la ligne
+        # servent directement à initialiser l'assistant.
+        if subscription.subscription_type == "recovery":
+            amount_due = subscription_line.amount_due or 0.0
+            amount_paid = subscription_line.amount_paid or 0.0
+            balance = subscription_line.balance or 0.0
+            if balance <= 0.01:
+                raise ValidationError(_("Ce recouvrement ne présente aucun reste à payer."))
+            values.update({
+                "member_id": subscription_line.member_id.id,
+                "subscription_line_id": subscription_line.id,
+                "period_id": False,
+                "amount_due": amount_due,
+                "amount_paid": amount_paid,
+                "balance": balance,
+                "amount_received": self.env.context.get("default_amount_received", balance),
+                "receipt_account_id": subscription.receipt_account_id.id,
+                "origin": self.env.context.get("default_origin", "subscription"),
+                "meeting_id": self.env.context.get("default_meeting_id") or False,
+            })
+            return values
+
         requested_period_id = (
             self.env.context.get(
                 "default_subscription_period_id"
@@ -235,8 +263,8 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
 
             period = periods[:1]
 
-        if not period:
-
+        payment_origin = self.env.context.get("default_origin", "subscription")
+        if not period and payment_origin != "meeting":
             raise ValidationError(
                 _(
                     "Aucun cycle en cours avec "
@@ -253,20 +281,23 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
         # RECALCUL
         # ======================================================
 
-        amount_due = PaymentLine._get_period_due_for_line(
-            subscription_line,
-            period,
-        )
-
-        amount_paid = PaymentLine._get_period_paid_for_line(
-            subscription_line,
-            period,
-        )
-
-        balance = max(
-            amount_due - amount_paid,
-            0.0,
-        )
+        if period:
+            amount_due = PaymentLine._get_period_due_for_line(
+                subscription_line,
+                period,
+            )
+            amount_paid = PaymentLine._get_period_paid_for_line(
+                subscription_line,
+                period,
+            )
+            balance = max(
+                amount_due - amount_paid,
+                0.0,
+            )
+        else:
+            amount_due = 0.0
+            amount_paid = 0.0
+            balance = 0.0
 
         # ======================================================
         # VALEURS
@@ -296,13 +327,56 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
         # subscription/cycle, including penalties, into the same payment.
         global_due = 0.0
         global_rows = []
-        if self.env.context.get("default_origin") == "meeting":
-            SubscriptionLine = self.env["association.subscription.line"]
-            lines = SubscriptionLine.search([
+        if payment_origin in ("meeting", "subscription"):
+            Penalty = self.env["association.penalty"]
+            priority_penalties = Penalty.search([
                 ("member_id", "=", subscription_line.member_id.id),
-                ("company_id", "=", subscription_line.company_id.id), ("active", "=", True),
+                ("company_id", "=", subscription_line.company_id.id),
+                ("penalty_type", "=", "fine"),
+                ("recovery_origin", "=", "sanction"),
+                ("state", "in", ("validated", "executed")),
+                ("amount_remaining", ">", 0),
+            ], order="recovery_priority asc, incident_date asc, id asc")
+            for penalty in priority_penalties:
+                global_due += penalty.amount_remaining or 0.0
+                label = "Sanction financière"
+                global_rows.append("<tr class='table-warning'><td>%s</td><td>%s</td><td class='text-end'>%.2f</td></tr>" % (
+                    html_escape(label),
+                    html_escape(penalty.penalty_description or penalty.display_name),
+                    penalty.amount_remaining or 0.0,
+                ))
+            MembershipFee = self.env["association.membership.fee"]
+            membership_fees = MembershipFee.search([
+                ("member_id", "=", subscription_line.member_id.id),
+                ("company_id", "=", subscription_line.company_id.id),
+                ("state", "=", "due"),
+                ("amount_remaining", ">", 0),
             ])
+            for fee in membership_fees:
+                global_due += fee.amount_remaining or 0.0
+                global_rows.append("<tr class='table-info'><td>Frais d’adhésion</td><td>%s</td><td class='text-end'>%.2f</td></tr>" % (
+                    html_escape(fee.name), fee.amount_remaining or 0.0,
+                ))
+            if payment_origin == "meeting":
+                SubscriptionLine = self.env["association.subscription.line"]
+                lines = SubscriptionLine.search([
+                    ("member_id", "=", subscription_line.member_id.id),
+                    ("company_id", "=", subscription_line.company_id.id),
+                    ("active", "=", True),
+                    ("subscription_id.state", "=", "running"),
+                ])
+            else:
+                lines = subscription_line
             for line in lines:
+                if line.subscription_id.subscription_type == "recovery":
+                    balance = line.balance or 0.0
+                    if balance > 0.01:
+                        global_due += balance
+                        global_rows.append("<tr><td>%s</td><td>Échéance : %s</td><td class='text-end'>%.2f</td></tr>" % (
+                            html_escape(line.subscription_id.display_name or "Recouvrement"),
+                            line.subscription_id.due_date or "-", balance,
+                        ))
+                    continue
                 for line_period in PaymentLine._get_unsettled_periods_for_line(line):
                     due = PaymentLine._get_period_due_for_line(line, line_period)
                     paid = PaymentLine._get_period_paid_for_line(line, line_period)
@@ -323,7 +397,7 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
                     subscription_line.id,
 
                 "period_id":
-                    period.id,
+                    period.id if period else False,
 
                 "amount_due":
                     amount_due,
@@ -351,10 +425,16 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
                     "default_meeting_id",
                 ),
                 "global_due_amount": global_due,
-                "global_lines_html": ("<table class='table table-sm'><thead><tr><th>Cotisation</th><th>Cycle</th><th class='text-end'>Reste (pénalités incluses)</th></tr></thead><tbody>%s</tbody></table>" % "".join(global_rows)) if global_rows else False,
+                "global_lines_html": ("<table class='table table-sm'><thead><tr><th>Créance</th><th>Détail</th><th class='text-end'>Reste à régler</th></tr></thead><tbody>%s</tbody></table><small class='text-muted'>Ordre de règlement : sanctions, frais d’activation, puis cotisations.</small>" % "".join(global_rows)) if global_rows else False,
             }
         )
 
+        if global_rows:
+            values["global_lines_html"] = (
+                "<table class='table table-sm'><thead><tr><th>Créance</th><th>Détail</th>"
+                "<th class='text-end'>Reste à régler</th></tr></thead><tbody>%s</tbody></table>"
+                "<small class='text-muted'>Ordre de règlement : sanctions, frais d’adhésion, puis cotisations.</small>"
+            ) % "".join(global_rows)
         return values
 
     # ==========================================================
@@ -669,56 +749,124 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
     # ACTION - VALIDER LE PAIEMENT
     # ==========================================================
 
-    def _action_validate_global_meeting_payment(self):
+    def _action_validate_prioritized_payment(self):
         """Collect all outstanding dues for one member during a meeting."""
         self.ensure_one()
-        if not self.member_id or not self.meeting_id:
-            raise ValidationError(_("Le membre et la réunion sont obligatoires."))
+        if not self.member_id or not self.subscription_line_id:
+            raise ValidationError(_("Le membre et la cotisation sont obligatoires."))
+        company = self.meeting_id.company_id if self.meeting_id else self.subscription_line_id.company_id
         amount_received = self.amount_received or 0.0
         if amount_received <= 0:
             raise ValidationError(_("Le montant reçu doit être strictement supérieur à zéro."))
         PaymentLine = self.env["association.payment.line"]
         SubscriptionLine = self.env["association.subscription.line"]
+        Penalty = self.env["association.penalty"]
+        payment_source = "meeting_cash" if self.meeting_id else "external"
+        member_account = False
+        if self.use_member_account:
+            member_account = self.env["association.member.account"].search([
+                ("member_id", "=", self.member_id.id),
+                ("company_id", "=", company.id),
+                ("active", "=", True),
+            ], limit=1)
+            if not member_account or (member_account.balance or 0.0) <= 0:
+                raise ValidationError(_("Le compte membre ne dispose d’aucun solde disponible."))
+            amount_received = min(amount_received, member_account.balance or 0.0)
+            payment_source = "member_account"
         remaining = amount_received
         allocation_values = []
-        candidates = []
-        lines = SubscriptionLine.search([
+        priority_allocations = []
+
+        # Ordre impératif : sanctions disciplinaires financières, puis frais
+        # d'activation, avant la moindre cotisation.
+        priority_penalties = Penalty.search([
             ("member_id", "=", self.member_id.id),
-            ("company_id", "=", self.meeting_id.company_id.id), ("active", "=", True),
-            ("subscription_id.state", "=", "running"),
-            ("subscription_id.current_period_id.state", "=", "running"),
-        ])
+            ("company_id", "=", company.id),
+            ("penalty_type", "=", "fine"),
+            ("recovery_origin", "=", "sanction"),
+            ("state", "in", ("validated", "executed")),
+            ("amount_remaining", ">", 0),
+        ], order="recovery_priority asc, incident_date asc, id asc")
+        for penalty in priority_penalties:
+            if remaining <= 0:
+                break
+            allocated = min(remaining, penalty.amount_remaining or 0.0)
+            if allocated > 0:
+                priority_allocations.append({"penalty_id": penalty.id, "amount": allocated})
+                remaining -= allocated
+
+        membership_fee_allocations = []
+        MembershipFee = self.env["association.membership.fee"]
+        membership_fees = MembershipFee.search([
+            ("member_id", "=", self.member_id.id),
+            ("company_id", "=", company.id),
+            ("state", "=", "due"),
+            ("amount_remaining", ">", 0),
+        ], order="id asc")
+        for fee in membership_fees:
+            if remaining <= 0:
+                break
+            allocated = min(remaining, fee.amount_remaining or 0.0)
+            if allocated > 0:
+                membership_fee_allocations.append({"membership_fee_id": fee.id, "amount": allocated})
+                remaining -= allocated
+
+        candidates = []
+        if self.origin == "meeting":
+            lines = SubscriptionLine.search([
+                ("member_id", "=", self.member_id.id),
+                ("company_id", "=", company.id), ("active", "=", True),
+                ("subscription_id.state", "=", "running"),
+            ])
+        else:
+            lines = self.subscription_line_id
         for line in lines:
+            if line.subscription_id.subscription_type == "recovery":
+                if line.balance > 0.01:
+                    # Après les sanctions et frais d'adhésion, les
+                    # recouvrements individuels sont réglés avant toute
+                    # cotisation périodique.
+                    candidates.append((0, line.subscription_id.due_date or fields.Date.today(), line.id, line, False, line.balance))
+                continue
             for period in PaymentLine._get_unsettled_periods_for_line(line):
                 due = PaymentLine._get_period_due_for_line(line, period)
                 paid = PaymentLine._get_period_paid_for_line(line, period)
                 balance = max(due - paid, 0.0)
                 if balance > 0.01:
-                    candidates.append((period.due_date or fields.Date.today(), line.id, line, period, balance))
-        for _date, _line_id, line, period, balance in sorted(candidates, key=lambda item: (item[0], item[1], item[3].id)):
+                    candidates.append((1, period.due_date or fields.Date.today(), line.id, line, period, balance))
+        for _priority, _date, _line_id, line, period, balance in sorted(candidates, key=lambda item: (item[0], item[1], item[2], item[4].id if item[4] else 0)):
             if remaining <= 0:
                 break
             allocated = min(remaining, balance)
             allocation_values.append((0, 0, {
                 "subscription_line_id": line.id,
                 "subscription_id": line.subscription_id.id,
-                "subscription_period_id": period.id,
+                "subscription_period_id": period.id if period else False,
                 "amount_paid": allocated,
             }))
             remaining -= allocated
-        if not allocation_values:
+        if not allocation_values and not priority_allocations and not membership_fee_allocations:
             raise ValidationError(_("Aucun recouvrement non soldé n’a été trouvé pour ce membre."))
         Payment = self.env["association.payment"]
         payment = Payment.create({
             "member_id": self.member_id.id,
-            "company_id": self.meeting_id.company_id.id,
-            "meeting_id": self.meeting_id.id,
+            "company_id": company.id,
+            "meeting_id": self.meeting_id.id if self.meeting_id else False,
             "payment_date": fields.Date.context_today(self),
             "amount": amount_received,
-            "payment_source": "meeting_cash",
+            "payment_source": payment_source,
+            "member_account_id": member_account.id if member_account else False,
             "payment_method": self.payment_method or "cash",
-            "payment_reference": self.payment_reference or _("Encaissement global en réunion %s") % self.meeting_id.name,
+            "payment_reference": self.payment_reference or (
+                _("Encaissement global en réunion %s") % self.meeting_id.name
+                if self.meeting_id else
+                _("Paiement priorisé de la cotisation %s") % self.subscription_line_id.subscription_id.display_name
+            ),
             "has_allocations": True,
+            "priority_allocation_amount": sum(item["amount"] for item in priority_allocations),
+            "priority_allocation_payload": priority_allocations,
+            "membership_fee_allocation_amount": sum(item["amount"] for item in membership_fee_allocations),
+            "membership_fee_allocation_payload": membership_fee_allocations,
             "line_ids": allocation_values,
         })
         self.payment_id = payment.id
@@ -728,8 +876,8 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
     def action_validate_payment(self):
         self.ensure_one()
 
-        if self.origin == "meeting":
-            return self._action_validate_global_meeting_payment()
+        if self.origin in ("meeting", "subscription"):
+            return self._action_validate_prioritized_payment()
 
         amount_received = self.amount_received or 0.0
         if amount_received <= 0:
@@ -776,7 +924,7 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
 
         if (
             period
-            and period.state != "running"
+            and period.state not in ("running", "closed")
         ):
             period = False
 

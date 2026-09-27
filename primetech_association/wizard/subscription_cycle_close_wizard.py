@@ -58,6 +58,10 @@ class AssociationSubscriptionCycleCloseWizard(
         readonly=True,
     )
 
+    settlement_only = fields.Boolean(
+        string="Affectation sans clôture", readonly=True, default=False,
+    )
+
     # ==========================================================
     # STATISTIQUES DU CYCLE
     # ==========================================================
@@ -586,6 +590,12 @@ class AssociationSubscriptionCycleCloseWizard(
                 }
             )
 
+        if self.settlement_only:
+            if self.meeting_subscription_session_id:
+                self.meeting_subscription_session_id.write({"state": "collecting"})
+                self.meeting_subscription_session_id.meeting_id._broadcast_live_sync()
+            return {"type": "ir.actions.client", "tag": "soft_reload"}
+
         period.write({
             "state": "closed",
         })
@@ -757,6 +767,12 @@ class AssociationSubscriptionCycleCloseWizard(
         # ======================================================
         # CLÔTURE DU CYCLE
         # ======================================================
+
+        if self.settlement_only:
+            if self.meeting_subscription_session_id:
+                self.meeting_subscription_session_id.write({"state": "collecting"})
+                self.meeting_subscription_session_id.meeting_id._broadcast_live_sync()
+            return {"type": "ir.actions.client", "tag": "soft_reload"}
 
         period.write({
             "state": "closed",

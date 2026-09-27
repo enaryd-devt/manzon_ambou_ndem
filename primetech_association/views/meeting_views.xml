@@ -266,7 +266,7 @@
 
         <field name="arch" type="xml">
 
-            <form string="Réunion">
+            <form string="Réunion" class="primetech_meeting_form">
 
                 <!-- ================================================= -->
                 <!-- EN-TÊTE                                           -->
@@ -769,13 +769,15 @@
                                         <div class="fw-semibold small text-muted mb-1">
                                             Membres et fonctions du bureau mandaté
                                         </div>
-                                        <field name="official_committee_line_ids" nolabel="1" readonly="1">
-                                            <list create="false" delete="false" default_order="sequence, id">
-                                                <field name="sequence" column_invisible="1"/>
-                                                <field name="function_id" string="Fonction dans le bureau"/>
-                                                <field name="member_id" string="Membre"/>
-                                            </list>
-                                        </field>
+                                        <div class="primetech_committee_members_scroll" style="max-height: 146px; overflow-y: auto; border: 1px solid var(--o-border-color, #dee2e6); border-radius: 4px;">
+                                            <field name="official_committee_line_ids" nolabel="1" readonly="1">
+                                                <list create="false" delete="false" default_order="sequence, id">
+                                                    <field name="sequence" column_invisible="1"/>
+                                                    <field name="function_id" string="Fonction dans le bureau"/>
+                                                    <field name="member_id" string="Membre"/>
+                                                </list>
+                                            </field>
+                                        </div>
                                     </div>
 
                                 </div>
@@ -924,7 +926,7 @@
                                         </div>
 
                                         <div class="text-muted small mt-1">
-                                            Encaissements, dépenses et cagnotte du cycle courant
+                                            Encaissements, dépenses et cagnotte de la séance
                                         </div>
 
                                     </div>
@@ -940,13 +942,13 @@
                                         invisible="state != 'in_progress' or pot_available_amount &lt;= 0"/>
 
                                     <button
-                                        name="action_refresh_subscription_cycle"
+                                        name="action_generate_attendances"
                                         type="object"
                                         groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
-                                        string="Actualiser"
-                                        icon="fa-refresh"
+                                        string="Charger les membres"
+                                        icon="fa-users"
                                         class="btn-secondary"
-                                        invisible="not subscription_id"
+                                        invisible="state == 'closed'"
                                         confirm="S'il n'existe aucun cycle en cours, souhaitez-vous créer le nouveau cycle maintenant ?"/>
 
                                     <button
@@ -957,12 +959,20 @@
                                         class="btn-primary"
                                         invisible="not subscription_report_available"/>
 
+                                    <button name="action_share_subscription_report" type="object"
+                                        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                                        string="Partager aux membres" icon="fa-share-alt" class="btn-secondary"
+                                        invisible="not subscription_report_available or subscription_report_shared"/>
+
+                                    <button name="action_open_available_amount_allocation"
+                                        type="object" string="Affecter" invisible="1"/>
+
                                     <button
-                                        name="action_settle_meeting_pot"
+                                        name="action_open_cycle_finish_wizard"
                                         type="object"
                                         groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
-                                        string="Finaliser le cycle et solder la caisse"
-                                        icon="fa-bank"
+                                        string="Terminer les cotisations"
+                                        icon="fa-check-circle"
                                         class="btn-primary"
                                         invisible="state == 'closed' or not subscription_period_id or subscription_report_available"
                                         confirm="Cette action finalise le cycle : validez les attributions et versez le reliquat éventuel dans le compte financier choisi."/>
@@ -975,7 +985,7 @@
                             <!-- PILOTAGE DU CYCLE                                     -->
                             <!-- ===================================================== -->
 
-                            <div class="row g-1 mb-1">
+                            <div class="row g-1 mb-1" invisible="1">
 
                                 <!-- COTISATION -->
 
@@ -1026,6 +1036,7 @@
                                                 }"/>
 
                                             <field name="subscription_report_available" invisible="1"/>
+                                            <field name="subscription_report_shared" invisible="1"/>
 
                                         </group>
 
@@ -1350,15 +1361,15 @@
                                 </div>
 
                                 <field
-                                    name="subscription_line_ids"
+                                    name="treasury_member_situation_ids"
                                     nolabel="1"
-                                    invisible="subscription_report_available"
-                                    readonly="state == 'closed'">
+                                    readonly="state == 'closed' or subscription_report_available">
 
                                     <list
                                         editable="bottom"
                                         create="0"
                                         delete="0"
+                                        limit="2000"
                                         default_order="member_id"
                                         decoration-success="payment_state == 'paid'"
                                         decoration-warning="payment_state == 'partial'"
@@ -1393,30 +1404,13 @@
                                             readonly="1"/>
 
                                         <field
-                                            name="amount_paid"
+                                            name="amount_paid_in_meeting"
                                             string="Payé"
                                             widget="monetary"
                                             options="{
                                                 'currency_field': 'currency_id'
                                             }"
                                             readonly="1"/>
-
-                                        <field
-                                            name="balance"
-                                            string="Reste"
-                                            widget="monetary"
-                                            options="{
-                                                'currency_field': 'currency_id'
-                                            }"
-                                            readonly="1"/>
-
-                                            <field
-                                                name="temporary_member_account_balance"
-                                                string="Solde temporaire"
-                                                widget="monetary"
-                                                options="{'currency_field': 'currency_id'}"
-                                                readonly="1"
-                                                optional="show"/>
 
                                             <field
                                                 name="payment_state"
@@ -1441,8 +1435,9 @@
                                                 class="btn-primary"
                                                 context="{'default_meeting_id': parent.id}"
                                                 invisible="
-                                                    payment_state == 'paid'
-                                                    or balance &lt;= 0
+                                                    parent.subscription_report_available
+                                                    or payment_state == 'paid'
+                                                    or amount_due &lt;= 0
                                                 "/>
 
                                             <!-- ===================================================== -->
@@ -1458,8 +1453,9 @@
                                                 class="btn-secondary"
                                                 context="{'default_meeting_id': parent.id}"
                                                 invisible="
-                                                    payment_state == 'paid'
-                                                    or balance &lt;= 0
+                                                    parent.subscription_report_available
+                                                    or payment_state == 'paid'
+                                                    or amount_due &lt;= 0
                                                     or not has_member_account
                                                 "/>
 
@@ -1496,7 +1492,7 @@
 
                             <div
                                 class="border rounded-3 mb-2"
-                                invisible="not subscription_period_id">
+                                invisible="1">
 
                                 <!-- ================================================= -->
                                 <!-- EN-TÊTE                                           -->
@@ -1789,20 +1785,23 @@
 
                                 <button
                                     name="action_generate_attendances"
-                                    string="Actualiser les membres de la cotisation"
+                                    string="Charger tous les membres actifs"
                                     type="object"
                                     groups="primetech_association.group_association_meeting_secretary,primetech_association.group_association_meeting_censor,primetech_association.group_association_manager,primetech_association.group_association_admin"
                                     class="btn-primary"
                                     icon="fa-users"
-                                    invisible="state == 'closed' or not subscription_id"
+                                    invisible="state == 'closed'"
                                 />
+
+                                <button name="action_open_attendance_bulk" string="Pointage groupé" type="object"
+                                    groups="primetech_association.group_association_meeting_secretary,primetech_association.group_association_meeting_censor,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                                    class="btn-secondary" icon="fa-list" invisible="state not in ('convoked', 'in_progress')"/>
 
                                 <span
                                     class="text-muted"
-                                    invisible="subscription_id">
+                                    invisible="1">
 
-                                    Sélectionnez une cotisation pour générer
-                                    automatiquement la liste d'appel.
+                                    Tous les membres actifs sont chargés dans la liste d'appel.
 
                                 </span>
 
@@ -1834,6 +1833,7 @@
                                     editable="bottom"
                                     create="true"
                                     delete="true"
+                                    limit="2000"
                                     default_order="sequence, member_id"
                                     decoration-success="state == 'present'"
                                     decoration-warning="state == 'late'"
@@ -2123,6 +2123,9 @@
                                         column_invisible="1"
                                     />
 
+                                    <field name="recovery_origin" column_invisible="1"/>
+                                    <field name="meeting_recovery_open" column_invisible="1"/>
+
                                     <!-- ================================= -->
                                     <!-- MEMBRE                           -->
                                     <!-- ================================= -->
@@ -2257,6 +2260,16 @@
                                         class="btn-link"
                                         invisible="not create_date or state != 'draft'"
                                         confirm="Confirmez-vous la validation de cette sanction ? La décision sera intégrée au procès-verbal."
+                                    />
+
+                                    <button
+                                        name="action_open_meeting_payment"
+                                        type="object"
+                                        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                                        string="Payer"
+                                        icon="fa-money"
+                                        class="btn-link"
+                                        invisible="penalty_type != 'fine' or recovery_origin != 'sanction' or state not in ('validated', 'executed') or amount_remaining &lt;= 0 or not meeting_recovery_open"
                                     />
 
 
@@ -3048,4 +3061,22 @@
 
     </record>
 
+    <record id="view_association_meeting_form_available_amount" model="ir.ui.view">
+        <field name="name">association.meeting.form.available.amount</field>
+        <field name="model">association.meeting</field>
+        <field name="inherit_id" ref="view_association_meeting_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//button[@name='action_open_cycle_finish_wizard']" position="attributes">
+                <attribute name="invisible">state == 'closed' or not subscription_period_id or subscription_report_available</attribute>
+                <attribute name="confirm">Décidez de la destination du montant disponible. Le cycle restera ouvert.</attribute>
+            </xpath>
+            <xpath expr="//button[@name='action_open_cycle_finish_wizard']" position="after">
+                <button name="action_open_cycle_finish_wizard" type="object"
+                    groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                    string="Terminer le cycle" icon="fa-check" class="btn-secondary"
+                    invisible="1"
+                    confirm="Terminez le cycle après la décision sur les pénalités des impayés."/>
+            </xpath>
+        </field>
+    </record>
 </odoo>

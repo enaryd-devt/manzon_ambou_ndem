@@ -28,6 +28,8 @@
                     <button name="action_collect_all" type="object" string="Encaisser les montants saisis" class="btn-primary" invisible="state != 'collecting'" groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"/>
                     <button name="action_open_settlement" type="object" string="Décider et clôturer" class="btn-primary" invisible="state not in ('collecting', 'decision')" groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"/>
                     <button name="action_print_report" type="object" string="Imprimer le rapport PDF" icon="fa-print" invisible="state != 'closed'"/>
+                    <button name="action_share_report" type="object" string="Partager aux membres" icon="fa-share-alt" class="btn-secondary" invisible="state != 'closed' or report_shared" groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"/>
+                    <button name="action_unshare_report" type="object" string="Retirer le partage" icon="fa-times" class="btn-secondary" invisible="state != 'closed' or not report_shared" groups="primetech_association.group_association_manager,primetech_association.group_association_admin"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,collecting,decision,closed"/>
                 </header>
                 <sheet>
@@ -45,6 +47,7 @@
                             <field name="paid_count" readonly="1"/>
                             <field name="closed_by_id" invisible="state != 'closed'"/>
                             <field name="closed_at" invisible="state != 'closed'"/>
+                            <field name="report_shared" invisible="state != 'closed'"/>
                             <field name="payment_count" invisible="state != 'closed'"/>
                             <field name="payment_total" invisible="state != 'closed'"/>
                         </group>

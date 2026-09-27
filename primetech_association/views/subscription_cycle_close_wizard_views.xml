@@ -672,4 +672,22 @@
 
     </record>
 
+    <record id="view_association_subscription_cycle_close_wizard_allocation" model="ir.ui.view">
+        <field name="name">association.subscription.cycle.close.wizard.allocation</field>
+        <field name="model">association.subscription.cycle.close.wizard</field>
+        <field name="inherit_id" ref="view_association_subscription_cycle_close_wizard_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='allocation_complete']" position="after">
+                <field name="settlement_only" invisible="1"/>
+            </xpath>
+            <xpath expr="//button[@name='action_confirm_close']" position="attributes">
+                <attribute name="invisible">not has_beneficiaries or settlement_only</attribute>
+            </xpath>
+            <xpath expr="//button[@name='action_confirm_close']" position="after">
+                <button name="action_confirm_close" string="Confirmer l’affectation" type="object" class="btn-primary"
+                    groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                    invisible="not has_beneficiaries or not settlement_only"/>
+            </xpath>
+        </field>
+    </record>
 </odoo>

@@ -1,6 +1,6 @@
 .pt-member-filter-scope {
     .o_field_x2many {
-        margin-top: 0;
+        margin-top: 12px;
     }
 }
 
@@ -10,7 +10,9 @@
     width: 100%;
     max-width: 430px;
     min-height: 34px;
-    margin: 4px 0 6px;
+    position: relative;
+    z-index: 1;
+    margin: 8px 0 14px;
     padding: 5px 10px;
     gap: 8px;
     border: 1px solid #d8dee6;
@@ -38,4 +40,79 @@
 
 .pt-member-filter-hidden {
     display: none !important;
+}
+/* Bureau mandaté : les intitulés restent visibles pendant le défilement. */
+.primetech_committee_members_scroll .o_list_table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--o-view-background-color, #fff);
+    box-shadow: 0 1px 0 var(--o-border-color, #dee2e6);
+}
+
+/* Réunion : navigation par onglets nettement identifiable, sans sortir du thème Odoo. */
+.o_form_view.primetech_meeting_form .o_notebook .nav-tabs,
+.o_form_view .primetech_meeting_form .o_notebook .nav-tabs,
+.primetech_meeting_form .o_notebook .nav-tabs {
+    gap: 5px;
+    padding: 8px 10px 0;
+    border-bottom: 2px solid var(--o-border-color, #d8dde5);
+    background: rgba(0, 0, 0, .025);
+}
+
+.o_form_view.primetech_meeting_form .o_notebook .nav-tabs .nav-link,
+.o_form_view .primetech_meeting_form .o_notebook .nav-tabs .nav-link,
+.primetech_meeting_form .o_notebook .nav-tabs .nav-link {
+    min-height: 48px !important;
+    padding: 12px 20px !important;
+    border: 1px solid transparent !important;
+    border-radius: 9px 9px 0 0 !important;
+    color: var(--o-main-text-color, #24324a) !important;
+    font-size: 16px !important;
+    font-weight: 750 !important;
+    letter-spacing: .15px;
+    transition: transform .2s ease, background-color .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease;
+}
+
+.o_form_view.primetech_meeting_form .o_notebook .nav-tabs .nav-link:hover,
+.o_form_view .primetech_meeting_form .o_notebook .nav-tabs .nav-link:hover,
+.primetech_meeting_form .o_notebook .nav-tabs .nav-link:hover {
+    border-color: var(--o-brand-primary, #4b6b9f) !important;
+    background: rgba(0, 0, 0, .055) !important;
+    color: var(--o-brand-primary, #4b6b9f) !important;
+    transform: translateY(-3px);
+    box-shadow: 0 5px 12px rgba(0, 0, 0, .12);
+    animation: primetechMeetingTabPulse .35s ease-out;
+}
+
+.o_form_view.primetech_meeting_form .o_notebook .nav-tabs .nav-link.active,
+.o_form_view .primetech_meeting_form .o_notebook .nav-tabs .nav-link.active,
+.primetech_meeting_form .o_notebook .nav-tabs .nav-link.active {
+    border-color: var(--o-brand-primary, #4b6b9f) !important;
+    border-bottom-color: var(--o-brand-primary, #4b6b9f) !important;
+    background: var(--o-brand-primary, #4b6b9f) !important;
+    color: #fff !important;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, .16);
+}
+
+@keyframes primetechMeetingTabPulse {
+    0% { transform: translateY(0) scale(1); }
+    55% { transform: translateY(-4px) scale(1.035); }
+    100% { transform: translateY(-3px) scale(1); }
+}
+
+@media (max-width: 768px) {
+    .o_form_view.primetech_meeting_form .o_notebook .nav-tabs,
+    .o_form_view .primetech_meeting_form .o_notebook .nav-tabs,
+    .primetech_meeting_form .o_notebook .nav-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: thin;
+    }
+    .o_form_view.primetech_meeting_form .o_notebook .nav-tabs .nav-link,
+    .o_form_view .primetech_meeting_form .o_notebook .nav-tabs .nav-link,
+    .primetech_meeting_form .o_notebook .nav-tabs .nav-link {
+        white-space: nowrap;
+        padding-inline: 14px;
+    }
 }

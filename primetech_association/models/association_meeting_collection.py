@@ -654,6 +654,22 @@ class AssociationMeetingCollection(models.Model):
     def action_pay_from_member_account(self):
         self.ensure_one()
 
+        # Reuse the global meeting recovery flow so the member account settles
+        # sanctions, activation fees and only then subscriptions.
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Recouvrement global depuis le compte membre"),
+            "res_model": "association.subscription.payment.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {
+                "default_origin": "meeting",
+                "default_meeting_id": self.meeting_id.id,
+                "default_subscription_line_id": self.subscription_line_id.id,
+                "default_use_member_account": True,
+            },
+        }
+
         if not self.member_id:
             raise UserError(
                 _("Aucun membre n'est défini.")

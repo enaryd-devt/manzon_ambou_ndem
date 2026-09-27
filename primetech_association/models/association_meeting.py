@@ -826,6 +826,11 @@ class AssociationMeeting(models.Model):
         domain="[('state', '=', 'running')]",
     )
 
+    treasury_member_situation_ids = fields.One2many(
+        "association.meeting.member.situation", "meeting_id",
+        string="Situations de recouvrement", copy=False,
+    )
+
     subscription_period_id = fields.Many2one(
         comodel_name="association.subscription.period",
         string="Cycle de cotisation",
@@ -843,6 +848,11 @@ class AssociationMeeting(models.Model):
     subscription_report_available = fields.Boolean(
         compute="_compute_subscription_session",
         string="Rapport de cotisation disponible",
+    )
+
+    subscription_report_shared = fields.Boolean(
+        compute="_compute_subscription_session",
+        string="Rapport de cotisation partagé",
     )
 
     subscription_snapshot_ids = fields.Many2many(
@@ -863,6 +873,7 @@ class AssociationMeeting(models.Model):
         "subscription_session_ids.subscription_id",
         "subscription_session_ids.period_id",
         "subscription_session_ids.state",
+        "subscription_session_ids.report_shared",
     )
     def _compute_subscription_session(self):
         """Expose the session that supplies the data shown in the tab.
@@ -881,6 +892,7 @@ class AssociationMeeting(models.Model):
             meeting.subscription_report_available = bool(
                 session and session.state == "closed"
             )
+            meeting.subscription_report_shared = bool(session and session.report_shared)
             meeting.subscription_snapshot_ids = session.snapshot_ids
 
     # ==========================================================
@@ -1067,6 +1079,7 @@ class AssociationMeeting(models.Model):
         "pot_settlement_state",
         "expense_ids.amount",
         "expense_ids.state",
+        "subscription_period_id.settled_amount",
     )
     def _compute_pot_statistics(self):
 
@@ -1107,7 +1120,8 @@ class AssociationMeeting(models.Model):
             meeting.pot_collected_amount = collected_amount
             meeting.pot_allocated_amount = allocated_amount
             meeting.pot_available_amount = max(
-                collected_amount - allocated_amount - meeting.expense_total, 0.0
+                collected_amount - allocated_amount - meeting.expense_total
+                - (meeting.subscription_period_id.settled_amount or 0.0), 0.0
             )
             if meeting.pot_settlement_state == "settled":
                 meeting.pot_available_amount = 0.0
@@ -1372,6 +1386,23 @@ class AssociationMeeting(models.Model):
         return {
             "type": "ir.actions.client",
             "tag": "soft_reload",
+        }
+
+    def action_open_cycle_finish_wizard(self):
+        """Ask for the late-payment penalty decision before closing a cycle."""
+        self.ensure_one()
+        if not self.subscription_period_id:
+            raise ValidationError(_("Aucun cycle de cotisation n'est sélectionné."))
+        if self.subscription_period_id.state != "running":
+            raise ValidationError(_("Seul un cycle en cours peut être terminé."))
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Terminer le cycle"),
+            "res_model": "association.meeting.cycle.finish.wizard",
+            "view_mode": "form",
+            "view_id": self.env.ref("primetech_association.view_meeting_cycle_finish_wizard_form").id,
+            "target": "new",
+            "context": {"default_meeting_id": self.id},
         }
     
     # ==========================================================
@@ -1736,12 +1767,11 @@ class AssociationMeeting(models.Model):
         }
 
     def action_settle_meeting_pot(self):
-        """Finalize the meeting cycle and settle its temporary cash.
+        """Compatibility alias for the available-amount allocation flow."""
+        return self.action_open_available_amount_allocation()
 
-        This is the single meeting action for cycle closure: it opens the
-        decision flow, validates allocations, transfers any residual to the
-        selected financial account, then locks the cycle and its session.
-        """
+    def action_open_available_amount_allocation(self):
+        """Open the allocation assistant without closing the cycle."""
         self.ensure_one()
         if not self.subscription_period_id:
             raise ValidationError(
@@ -1751,7 +1781,17 @@ class AssociationMeeting(models.Model):
             raise ValidationError(
                 _("Le cycle de cotisation doit être en cours.")
             )
-        return self.action_close_subscription_cycle()
+        if (self.pot_available_amount or 0.0) <= 0.01:
+            raise ValidationError(_("Aucun montant disponible n’est à affecter."))
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Affecter le montant disponible"),
+            "res_model": "association.meeting.available.amount.wizard",
+            "view_mode": "form",
+            "view_id": self.env.ref("primetech_association.view_meeting_available_amount_wizard_form").id,
+            "target": "new",
+            "context": {"default_meeting_id": self.id},
+        }
 
     @api.depends(
         "subscription_id",
@@ -1806,9 +1846,11 @@ class AssociationMeeting(models.Model):
 
     def _attendance_member_values(self):
         self.ensure_one()
-        members = self.subscription_id.line_ids.mapped("member_id").filtered(
-            lambda member: member.active and member.company_id == self.company_id
-        )
+        members = self.env["association.member"].search([
+            ("company_id", "=", self.company_id.id),
+            ("active", "=", True),
+            ("state", "=", "active"),
+        ], order="name, id")
         return [
             {
                 "member_id": member.id,
@@ -1828,12 +1870,12 @@ class AssociationMeeting(models.Model):
                     (0, 0, values)
                     for values in meeting._attendance_member_values()
                 ),
-            ] if meeting.subscription_id else [(5, 0, 0)]
+            ]
 
     def _sync_subscription_attendances(self):
         """Persist missing roll-call rows without duplicating existing ones."""
         Attendance = self.env["association.attendance"]
-        for meeting in self.filtered("subscription_id"):
+        for meeting in self:
             existing_ids = set(meeting.attendance_ids.mapped("member_id").ids)
             values_list = [
                 {"meeting_id": meeting.id, **values}
@@ -1864,6 +1906,15 @@ class AssociationMeeting(models.Model):
         if not session or session.state != "closed":
             raise UserError(_("Le rapport est disponible après la clôture du cycle."))
         return session.action_print_report()
+
+    def action_share_subscription_report(self):
+        """Partager le rapport de recouvrement affiché dans la réunion."""
+        self.ensure_one()
+        session = self.subscription_session_id
+        if not session or session.state != "closed":
+            raise UserError(_("Le rapport est disponible après la clôture du cycle."))
+        session.action_share_report()
+        return {"type": "ir.actions.client", "tag": "soft_reload"}
 
     # ==========================================================
     # STATISTIQUES DES ENCAISSEMENTS
@@ -2096,6 +2147,9 @@ class AssociationMeeting(models.Model):
                         meeting.collection_subscription_id.display_name,
                 }
             )
+            # La liste d'encaissement est une donnée partagée de séance :
+            # avertir immédiatement les autres utilisateurs ouverts dessus.
+            meeting._broadcast_live_sync()
 
         return True
 
@@ -3187,6 +3241,23 @@ class AssociationMeeting(models.Model):
             )
 
     # ==========================================================
+    # ACTION - POINTAGE GROUPÉ NATIF
+    # ==========================================================
+
+    def action_open_attendance_bulk(self):
+        """Open Odoo's native selectable list for this meeting's roll call."""
+        self.ensure_one()
+        action = self.env.ref("primetech_association.action_attendance").read()[0]
+        action.update({
+            "domain": [("meeting_id", "=", self.id)],
+            "context": {
+                "default_meeting_id": self.id,
+                "search_default_meeting_id": self.id,
+            },
+        })
+        return action
+
+    # ==========================================================
     # ACTION - GÉNÉRER LA LISTE D'APPEL
     # ==========================================================
 
@@ -3211,66 +3282,42 @@ class AssociationMeeting(models.Model):
                     )
                 )
 
-            # ======================================================
-            # CONTRÔLE DE LA COTISATION
-            # ======================================================
-
-            if not record.subscription_id:
-
-                raise ValidationError(
-                    _(
-                        "Veuillez sélectionner une cotisation "
-                        "avant de générer la liste d'appel."
-                    )
-                )
-
-            # ======================================================
-            # MEMBRES DE LA COTISATION
-            # ======================================================
-
-            subscription_lines = (
-                record.subscription_id.line_ids
-            )
-
-            if not subscription_lines:
-
-                raise ValidationError(
-                    _(
-                        "La cotisation %(subscription)s "
-                        "ne contient aucun membre participant."
-                    )
-                    % {
-                        "subscription":
-                            record.subscription_id.display_name,
-                    }
-                )
-
-            members = (
-                subscription_lines
-                .mapped("member_id")
-                .filtered(
-                    lambda member: (
-                        member
-                        and member.active
-                        and member.state == "active"
-                        and member.company_id
-                        == record.company_id
-                    )
-                )
-            )
+            members = self.env["association.member"].search([
+                ("company_id", "=", record.company_id.id),
+                ("active", "=", True),
+                ("state", "=", "active"),
+            ], order="name, id")
 
             if not members:
 
                 raise ValidationError(
                     _(
-                        "Aucun membre actif de la cotisation "
-                        "%(subscription)s n'a été trouvé."
+                        "Aucun membre actif n'a été trouvé."
                     )
-                    % {
-                        "subscription":
-                            record.subscription_id.display_name,
-                    }
                 )
+
+            record._sync_treasury_member_situations()
+
+            # No subscription is selected by the treasurer.  A running cycle
+            # is only kept internally for the end-of-cycle legal snapshot.
+            if not record.subscription_period_id:
+                running_period = self.env["association.subscription.period"].search([
+                    ("company_id", "=", record.company_id.id),
+                    ("state", "=", "running"),
+                    ("subscription_id.state", "=", "running"),
+                ], order="due_date, id", limit=1)
+                if running_period:
+                    record.subscription_id = running_period.subscription_id.id
+                    record.subscription_period_id = running_period.id
+                    if not record.subscription_session_ids.filtered(
+                        lambda item: item.period_id == running_period
+                    ):
+                        self.env["association.meeting.subscription.session"].create({
+                            "meeting_id": record.id,
+                            "subscription_id": running_period.subscription_id.id,
+                            "period_id": running_period.id,
+                            "state": "collecting",
+                        })
 
             # ======================================================
             # MEMBRES DÉJÀ PRÉSENTS
@@ -3330,14 +3377,8 @@ class AssociationMeeting(models.Model):
 
                 raise UserError(
                     _(
-                        "Tous les membres de la cotisation "
-                        "%(subscription)s sont déjà présents "
-                        "dans la liste d'appel."
+                        "Tous les membres actifs sont déjà présents dans la liste d'appel."
                     )
-                    % {
-                        "subscription":
-                            record.subscription_id.display_name,
-                    }
                 )
 
             # ======================================================
@@ -3347,6 +3388,7 @@ class AssociationMeeting(models.Model):
             Attendance.create(
                 values_list
             )
+            record._sync_treasury_member_situations()
 
             # ======================================================
             # CHATTER
@@ -3541,19 +3583,6 @@ class AssociationMeeting(models.Model):
                     % {
                         "count": len(pending_attendances),
                     }
-                )
-
-            if (
-                meeting.pot_collected_amount > 0
-                and meeting.pot_settlement_state != "settled"
-            ):
-                raise ValidationError(
-                    _(
-                        "La caisse temporaire de cotisation n'est pas "
-                        "encore soldée. Remettez les attributions puis "
-                        "utilisez « Solder et verser le reliquat » avant "
-                        "de clôturer la réunion."
-                    )
                 )
 
             # ==================================================
@@ -3791,7 +3820,38 @@ class AssociationMeeting(models.Model):
         }.intersection(vals):
             self._sync_special_responsible_attendances()
 
+        self._broadcast_live_sync()
+
         return result
+
+    def _broadcast_live_sync(self):
+        """Notify every open form that this meeting has changed."""
+        for meeting in self:
+            self.env["bus.bus"]._sendone(
+                "primetech_association_meeting_sync",
+                "primetech_association_meeting_sync",
+                {"meeting_id": meeting.id, "sender_id": self.env.user.id},
+            )
+        return True
+
+    def _sync_treasury_member_situations(self):
+        """Put every active member in the meeting treasury exactly once."""
+        Situation = self.env["association.meeting.member.situation"]
+        for meeting in self:
+            members = self.env["association.member"].search([
+                ("company_id", "=", meeting.company_id.id),
+                ("active", "=", True), ("state", "=", "active"),
+            ], order="name, id")
+            existing = set(meeting.treasury_member_situation_ids.mapped("member_id").ids)
+            Situation.create([{"meeting_id": meeting.id, "member_id": member.id}
+                              for member in members if member.id not in existing])
+        return True
+
+    def action_broadcast_live_sync(self):
+        """Called by the meeting form after a client-side interaction."""
+        self.ensure_one()
+        self._broadcast_live_sync()
+        return True
     
     
     # ==========================================================

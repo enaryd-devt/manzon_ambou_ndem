@@ -173,6 +173,18 @@ class AssociationSubscriptionPeriod(models.Model):
         string="Bénéficiaires",
     )
 
+    meeting_expense_ids = fields.One2many(
+        comodel_name="association.expense",
+        inverse_name="subscription_period_id",
+        string="Dépenses de séance",
+        readonly=True,
+    )
+
+    meeting_expense_amount = fields.Monetary(
+        string="Dépenses de séance", compute="_compute_pot_statistics",
+        currency_field="currency_id",
+    )
+
     collected_amount = fields.Monetary(
         string="Cagnotte collectée",
         compute="_compute_pot_statistics",
@@ -407,6 +419,8 @@ class AssociationSubscriptionPeriod(models.Model):
         "subscription_id.line_ids.penalty_amount",
         "allocation_ids.amount",
         "allocation_ids.state",
+        "meeting_expense_ids.amount",
+        "meeting_expense_ids.state",
         "settled_amount",
     )
     def _compute_pot_statistics(self):
@@ -449,12 +463,17 @@ class AssociationSubscriptionPeriod(models.Model):
                 ).mapped("amount")
             )
 
+            expense_amount = sum(period.meeting_expense_ids.filtered(
+                lambda expense: expense.state == "validated"
+            ).mapped("amount"))
+
             period.collected_amount = collected_amount
             period.penalty_collected_amount = penalty_collected_amount
             period.allocated_amount = allocated_amount
+            period.meeting_expense_amount = expense_amount
             period.available_amount = max(
                 collected_amount - penalty_collected_amount - allocated_amount
-                - (period.settled_amount or 0.0),
+                - expense_amount - (period.settled_amount or 0.0),
                 0.0,
             )
 
@@ -773,6 +792,7 @@ class AssociationSubscriptionPeriod(models.Model):
             "meeting_subscription_session_id": self.env.context.get(
                 "default_meeting_subscription_session_id"
             ),
+            "settlement_only": bool(self.env.context.get("default_settlement_only")),
         })
 
         # ======================================================

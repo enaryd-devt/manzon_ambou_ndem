@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_membership_fee_list" model="ir.ui.view">
+        <field name="name">association.membership.fee.list</field>
+        <field name="model">association.membership.fee</field>
+        <field name="arch" type="xml">
+            <list decoration-success="state == 'paid'" decoration-warning="state == 'due'">
+                <field name="member_id"/>
+                <field name="name"/>
+                <field name="fund_id"/>
+                <field name="amount" sum="Total"/>
+                <field name="amount_paid" sum="Réglé"/>
+                <field name="amount_remaining" sum="Reste"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_membership_fee_form" model="ir.ui.view">
+        <field name="name">association.membership.fee.form</field>
+        <field name="model">association.membership.fee</field>
+        <field name="arch" type="xml">
+            <form string="Frais d’adhésion">
+                <sheet>
+                    <group>
+                        <group><field name="member_id"/><field name="name"/><field name="fund_id"/></group>
+                        <group><field name="amount"/><field name="amount_paid"/><field name="amount_remaining"/><field name="state"/></group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_membership_fee_search" model="ir.ui.view">
+        <field name="name">association.membership.fee.search</field>
+        <field name="model">association.membership.fee</field>
+        <field name="arch" type="xml"><search><field name="member_id"/><field name="fund_id"/><filter string="À régler" name="due" domain="[('state','=','due')]"/><filter string="Réglés" name="paid" domain="[('state','=','paid')]"/></search></field>
+    </record>
+    <record id="action_membership_fee" model="ir.actions.act_window">
+        <field name="name">Frais d’adhésion</field><field name="res_model">association.membership.fee</field><field name="view_mode">list,form</field><field name="search_view_id" ref="view_membership_fee_search"/>
+    </record>
+</odoo>

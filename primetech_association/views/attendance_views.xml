@@ -16,6 +16,10 @@
 
             <list
                 string="Présences"
+                editable="bottom"
+                create="false"
+                delete="false"
+                multi_edit="1"
                 decoration-success="state == 'present'"
                 decoration-warning="state == 'late'"
                 decoration-danger="state == 'absent'"
@@ -55,10 +59,15 @@
                     optional="show"
                 />
 
+                <field name="is_present" string="Présent"/>
+                <field name="is_absent" string="Absent"/>
+                <field name="is_late" string="Retard"/>
+
                 <field
                     name="state"
                     string="Présence"
                     widget="badge"
+                    optional="hide"
                     decoration-muted="state == 'pending'"
                     decoration-success="state == 'present'"
                     decoration-warning="state == 'late'"
@@ -720,6 +729,40 @@
 
         </field>
 
+    </record>
+
+    <!-- Actions de masse natives Odoo : disponibles après sélection des lignes. -->
+    <record id="action_server_attendance_mark_present" model="ir.actions.server">
+        <field name="name">Marquer comme présents</field>
+        <field name="model_id" ref="model_association_attendance"/>
+        <field name="binding_model_id" ref="model_association_attendance"/>
+        <field name="binding_type">action</field>
+        <field name="binding_view_types">list</field>
+        <field name="groups_id" eval="[(4, ref('primetech_association.group_association_meeting_secretary')), (4, ref('primetech_association.group_association_meeting_censor')), (4, ref('primetech_association.group_association_manager')), (4, ref('primetech_association.group_association_admin'))]"/>
+        <field name="state">code</field>
+        <field name="code">records.action_mark_present()</field>
+    </record>
+
+    <record id="action_server_attendance_mark_absent" model="ir.actions.server">
+        <field name="name">Marquer comme absents</field>
+        <field name="model_id" ref="model_association_attendance"/>
+        <field name="binding_model_id" ref="model_association_attendance"/>
+        <field name="binding_type">action</field>
+        <field name="binding_view_types">list</field>
+        <field name="groups_id" eval="[(4, ref('primetech_association.group_association_meeting_secretary')), (4, ref('primetech_association.group_association_meeting_censor')), (4, ref('primetech_association.group_association_manager')), (4, ref('primetech_association.group_association_admin'))]"/>
+        <field name="state">code</field>
+        <field name="code">records.action_mark_absent()</field>
+    </record>
+
+    <record id="action_server_attendance_mark_late" model="ir.actions.server">
+        <field name="name">Marquer en retard</field>
+        <field name="model_id" ref="model_association_attendance"/>
+        <field name="binding_model_id" ref="model_association_attendance"/>
+        <field name="binding_type">action</field>
+        <field name="binding_view_types">list</field>
+        <field name="groups_id" eval="[(4, ref('primetech_association.group_association_meeting_secretary')), (4, ref('primetech_association.group_association_meeting_censor')), (4, ref('primetech_association.group_association_manager')), (4, ref('primetech_association.group_association_admin'))]"/>
+        <field name="state">code</field>
+        <field name="code">records.action_mark_late()</field>
     </record>
 
 </odoo>
