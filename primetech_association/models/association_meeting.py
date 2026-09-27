@@ -3296,7 +3296,10 @@ class AssociationMeeting(models.Model):
                     )
                 )
 
-            record._sync_treasury_member_situations()
+            # Keep the treasury recovery list in sync even when the roll call
+            # was already prepared.  The button is also used by the treasurer
+            # to initialise the members to recover from.
+            treasury_situation_count = record._sync_treasury_member_situations()
 
             # No subscription is selected by the treasurer.  A running cycle
             # is only kept internally for the end-of-cycle legal snapshot.
@@ -3373,11 +3376,12 @@ class AssociationMeeting(models.Model):
             # AUCUN NOUVEAU MEMBRE
             # ======================================================
 
-            if not values_list:
+            if not values_list and not treasury_situation_count:
 
                 raise UserError(
                     _(
-                        "Tous les membres actifs sont déjà présents dans la liste d'appel."
+                        "Tous les membres actifs sont déjà présents dans la liste "
+                        "d'appel et dans la trésorerie de la réunion."
                     )
                 )
 
@@ -3385,29 +3389,28 @@ class AssociationMeeting(models.Model):
             # CRÉATION
             # ======================================================
 
-            Attendance.create(
-                values_list
-            )
-            record._sync_treasury_member_situations()
+            if values_list:
+                Attendance.create(values_list)
 
             # ======================================================
             # CHATTER
             # ======================================================
 
-            record.message_post(
-                body=_(
-                    "%(count)s membre(s) de la cotisation "
-                    "%(subscription)s ont été ajoutés "
-                    "à la liste d'appel."
+            messages = []
+            if values_list:
+                messages.append(
+                    _("%(count)s membre(s) actif(s) ont été ajoutés à la liste d'appel.")
+                    % {"count": len(values_list)}
                 )
-                % {
-                    "count":
-                        len(values_list),
-
-                    "subscription":
-                        record.subscription_id.display_name,
-                }
-            )
+            if treasury_situation_count:
+                messages.append(
+                    _(
+                        "%(count)s membre(s) actif(s) ont été ajoutés à la trésorerie "
+                        "pour le recouvrement."
+                    )
+                    % {"count": treasury_situation_count}
+                )
+            record.message_post(body="<br/>".join(messages))
 
         return True
     
@@ -3835,17 +3838,28 @@ class AssociationMeeting(models.Model):
         return True
 
     def _sync_treasury_member_situations(self):
-        """Put every active member in the meeting treasury exactly once."""
+        """Put every active member in the meeting treasury exactly once.
+
+        Return the number of newly created recovery situations so callers can
+        distinguish a useful treasury load from a no-op.
+        """
         Situation = self.env["association.meeting.member.situation"]
+        created_count = 0
         for meeting in self:
             members = self.env["association.member"].search([
                 ("company_id", "=", meeting.company_id.id),
                 ("active", "=", True), ("state", "=", "active"),
             ], order="name, id")
             existing = set(meeting.treasury_member_situation_ids.mapped("member_id").ids)
-            Situation.create([{"meeting_id": meeting.id, "member_id": member.id}
-                              for member in members if member.id not in existing])
-        return True
+            values_list = [
+                {"meeting_id": meeting.id, "member_id": member.id}
+                for member in members
+                if member.id not in existing
+            ]
+            if values_list:
+                Situation.create(values_list)
+                created_count += len(values_list)
+        return created_count
 
     def action_broadcast_live_sync(self):
         """Called by the meeting form after a client-side interaction."""
