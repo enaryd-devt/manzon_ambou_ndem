@@ -923,7 +923,13 @@ class AssociationPaymentLine(models.Model):
         for record in self:
 
             if not record.subscription_id:
-                record.subscription_line_id = False
+                # Cette méthode est appelée depuis ``write``.  Une écriture
+                # classique ici relancerait donc la résolution et pouvait
+                # provoquer une récursion infinie lors de la validation d'un
+                # paiement partiel.
+                record.with_context(
+                    _skip_subscription_line_resolution=True,
+                ).subscription_line_id = False
                 continue
 
             if record.subscription_id.state != "running":
@@ -935,7 +941,9 @@ class AssociationPaymentLine(models.Model):
                 )
 
             if not record.payment_id.member_id:
-                record.subscription_line_id = False
+                record.with_context(
+                    _skip_subscription_line_resolution=True,
+                ).subscription_line_id = False
                 continue
 
             subscription_line = SubscriptionLine.search(
@@ -974,9 +982,9 @@ class AssociationPaymentLine(models.Model):
                     }
                 )
 
-            record.subscription_line_id = (
-                subscription_line
-            )
+            record.with_context(
+                _skip_subscription_line_resolution=True,
+            ).subscription_line_id = subscription_line
 
             if (
                 record.subscription_period_id
@@ -1001,10 +1009,10 @@ class AssociationPaymentLine(models.Model):
                     subscription_line
                 )
 
-                record.subscription_period_id = (
-                    periods[:1]
-                    if periods
-                    else False
+                record.with_context(
+                    _skip_subscription_line_resolution=True,
+                ).subscription_period_id = (
+                    periods[:1] if periods else False
                 )
 
         return True
@@ -1025,9 +1033,14 @@ class AssociationPaymentLine(models.Model):
         result = super().write(vals)
 
         if (
+            not self.env.context.get(
+                "_skip_subscription_line_resolution"
+            )
+            and (
             "subscription_id" in vals
             or "payment_id" in vals
             or "subscription_period_id" in vals
+            )
         ):
             self._resolve_subscription_line()
 
