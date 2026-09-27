@@ -860,6 +860,12 @@ class AssociationMember(models.Model):
         first_name = (first_name or "").strip()
         last_name = (last_name or "").strip()
 
+        # PostgreSQL accepts an empty string for a required Char field.  Keep
+        # the name normalized here; the business constraint below then blocks
+        # any empty member record before it can be persisted.
+        if name_in_vals:
+            vals["name"] = full_name
+
         if (
             name_in_vals
             and not first_name_in_vals
@@ -1214,7 +1220,14 @@ class AssociationMember(models.Model):
 
                     _("Duplicate member code.")
 
-                )
+                    )
+
+
+    @api.constrains("name")
+    def _check_member_name(self):
+        for rec in self:
+            if not (rec.name or "").strip():
+                raise ValidationError(_("Le nom complet du membre est obligatoire."))
 
 
     # ==========================================================

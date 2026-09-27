@@ -460,8 +460,8 @@
 
                                             <field
                                                 name="name"
-                                                readonly="1"
-                                                placeholder="Nom du membre"/>
+                                                required="1"
+                                                placeholder="Nom complet du membre"/>
 
                                         </h1>
 
@@ -555,10 +555,6 @@
                                 </div>
 
                                 <group>
-
-                                    <field
-                                        name="name"
-                                        placeholder="Nom complet du membre"/>
 
                                     <field
                                         name="first_name"
