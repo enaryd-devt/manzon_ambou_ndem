@@ -1754,6 +1754,25 @@ class AssociationSubscriptionLine(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        subscriptions = self.env["association.subscription"].browse([
+            vals["subscription_id"]
+            for vals in vals_list
+            if vals.get("subscription_id")
+        ])
+        allow_running_add = self.env.context.get("allow_running_member_add")
+        for subscription in subscriptions:
+            is_running_wizard_add = (
+                subscription.state == "running" and allow_running_add
+            )
+            if subscription.state != "draft" and not is_running_wizard_add:
+                raise ValidationError(
+                    _(
+                        "Un membre peut être ajouté directement uniquement "
+                        "à une cotisation en brouillon. Pour une cotisation "
+                        "en cours, utilisez le bouton « Ajouter un membre »."
+                    )
+                )
+
         records = super().create(vals_list)
 
         # A member added while a grace period is already at zero must not

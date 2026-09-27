@@ -1358,7 +1358,8 @@
 
                                     <list
                                         editable="bottom"
-                                        create="0"
+                                        create="parent.state == 'draft'"
+                                        delete="parent.state == 'draft'"
                                         limit="2000"
                                         decoration-success="payment_state == 'paid'"
                                         decoration-warning="payment_state == 'partial'"

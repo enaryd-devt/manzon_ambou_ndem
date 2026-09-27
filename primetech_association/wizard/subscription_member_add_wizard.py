@@ -32,7 +32,9 @@ class AssociationSubscriptionMemberAddWizard(models.TransientModel):
         ], limit=1)
         if existing:
             raise ValidationError(_("Ce membre participe déjà à cette cotisation."))
-        self.env["association.subscription.line"].create({
+        self.env["association.subscription.line"].with_context(
+            allow_running_member_add=True,
+        ).create({
             "subscription_id": self.subscription_id.id,
             "member_id": self.member_id.id,
             "include_past_periods": self.include_past_periods,
