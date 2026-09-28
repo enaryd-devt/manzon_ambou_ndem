@@ -162,7 +162,13 @@ class AssociationPayment(models.Model):
 
     @api.depends("member_id")
     def _compute_member_financial_situation(self):
-        """Current member dues for the receipt, by cycle and no-cycle dues."""
+        """Receivable member dues for the receipt.
+
+        Only closed cycles are due.  A running cycle is informational and is
+        not yet included in the debt.  A running subscription without cycles
+        (for example a recovery) is due as a single line. Archived
+        subscriptions are never included.
+        """
         PaymentLine = self.env["association.payment.line"]
         Period = self.env["association.subscription.period"]
         SubscriptionLine = self.env["association.subscription.line"]
@@ -172,12 +178,12 @@ class AssociationPayment(models.Model):
                 lines = SubscriptionLine.search([
                     ("member_id", "=", payment.member_id.id),
                     ("subscription_id.active", "=", True),
-                    ("subscription_id.state", "in", ["confirmed", "running", "closed"]),
+                    ("subscription_id.state", "in", ["running", "closed"]),
                 ])
                 for line in lines:
                     periods = Period.search([
                         ("subscription_id", "=", line.subscription_id.id),
-                        ("state", "in", ["running", "closed"]),
+                        ("state", "=", "closed"),
                     ])
                     if periods:
                         for period in periods:
@@ -185,7 +191,7 @@ class AssociationPayment(models.Model):
                             paid = PaymentLine._get_period_paid_for_line(line, period)
                             total_due += due
                             total_paid += min(paid, due)
-                    else:
+                    elif line.subscription_id.state == "running":
                         due = (
                             line.recovery_amount
                             if line.subscription_id.subscription_type == "recovery"
