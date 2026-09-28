@@ -177,6 +177,7 @@ Bonnes pratiques
         "views/subscription_cycle_close_wizard_views.xml",
         "views/meeting_subscription_cycle_start_wizard_views.xml",
         "views/meeting_expense_wizard_views.xml",
+        "views/meeting_receipt_wizard_views.xml",
         "views/meeting_available_amount_wizard_views.xml",
         "views/meeting_cycle_finish_wizard_views.xml",
         "views/meeting_penalty_payment_wizard_views.xml",

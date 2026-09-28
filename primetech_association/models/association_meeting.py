@@ -704,11 +704,27 @@ class AssociationMeeting(models.Model):
     )
     expense_ids = fields.One2many("association.expense", "meeting_id", string="Dépenses de réunion")
     expense_total = fields.Monetary(string="Dépenses de réunion", compute="_compute_meeting_expenses", currency_field="currency_id")
+    meeting_receipt_ids = fields.One2many(
+        "association.meeting.receipt", "meeting_id", string="Recettes de séance", copy=False,
+    )
+    meeting_receipt_total = fields.Monetary(
+        string="Recettes de séance", compute="_compute_meeting_receipts",
+        currency_field="currency_id",
+    )
 
     @api.depends("expense_ids.amount", "expense_ids.state")
     def _compute_meeting_expenses(self):
         for meeting in self:
             meeting.expense_total = sum(meeting.expense_ids.filtered(lambda expense: expense.state == "validated").mapped("amount"))
+
+    @api.depends("meeting_receipt_ids.amount", "meeting_receipt_ids.state")
+    def _compute_meeting_receipts(self):
+        for meeting in self:
+            meeting.meeting_receipt_total = sum(
+                meeting.meeting_receipt_ids.filtered(
+                    lambda receipt: receipt.state == "confirmed"
+                ).mapped("amount")
+            )
 
     def action_create_meeting_expense(self):
         self.ensure_one()
@@ -723,6 +739,19 @@ class AssociationMeeting(models.Model):
         return {
             "type": "ir.actions.act_window", "name": _("Dépense de séance"),
             "res_model": "association.meeting.expense.wizard", "view_mode": "form", "target": "new",
+            "context": {"default_meeting_id": self.id},
+        }
+
+    def action_create_meeting_receipt(self):
+        self.ensure_one()
+        if self.state != "in_progress":
+            raise UserError(_("Une recette de séance ne peut être saisie que pendant la réunion."))
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Recette de séance"),
+            "res_model": "association.meeting.receipt.wizard",
+            "view_mode": "form",
+            "target": "new",
             "context": {"default_meeting_id": self.id},
         }
 
@@ -1087,6 +1116,8 @@ class AssociationMeeting(models.Model):
         "pot_settlement_state",
         "expense_ids.amount",
         "expense_ids.state",
+        "meeting_receipt_ids.amount",
+        "meeting_receipt_ids.state",
         "subscription_period_id.settled_amount",
     )
     def _compute_pot_statistics(self):
@@ -1123,6 +1154,7 @@ class AssociationMeeting(models.Model):
                 collected_amount = sum(
                     meeting.subscription_line_ids.mapped("amount_paid")
                 )
+            collected_amount += meeting.meeting_receipt_total
             allocated_amount = sum(allocations.mapped("amount"))
 
             meeting.pot_collected_amount = collected_amount

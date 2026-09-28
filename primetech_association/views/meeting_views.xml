@@ -939,7 +939,12 @@
                                     <button name="action_create_meeting_expense" type="object"
                                         groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
                                         string="Dépense de séance" icon="fa-shopping-cart" class="btn-secondary"
-                                        invisible="state != 'in_progress' or pot_available_amount &lt;= 0"/>
+                                        invisible="state != 'in_progress' or subscription_report_available or pot_available_amount &lt;= 0"/>
+
+                                    <button name="action_create_meeting_receipt" type="object"
+                                        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                                        string="Recette de séance" icon="fa-plus-circle" class="btn-secondary"
+                                        invisible="state != 'in_progress' or subscription_report_available"/>
 
                                     <button
                                         name="action_generate_attendances"
@@ -1101,6 +1106,32 @@
 
                                 </div>
 
+                            </div>
+
+
+                            <div class="border rounded-3 mb-1">
+                                <div class="d-flex align-items-center justify-content-between px-2 py-1 border-bottom">
+                                    <div>
+                                        <i class="fa fa-plus-circle text-success me-2" title="Recettes de séance"/>
+                                        <span class="fw-bold">Recettes de séance</span>
+                                        <span class="text-muted small ms-2">Contributions hors cotisations</span>
+                                    </div>
+                                    <span class="fw-bold text-success">
+                                        <field name="meeting_receipt_total" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    </span>
+                                </div>
+                                <field name="meeting_receipt_ids" nolabel="1" readonly="1">
+                                    <list create="0" edit="0" delete="0">
+                                        <field name="receipt_date"/>
+                                        <field name="contributor_type" string="Type"/>
+                                        <field name="contributor_display" string="Contributeur"/>
+                                        <field name="reason" string="Motif"/>
+                                        <field name="payment_method" string="Mode"/>
+                                        <field name="amount" string="Montant" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                        <field name="state" widget="badge"/>
+                                        <field name="currency_id" column_invisible="1"/>
+                                    </list>
+                                </field>
                             </div>
 
 

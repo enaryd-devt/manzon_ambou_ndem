@@ -45,6 +45,7 @@ from . import association_meeting_officer
 from . import association_meeting_attendance
 from . import association_meeting_resolution
 from . import association_meeting_collection
+from . import association_meeting_receipt
 from . import association_meeting_member_situation
 from . import association_meeting_allocation
 

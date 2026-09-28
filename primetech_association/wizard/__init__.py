@@ -18,6 +18,7 @@ from . import subscription_payment_wizard
 from . import meeting_subscription_cycle_start_wizard
 from . import member_account_subscription_payment_wizard
 from . import meeting_expense_wizard
+from . import meeting_receipt_wizard
 from . import meeting_available_amount_wizard
 from . import meeting_cycle_finish_wizard
 from . import meeting_penalty_payment_wizard
