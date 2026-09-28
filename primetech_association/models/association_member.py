@@ -964,10 +964,11 @@ class AssociationMember(models.Model):
             if can_finance:
                 subscription_lines = SubscriptionLine.search([
                     ("member_id", "=", rec.id),
+                    ("subscription_id.active", "=", True),
                 ])
                 rec.subscription_count = Period.search_count([
                     ("subscription_id", "in", subscription_lines.mapped("subscription_id").ids),
-                    ("state", "in", ["running", "closed", "cancelled"]),
+                    ("state", "in", ["running", "closed"]),
                 ]) + len(subscription_lines.filtered(
                     lambda line: not line.subscription_id.period_ids
                 ))
@@ -975,6 +976,9 @@ class AssociationMember(models.Model):
                 payments = Payment.search([
                     ("member_id", "=", rec.id),
                     ("state", "=", "confirmed"),
+                    "|",
+                    ("line_ids", "=", False),
+                    ("line_ids.subscription_line_id.subscription_id.active", "=", True),
                 ])
 
                 rec.payment_count = len(payments)
@@ -1307,6 +1311,9 @@ class AssociationMember(models.Model):
             "domain": [
                 ("member_id", "=", self.id),
                 ("state", "=", "confirmed"),
+                "|",
+                ("line_ids", "=", False),
+                ("line_ids.subscription_line_id.subscription_id.active", "=", True),
             ],
             "context": {
                 "default_member_id": self.id,
@@ -1357,6 +1364,7 @@ class AssociationMember(models.Model):
                     "=",
                     self.id,
                 ),
+                ("subscription_id.active", "=", True),
             ]
         )
 
@@ -1377,7 +1385,6 @@ class AssociationMember(models.Model):
                         [
                             "running",
                             "closed",
-                            "cancelled",
                         ],
                     ),
                 ],
