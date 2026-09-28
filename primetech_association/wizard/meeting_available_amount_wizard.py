@@ -52,19 +52,26 @@ class AssociationMeetingAvailableAmountWizard(models.TransientModel):
         else:
             if not self.fund_id:
                 raise ValidationError(_("Sélectionnez le compte de trésorerie."))
+            self.meeting_id._cancel_legacy_membership_fee_receipts()
             transaction = self.env["association.fund.transaction"].create({
                 "company_id": self.company_id.id,
                 "fund_id": self.fund_id.id,
                 "transaction_type": "in",
                 "amount": self.amount,
                 "transaction_date": fields.Date.context_today(self),
-                "description": _("Versement de la caisse de séance %(meeting)s") % {"meeting": self.meeting_id.display_name},
+                "description": _("Versement consolidé de la caisse de séance %(meeting)s") % {"meeting": self.meeting_id.display_name},
                 "origin_model": "association.meeting",
                 "origin_res_id": self.meeting_id.id,
                 "origin_reference": self.meeting_id.name,
             })
             transaction.action_validate()
             self.period_id.settled_amount = (self.period_id.settled_amount or 0.0) + self.amount
+            if self.amount >= (self.available_amount or 0.0) - 0.01:
+                self.meeting_id.write({
+                    "pot_settlement_state": "settled",
+                    "pot_settlement_fund_id": self.fund_id.id,
+                    "pot_settlement_transaction_id": transaction.id,
+                })
             label = self.fund_id.display_name
         self.meeting_id.message_post(body=_("Montant disponible affecté : %(amount).2f %(currency)s vers %(destination)s.") % {"amount": self.amount, "currency": self.currency_id.name or "", "destination": label})
         self.meeting_id._broadcast_live_sync()

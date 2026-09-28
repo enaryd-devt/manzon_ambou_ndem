@@ -45,6 +45,7 @@ class AssociationDashboard(models.AbstractModel):
         Fund = self.env["association.fund"]
         Penalty = self.env["association.penalty"]
         Expense = self.env["association.expense"]
+        FundTransaction = self.env["association.fund.transaction"]
 
         # ======================================================
         # MEMBRES
@@ -287,123 +288,52 @@ class AssociationDashboard(models.AbstractModel):
 
         fund_domain = [
             ("company_id", "=", company.id),
+            ("active", "=", True),
         ]
 
         funds = Fund.search(
             fund_domain
         )
 
-        treasury_balance = 0.0
+        # This is the liquidity actually available now: opening balances plus
+        # validated entries minus validated exits, restricted to active funds.
+        # It is deliberately not filtered by the dashboard period.
+        treasury_balance = sum(funds.mapped("current_balance"))
+        # Compatibility correction for meetings settled under the former
+        # workflow: admission fees were credited directly to a fund although
+        # the same cash still remained in the meeting pot.  They are not
+        # liquid funds until the meeting makes its consolidated settlement.
+        legacy_meeting_fee_receipts = FundTransaction.search([
+            ("company_id", "=", company.id),
+            ("origin_model", "=", "association.membership.fee"),
+            ("state", "=", "validated"),
+            ("fund_id.active", "=", True),
+            ("payment_id.meeting_id", "!=", False),
+            ("payment_id.meeting_id.pot_settlement_state", "!=", "settled"),
+        ])
+        treasury_balance -= sum(legacy_meeting_fee_receipts.mapped("amount"))
 
-        # ------------------------------------------------------
-        # DÉTECTION DU CHAMP DE SOLDE
-        # ------------------------------------------------------
-
-        if "balance" in Fund._fields:
-
-            treasury_balance = sum(
-                funds.mapped("balance")
-            )
-
-        elif "current_balance" in Fund._fields:
-
-            treasury_balance = sum(
-                funds.mapped("current_balance")
-            )
-
-        elif "amount" in Fund._fields:
-
-            treasury_balance = sum(
-                funds.mapped("amount")
-            )
-
-        else:
-
-            # ==================================================
-            # CALCUL DEPUIS LES MOUVEMENTS FINANCIERS
-            # ==================================================
-
-            if (
-                "association.fund.transaction"
-                in self.env
-            ):
-
-                FundTransaction = self.env[
-                    "association.fund.transaction"
-                ]
-
-                transaction_domain = []
-
-                if "company_id" in FundTransaction._fields:
-
-                    transaction_domain.append(
-                        (
-                            "company_id",
-                            "=",
-                            company.id,
-                        )
-                    )
-
-                transactions = FundTransaction.search(
-                    transaction_domain
-                )
-
-                for transaction in transactions:
-
-                    # ------------------------------------------
-                    # IGNORER LES MOUVEMENTS NON VALIDÉS
-                    # ------------------------------------------
-
-                    if "state" in FundTransaction._fields:
-
-                        if transaction.state in (
-                            "draft",
-                            "cancel",
-                            "cancelled",
-                        ):
-
-                            continue
-
-                    # ------------------------------------------
-                    # MONTANT
-                    # ------------------------------------------
-
-                    amount = transaction.amount or 0.0
-
-                    # ------------------------------------------
-                    # TYPE DE MOUVEMENT
-                    # ------------------------------------------
-
-                    transaction_type = False
-
-                    if "transaction_type" in FundTransaction._fields:
-
-                        transaction_type = (
-                            transaction.transaction_type
-                        )
-
-                    elif "type" in FundTransaction._fields:
-
-                        transaction_type = (
-                            transaction.type
-                        )
-
-                    # ------------------------------------------
-                    # CALCUL
-                    # ------------------------------------------
-
-                    if transaction_type in (
-                        "debit",
-                        "expense",
-                        "out",
-                        "withdrawal",
-                    ):
-
-                        treasury_balance -= amount
-
-                    else:
-
-                        treasury_balance += amount
+        # ======================================================
+        # SITUATION FINANCIÈRE : UNE UNIQUE SOURCE COMPTABLE
+        # ======================================================
+        # Payments and expenses are operational documents.  The treasury
+        # transaction is their validated accounting impact and prevents the
+        # dashboard from showing a payment twice or an unvalidated expense.
+        financial_domain = [
+            ("company_id", "=", company.id),
+            ("state", "=", "validated"),
+        ]
+        if date_from:
+            financial_domain.append(("transaction_date", ">=", date_from))
+        if date_to:
+            financial_domain.append(("transaction_date", "<=", date_to))
+        financial_transactions = FundTransaction.search(financial_domain)
+        financial_in = sum(financial_transactions.filtered(
+            lambda transaction: transaction.transaction_type == "in"
+        ).mapped("amount"))
+        financial_out = sum(financial_transactions.filtered(
+            lambda transaction: transaction.transaction_type == "out"
+        ).mapped("amount"))
 
         # ======================================================
         # DISCIPLINE
@@ -646,6 +576,13 @@ class AssociationDashboard(models.AbstractModel):
             "treasury": {
                 "balance":
                     treasury_balance,
+            },
+
+            "financial": {
+                "in": financial_in,
+                "out": financial_out,
+                "net": financial_in - financial_out,
+                "transaction_count": len(financial_transactions),
             },
 
             "penalties": {

@@ -27,6 +27,15 @@ class AssociationMeetingCycleFinishWizard(models.TransientModel):
             raise ValidationError(_("Le cycle doit être en cours."))
         if abs((self.available_amount or 0.0) - (self.allocated_amount or 0.0)) > 0.01:
             raise ValidationError(_("Le total des affectations doit être exactement égal au montant disponible."))
+        treasury_lines = self.allocation_line_ids.filtered(
+            lambda line: line.destination == "treasury" and line.amount > 0
+        )
+        treasury_funds = treasury_lines.mapped("fund_id")
+        if len(treasury_funds) > 1:
+            raise ValidationError(_(
+                "Pour garantir un versement unique, choisissez un seul compte de trésorerie."
+            ))
+        treasury_amount = sum(treasury_lines.mapped("amount"))
         for line in self.allocation_line_ids:
             if line.amount <= 0:
                 raise ValidationError(_("Chaque montant d'affectation doit être supérieur à zéro."))
@@ -40,23 +49,33 @@ class AssociationMeetingCycleFinishWizard(models.TransientModel):
                     "allocation_method": "meeting_decision", "decision_note": line.note,
                 })
                 allocation.action_confirm()
-            else:
+            elif line.destination == "treasury":
                 if not line.fund_id:
                     raise ValidationError(_("Sélectionnez le compte de trésorerie."))
                 if line.fund_id.company_id != self.meeting_id.company_id:
                     raise ValidationError(_("Le compte de trésorerie doit appartenir à la société de la réunion."))
-                transaction = self.env["association.fund.transaction"].create({
-                    "company_id": self.meeting_id.company_id.id, "fund_id": line.fund_id.id,
-                    "transaction_type": "in", "amount": line.amount,
-                    "transaction_date": fields.Date.context_today(self),
-                    "description": _("Versement de la caisse de séance %(meeting)s") % {"meeting": self.meeting_id.display_name},
-                    "origin_model": "association.meeting", "origin_res_id": self.meeting_id.id,
-                    "origin_reference": self.meeting_id.name,
-                })
-                transaction.action_validate()
-                self.period_id.settled_amount += line.amount
-        if self.apply_penalties:
-            self.period_id._get_subscription_lines()._apply_late_penalty(force=True)
+                # Les lignes de trésorerie sont regroupées après la boucle.
+        if treasury_amount:
+            fund = treasury_funds[:1]
+            self.meeting_id._cancel_legacy_membership_fee_receipts()
+            transaction = self.env["association.fund.transaction"].create({
+                "company_id": self.meeting_id.company_id.id,
+                "fund_id": fund.id,
+                "transaction_type": "in",
+                "amount": treasury_amount,
+                "transaction_date": fields.Date.context_today(self),
+                "description": _("Versement consolidé de la caisse de séance %(meeting)s") % {"meeting": self.meeting_id.display_name},
+                "origin_model": "association.meeting",
+                "origin_res_id": self.meeting_id.id,
+                "origin_reference": self.meeting_id.name,
+            })
+            transaction.action_validate()
+            self.period_id.settled_amount += treasury_amount
+            self.meeting_id.write({
+                "pot_settlement_state": "settled",
+                "pot_settlement_fund_id": fund.id,
+                "pot_settlement_transaction_id": transaction.id,
+            })
         self.period_id.invalidate_recordset(["available_amount"])
         self.meeting_id.invalidate_recordset([
             "pot_collected_amount", "pot_allocated_amount", "pot_available_amount",
@@ -64,6 +83,29 @@ class AssociationMeetingCycleFinishWizard(models.TransientModel):
         session = self.meeting_id.subscription_session_ids.filtered(
             lambda item: item.period_id == self.period_id
         )[:1]
+        if self.apply_penalties:
+            # Do not apply penalties silently from the meeting.  The
+            # treasurer is taken to the running subscription, where the
+            # penalty configuration and affected members are visible.  The
+            # session id is kept in context: finalising the cycle from there
+            # returns through the existing meeting refresh action.
+            if session:
+                session.write({"state": "decision"})
+            return {
+                "type": "ir.actions.act_window",
+                "name": _("Appliquer les pénalités et terminer le cycle"),
+                "res_model": "association.subscription",
+                "res_id": self.period_id.subscription_id.id,
+                "view_mode": "form",
+                "views": [[False, "form"]],
+                "target": "current",
+                "context": {
+                    "default_meeting_subscription_session_id": session.id if session else False,
+                    "default_return_meeting_id": self.meeting_id.id,
+                    "default_return_meeting_tab": "subscription",
+                    "from_meeting_cycle_finish": True,
+                },
+            }
         if session:
             session._close_without_treasury_transfer()
             self.meeting_id._broadcast_live_sync()

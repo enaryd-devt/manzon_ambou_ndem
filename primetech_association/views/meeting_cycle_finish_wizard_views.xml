@@ -8,9 +8,9 @@
         <sheet>
           <field name="currency_id" invisible="1"/>
           <group><field name="meeting_id"/><field name="period_id"/><field name="available_amount"/><field name="allocated_amount"/></group>
-          <div class="alert alert-info">Répartissez la caisse disponible entre un ou plusieurs bénéficiaires, ou versez-la dans un ou plusieurs comptes de trésorerie. Le total doit correspondre au montant disponible.</div>
+          <div class="alert alert-info">Répartissez la caisse disponible entre les bénéficiaires et, si nécessaire, un seul compte de trésorerie. Toutes les lignes destinées à ce compte sont regroupées en un versement unique. Le total doit correspondre au montant disponible.</div>
           <field name="allocation_line_ids" nolabel="1"><list editable="bottom"><field name="company_id" column_invisible="1"/><field name="currency_id" column_invisible="1"/><field name="destination"/><field name="beneficiary_id" invisible="destination != 'beneficiary'" required="destination == 'beneficiary'"/><field name="fund_id" invisible="destination != 'treasury'" required="destination == 'treasury'"/><field name="amount"/><field name="note"/></list></field>
-          <field name="apply_penalties"/>
+          <field name="apply_penalties" help="Si cette option est cochée, vous serez dirigé vers la cotisation en cours pour visualiser les impayés, appliquer les pénalités puis terminer le cycle. Vous reviendrez ensuite automatiquement à cette réunion."/>
         </sheet>
         <footer><button name="action_confirm" type="object" string="Affecter et terminer le cycle" class="btn-primary"/><button string="Annuler" special="cancel" class="btn-secondary"/></footer>
       </form>

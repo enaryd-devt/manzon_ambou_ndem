@@ -3845,6 +3845,24 @@ class AssociationMeeting(models.Model):
             )
         return True
 
+    def _cancel_legacy_membership_fee_receipts(self):
+        """Cancel old per-fee receipts made from this meeting cash.
+
+        Older versions posted each membership fee directly to a fund while
+        keeping the same cash in the meeting pot.  Cancelling those receipts
+        immediately before the consolidated settlement prevents a double
+        credit without altering the payment or the fee's paid status.
+        """
+        Transaction = self.env["association.fund.transaction"]
+        for meeting in self:
+            transactions = Transaction.search([
+                ("origin_model", "=", "association.membership.fee"),
+                ("payment_id.meeting_id", "=", meeting.id),
+                ("state", "=", "validated"),
+            ])
+            transactions.action_cancel()
+        return True
+
     def _sync_treasury_member_situations(self):
         """Put every active member in the meeting treasury exactly once.
 

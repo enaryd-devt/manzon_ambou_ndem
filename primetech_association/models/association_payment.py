@@ -1171,7 +1171,13 @@ class AssociationPayment(models.Model):
     # ==========================================================
 
     def _apply_membership_fee_recoveries(self):
-        """Règle les frais d’adhésion et alimente leur compte de trésorerie."""
+        """Règle les frais d’adhésion sans doubler la trésorerie de réunion.
+
+        Lorsqu'un paiement est encaissé en réunion, l'intégralité du montant
+        reste dans la caisse temporaire. Les frais d'adhésion sont donc réglés
+        ici, mais leur part n'alimente pas un compte séparément : le versement
+        final de la réunion dépose le solde net en une seule opération.
+        """
         Fee = self.env["association.membership.fee"]
         Transaction = self.env["association.fund.transaction"]
         for record in self:
@@ -1184,6 +1190,8 @@ class AssociationPayment(models.Model):
                 if settled <= 0:
                     continue
                 fee.register_payment(settled)
+                if record.meeting_id:
+                    continue
                 existing = Transaction.search([
                     ("origin_model", "=", "association.membership.fee"),
                     ("origin_res_id", "=", fee.id),
