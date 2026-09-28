@@ -159,6 +159,10 @@ class AssociationPayment(models.Model):
         string="Reste total à régler", currency_field="currency_id",
         compute="_compute_member_financial_situation",
     )
+    member_receipt_situation_lines = fields.Json(
+        string="Détail de la situation du membre",
+        compute="_compute_member_financial_situation",
+    )
 
     @api.depends("member_id")
     def _compute_member_financial_situation(self):
@@ -174,6 +178,7 @@ class AssociationPayment(models.Model):
         SubscriptionLine = self.env["association.subscription.line"]
         for payment in self:
             total_due = total_paid = 0.0
+            situation_lines = []
             if payment.member_id:
                 lines = SubscriptionLine.search([
                     ("member_id", "=", payment.member_id.id),
@@ -191,6 +196,15 @@ class AssociationPayment(models.Model):
                             paid = PaymentLine._get_period_paid_for_line(line, period)
                             total_due += due
                             total_paid += min(paid, due)
+                            situation_lines.append({
+                                "label": "%s — %s" % (
+                                    line.subscription_id.display_name,
+                                    period.display_name,
+                                ),
+                                "due": due,
+                                "paid": min(paid, due),
+                                "balance": max(due - paid, 0.0),
+                            })
                     elif line.subscription_id.state == "running":
                         due = (
                             line.recovery_amount
@@ -204,10 +218,21 @@ class AssociationPayment(models.Model):
                             ("payment_id.subscription_period_id", "=", False),
                         ])
                         total_due += due
-                        total_paid += min(sum(paid_lines.mapped("amount_paid")), due)
+                        paid = min(sum(paid_lines.mapped("amount_paid")), due)
+                        total_paid += paid
+                        situation_lines.append({
+                            "label": "%s — %s" % (
+                                line.subscription_id.display_name,
+                                _("Sans cycle"),
+                            ),
+                            "due": due,
+                            "paid": paid,
+                            "balance": max(due - paid, 0.0),
+                        })
             payment.member_total_due = total_due
             payment.member_total_paid = total_paid
             payment.member_total_balance = max(total_due - total_paid, 0.0)
+            payment.member_receipt_situation_lines = situation_lines
 
     payment_method = fields.Selection(
         selection="_get_payment_method_selection",
