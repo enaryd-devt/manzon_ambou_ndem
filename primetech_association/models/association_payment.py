@@ -147,6 +147,62 @@ class AssociationPayment(models.Model):
         compute="_compute_payment_totals",
     )
 
+    member_total_due = fields.Monetary(
+        string="Total dû par le membre", currency_field="currency_id",
+        compute="_compute_member_financial_situation",
+    )
+    member_total_paid = fields.Monetary(
+        string="Total réglé par le membre", currency_field="currency_id",
+        compute="_compute_member_financial_situation",
+    )
+    member_total_balance = fields.Monetary(
+        string="Reste total à régler", currency_field="currency_id",
+        compute="_compute_member_financial_situation",
+    )
+
+    @api.depends("member_id")
+    def _compute_member_financial_situation(self):
+        """Current member dues for the receipt, by cycle and no-cycle dues."""
+        PaymentLine = self.env["association.payment.line"]
+        Period = self.env["association.subscription.period"]
+        SubscriptionLine = self.env["association.subscription.line"]
+        for payment in self:
+            total_due = total_paid = 0.0
+            if payment.member_id:
+                lines = SubscriptionLine.search([
+                    ("member_id", "=", payment.member_id.id),
+                    ("subscription_id.active", "=", True),
+                    ("subscription_id.state", "in", ["confirmed", "running", "closed"]),
+                ])
+                for line in lines:
+                    periods = Period.search([
+                        ("subscription_id", "=", line.subscription_id.id),
+                        ("state", "in", ["running", "closed"]),
+                    ])
+                    if periods:
+                        for period in periods:
+                            due = PaymentLine._get_period_due_for_line(line, period)
+                            paid = PaymentLine._get_period_paid_for_line(line, period)
+                            total_due += due
+                            total_paid += min(paid, due)
+                    else:
+                        due = (
+                            line.recovery_amount
+                            if line.subscription_id.subscription_type == "recovery"
+                            else line.subscription_id.amount
+                        ) or 0.0
+                        paid_lines = PaymentLine.search([
+                            ("subscription_line_id", "=", line.id),
+                            ("payment_id.state", "=", "confirmed"),
+                            ("subscription_period_id", "=", False),
+                            ("payment_id.subscription_period_id", "=", False),
+                        ])
+                        total_due += due
+                        total_paid += min(sum(paid_lines.mapped("amount_paid")), due)
+            payment.member_total_due = total_due
+            payment.member_total_paid = total_paid
+            payment.member_total_balance = max(total_due - total_paid, 0.0)
+
     payment_method = fields.Selection(
         selection="_get_payment_method_selection",
         string="Mode de paiement",
