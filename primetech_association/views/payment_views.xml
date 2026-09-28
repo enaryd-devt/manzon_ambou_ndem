@@ -81,6 +81,10 @@
 
                 <field name="payment_method" widget="badge"/>
 
+                <field name="meeting_id" string="Réunion" optional="show"/>
+
+                <field name="subscription_period_id" string="Cycle" optional="show"/>
+
                 <field name="payment_reference" optional="show"/>
 
                 <field name="amount" sum="Total paiements"/>

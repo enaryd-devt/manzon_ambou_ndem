@@ -913,6 +913,7 @@ class AssociationMember(models.Model):
     def _compute_statistics(self):
         SubscriptionLine = self.env["association.subscription.line"]
         Period = self.env["association.subscription.period"]
+        PaymentLine = self.env["association.payment.line"]
         Payment = self.env["association.payment"]
         Meeting = self.env["association.meeting"]
         Attendance = self.env["association.attendance"]
@@ -962,31 +963,23 @@ class AssociationMember(models.Model):
 
             if can_finance:
                 subscription_lines = SubscriptionLine.search([
-                    ("member_id", "=", rec.id)
+                    ("member_id", "=", rec.id),
+                    ("subscription_id.active", "=", True),
                 ])
-
-                rec.subscription_count = Period.search_count(
-                    [
-                        (
-                            "subscription_id",
-                            "in",
-                            subscription_lines
-                            .mapped("subscription_id")
-                            .ids,
-                        ),
-                        (
-                            "state",
-                            "in",
-                            [
-                                "running",
-                                "closed",
-                            ],
-                        ),
-                    ]
-                )
+                historic_periods = PaymentLine.search([
+                    ("subscription_line_id.member_id", "=", rec.id),
+                    ("subscription_line_id.subscription_id.active", "=", False),
+                    ("payment_id.state", "=", "confirmed"),
+                    ("subscription_period_id", "!=", False),
+                ]).mapped("subscription_period_id")
+                rec.subscription_count = Period.search_count([
+                    ("subscription_id", "in", subscription_lines.mapped("subscription_id").ids),
+                    ("state", "in", ["running", "closed"]),
+                ]) + len(historic_periods)
 
                 payments = Payment.search([
-                    ("member_id", "=", rec.id)
+                    ("member_id", "=", rec.id),
+                    ("state", "=", "confirmed"),
                 ])
 
                 rec.payment_count = len(payments)
@@ -1306,17 +1299,19 @@ class AssociationMember(models.Model):
 
     def action_view_payments(self):
         """
-        Open all payments linked to the current member.
+        Open payments actually confirmed for the current member, including
+        payments collected during a meeting.
         """
         self.ensure_one()
 
         return {
             "type": "ir.actions.act_window",
-            "name": _("Payments"),
+            "name": _("Paiements confirmés du membre"),
             "res_model": "association.payment",
             "view_mode": "list,form",
             "domain": [
                 ("member_id", "=", self.id),
+                ("state", "=", "confirmed"),
             ],
             "context": {
                 "default_member_id": self.id,
@@ -1360,15 +1355,24 @@ class AssociationMember(models.Model):
             ]
         ).unlink()
 
-        subscription_lines = SubscriptionLine.search(
+        active_subscription_lines = SubscriptionLine.search(
             [
                 (
                     "member_id",
                     "=",
                     self.id,
                 ),
+                ("subscription_id.active", "=", True),
             ]
         )
+        historic_payment_lines = PaymentLine.search([
+            ("subscription_line_id.member_id", "=", self.id),
+            ("subscription_line_id.subscription_id.active", "=", False),
+            ("payment_id.state", "=", "confirmed"),
+            ("subscription_period_id", "!=", False),
+        ])
+        historic_periods = historic_payment_lines.mapped("subscription_period_id")
+        subscription_lines = active_subscription_lines | historic_payment_lines.mapped("subscription_line_id")
 
         report_records = Report
 
@@ -1392,6 +1396,8 @@ class AssociationMember(models.Model):
                 ],
                 order="sequence asc, id asc",
             )
+            if not subscription_line.subscription_id.active:
+                periods = periods.filtered(lambda period: period in historic_periods)
 
             for period in periods:
 

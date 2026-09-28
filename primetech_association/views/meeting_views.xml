@@ -1108,33 +1108,6 @@
 
                             </div>
 
-
-                            <div class="border rounded-3 mb-1">
-                                <div class="d-flex align-items-center justify-content-between px-2 py-1 border-bottom">
-                                    <div>
-                                        <i class="fa fa-plus-circle text-success me-2" title="Recettes de séance"/>
-                                        <span class="fw-bold">Recettes de séance</span>
-                                        <span class="text-muted small ms-2">Contributions hors cotisations</span>
-                                    </div>
-                                    <span class="fw-bold text-success">
-                                        <field name="meeting_receipt_total" widget="monetary" options="{'currency_field': 'currency_id'}"/>
-                                    </span>
-                                </div>
-                                <field name="meeting_receipt_ids" nolabel="1" readonly="1">
-                                    <list create="0" edit="0" delete="0">
-                                        <field name="receipt_date"/>
-                                        <field name="contributor_type" string="Type"/>
-                                        <field name="contributor_display" string="Contributeur"/>
-                                        <field name="reason" string="Motif"/>
-                                        <field name="payment_method" string="Mode"/>
-                                        <field name="amount" string="Montant" widget="monetary" options="{'currency_field': 'currency_id'}"/>
-                                        <field name="state" widget="badge"/>
-                                        <field name="currency_id" column_invisible="1"/>
-                                    </list>
-                                </field>
-                            </div>
-
-
                             <!-- ===================================================== -->
                             <!-- ABSENCE DE CYCLE                                      -->
                             <!-- ===================================================== -->
@@ -1158,6 +1131,7 @@
                                 </span>
 
                             </div>
+
 
 
                             <!-- ===================================================== -->
@@ -1196,6 +1170,42 @@
                                             <i
                                                 class="fa fa-arrow-circle-down fa-lg text-success"
                                                 title="Collecté"/>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+
+                                <!-- RECETTES DE SÉANCE -->
+
+                                <div class="col-6 col-lg-3">
+
+                                    <div class="border rounded-3 px-2 py-1 h-100">
+
+                                        <div class="d-flex align-items-center justify-content-between">
+
+                                            <div>
+
+                                                <div class="text-muted small">
+                                                    Recettes de séance
+                                                </div>
+
+                                                <div class="fw-bold fs-5 text-success">
+                                                    <field
+                                                        name="meeting_receipt_total"
+                                                        widget="monetary"
+                                                        options="{
+                                                            'currency_field': 'currency_id'
+                                                        }"/>
+                                                </div>
+
+                                            </div>
+
+                                            <i
+                                                class="fa fa-plus-circle fa-lg text-success"
+                                                title="Recettes de séance"/>
 
                                         </div>
 
@@ -1514,6 +1524,46 @@
                                     </list>
                                 </field>
 
+                            </div>
+
+                            <div class="border rounded-3 mb-1">
+                                <div class="d-flex align-items-center px-2 py-1 border-bottom">
+                                    <i class="fa fa-plus-circle text-success me-2" title="Recettes de séance"/>
+                                    <span class="fw-bold">Recettes de séance</span>
+                                    <span class="text-muted small ms-2">Contributions hors cotisations</span>
+                                </div>
+                                <field name="meeting_receipt_ids" nolabel="1" readonly="1">
+                                    <list create="0" edit="0" delete="0">
+                                        <field name="receipt_date"/>
+                                        <field name="contributor_type" string="Type"/>
+                                        <field name="contributor_display" string="Contributeur"/>
+                                        <field name="reason" string="Motif"/>
+                                        <field name="payment_method" string="Mode"/>
+                                        <field name="amount" string="Montant" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                        <field name="state" widget="badge"/>
+                                        <field name="currency_id" column_invisible="1"/>
+                                    </list>
+                                </field>
+                            </div>
+
+                            <div class="border rounded-3 mb-2">
+                                <div class="d-flex align-items-center px-2 py-1 border-bottom">
+                                    <i class="fa fa-shopping-cart text-danger me-2" title="Dépenses de séance"/>
+                                    <span class="fw-bold">Dépenses de séance</span>
+                                    <span class="text-muted small ms-2">Décaissements imputés à la caisse de la réunion</span>
+                                </div>
+                                <field name="expense_ids" nolabel="1" readonly="1">
+                                    <list create="0" edit="0" delete="0">
+                                        <field name="expense_date" string="Date"/>
+                                        <field name="name" string="Référence"/>
+                                        <field name="subject" string="Motif"/>
+                                        <field name="beneficiary_name" string="Bénéficiaire"/>
+                                        <field name="payment_method" string="Mode"/>
+                                        <field name="amount" string="Montant" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                        <field name="state" widget="badge"/>
+                                        <field name="currency_id" column_invisible="1"/>
+                                    </list>
+                                </field>
                             </div>
 
 

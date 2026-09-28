@@ -1739,6 +1739,36 @@ class AssociationSubscription(models.Model):
 
         return True
 
+    def toggle_active(self):
+        """Archive only cancelled subscriptions and retain paid history.
+
+        An archived contribution must not feed operational flows anymore.  Its
+        unpaid cycles are therefore archived as well, while closed cycles with
+        a confirmed payment remain available as accounting history.
+        """
+        PaymentLine = self.env["association.payment.line"]
+        for subscription in self:
+            if not subscription.active:
+                subscription.write({"active": True})
+                continue
+            if subscription.state != "cancelled":
+                raise UserError(_(
+                    "Une cotisation doit être annulée avant de pouvoir être archivée."
+                ))
+            paid_period_ids = PaymentLine.search([
+                ("subscription_line_id.subscription_id", "=", subscription.id),
+                ("payment_id.state", "=", "confirmed"),
+                ("subscription_period_id", "!=", False),
+            ]).mapped("subscription_period_id")
+            subscription.period_ids.filtered(
+                lambda period: period not in paid_period_ids
+            ).write({"active": False})
+            subscription.write({"active": False})
+            subscription.message_post(body=_(
+                "La cotisation a été archivée. Seuls les cycles déjà réglés restent disponibles dans l'historique."
+            ))
+        return True
+
     # ==========================================================
     # REMETTRE EN BROUILLON
     # ==========================================================

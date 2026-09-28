@@ -929,6 +929,26 @@ class AssociationPayment(models.Model):
                     _("Compte membre introuvable.")
                 )
 
+            allocations = []
+            for line in record.line_ids.filtered("subscription_line_id"):
+                period = line.subscription_period_id or record.subscription_period_id
+                if not period or not line.amount_paid:
+                    continue
+                allocations.append(
+                    _("%(subscription)s — %(cycle)s : %(amount).2f %(currency)s") % {
+                        "subscription": line.subscription_line_id.subscription_id.display_name,
+                        "cycle": period.display_name,
+                        "amount": line.amount_paid,
+                        "currency": record.currency_id.name or "",
+                    }
+                )
+            description = (
+                _("Affectation au(x) cycle(s) de cotisation : %(allocations)s") % {
+                    "allocations": "; ".join(allocations),
+                }
+                if allocations else _("Paiement %(payment)s") % {"payment": record.name}
+            )
+
             transaction = self.env[
                 "association.member.account.transaction"
             ].create(
@@ -945,14 +965,11 @@ class AssociationPayment(models.Model):
                     "transaction_date":
                         record.payment_date,
 
-                    "description":
-                        _(
-                            "Paiement %(payment)s"
-                        )
-                        % {
-                            "payment":
-                                record.name,
-                        },
+                    "description": description,
+                    "origin_type": "subscription_payment",
+                    "origin_model": record._name,
+                    "origin_res_id": record.id,
+                    "origin_reference": record.name,
                 }
             )
 

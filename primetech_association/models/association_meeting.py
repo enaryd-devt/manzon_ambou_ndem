@@ -1154,7 +1154,14 @@ class AssociationMeeting(models.Model):
                 collected_amount = sum(
                     meeting.subscription_line_ids.mapped("amount_paid")
                 )
-            collected_amount += meeting.meeting_receipt_total
+            # Les recettes hors cotisation font partie de la même caisse
+            # temporaire : elles augmentent donc le disponible avant le
+            # versement consolidé de fin de cycle.
+            collected_amount += sum(
+                meeting.meeting_receipt_ids.filtered(
+                    lambda receipt: receipt.state == "confirmed"
+                ).mapped("amount")
+            )
             allocated_amount = sum(allocations.mapped("amount"))
 
             meeting.pot_collected_amount = collected_amount
@@ -2365,11 +2372,17 @@ class AssociationMeeting(models.Model):
     def action_prepare_minutes(self):
 
         for meeting in self:
-
-            # Le procès-verbal est une photographie de la réunion. Il est
-            # donc toujours préparé avec les données disponibles au moment du
-            # clic : heure, liste d'appel et décisions peuvent être complétées
-            # ultérieurement dans le contenu généré.
+            pending_attendances = meeting.attendance_ids.filtered(
+                lambda attendance: attendance.state == "pending"
+            )
+            if not meeting.attendance_ids or pending_attendances:
+                raise ValidationError(_(
+                    "Terminez la liste d'appel avant de préparer le procès-verbal."
+                ))
+            if meeting.subscription_id and not meeting.subscription_report_available:
+                raise ValidationError(_(
+                    "Terminez la cotisation de cette réunion avant de préparer le procès-verbal."
+                ))
 
             # ==================================================
             # FORMATAGE DE LA DATE
@@ -2869,6 +2882,59 @@ class AssociationMeeting(models.Model):
                 )
             )
 
+            currency_name = meeting.currency_id.name or ""
+            receipt_lines = []
+            receipt_method_labels = dict(
+                self.env["association.meeting.receipt"]._fields[
+                    "payment_method"
+                ]._description_selection(self.env)
+            )
+            for receipt in meeting.meeting_receipt_ids.filtered(
+                lambda item: item.state == "confirmed"
+            ):
+                receipt_lines.append(
+                    "<li><strong>%s</strong> — %s : %s %s (%s)</li>" % (
+                        receipt.contributor_display,
+                        receipt.reason,
+                        "{:,.0f}".format(receipt.amount).replace(",", " "),
+                        currency_name,
+                        receipt_method_labels.get(receipt.payment_method, receipt.payment_method),
+                    )
+                )
+            receipts_html = (
+                "<ul>%s</ul>" % "".join(receipt_lines)
+                if receipt_lines else "<p>Aucune recette hors cotisation enregistrée.</p>"
+            )
+
+            expense_lines = []
+            for expense in meeting.expense_ids.filtered(
+                lambda item: item.state == "validated"
+            ):
+                beneficiary = expense.member_id.display_name if expense.member_id else expense.beneficiary_name
+                expense_lines.append(
+                    "<li><strong>%s</strong> — %s : %s %s</li>" % (
+                        beneficiary or _("Bénéficiaire non précisé"),
+                        expense.subject,
+                        "{:,.0f}".format(expense.amount).replace(",", " "),
+                        currency_name,
+                    )
+                )
+            expenses_html = (
+                "<ul>%s</ul>" % "".join(expense_lines)
+                if expense_lines else "<p>Aucune dépense de séance enregistrée.</p>"
+            )
+            financial_html = """
+                <h3>6. Situation financière de la séance</h3>
+                <h4>6.1 Recettes hors cotisations</h4>%s
+                <h4>6.2 Dépenses de séance</h4>%s
+                <p><strong>Montant disponible à verser :</strong> %s %s</p>
+            """ % (
+                receipts_html,
+                expenses_html,
+                "{:,.0f}".format(meeting.pot_available_amount).replace(",", " "),
+                currency_name,
+            )
+
             # ==================================================
             # GÉNÉRATION DU PROCÈS-VERBAL
             # ==================================================
@@ -2944,14 +3010,16 @@ class AssociationMeeting(models.Model):
 
                     %s
 
-                    <h3>6. Questions diverses</h3>
+                    %s
+
+                    <h3>7. Questions diverses</h3>
 
                     <p>
                         [Renseigner les questions diverses
                         examinées au cours de la séance.]
                     </p>
 
-                    <h3>7. Clôture de la séance</h3>
+                    <h3>8. Clôture de la séance</h3>
 
                     <p>
                         Aucun autre point n'étant inscrit
@@ -2977,6 +3045,7 @@ class AssociationMeeting(models.Model):
                 excused_html,
                 penalties_html,
                 resolution_html,
+                financial_html,
                 end_time,
             )
 
