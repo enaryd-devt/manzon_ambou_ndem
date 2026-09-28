@@ -106,7 +106,7 @@ class AssociationMeeting(models.Model):
 
     start_time = fields.Selection(
         selection="_get_hour_selection",
-        string="Heure prévue",
+        string="Heure de début",
         tracking=True,
     )
 
@@ -118,7 +118,7 @@ class AssociationMeeting(models.Model):
 
     end_time = fields.Selection(
         selection="_get_hour_selection",
-        string="Heure de fin",
+        string="Heure de clôture",
         tracking=True,
     )
 
@@ -2400,13 +2400,8 @@ class AssociationMeeting(models.Model):
             # FORMATAGE DES HEURES
             # ==================================================
 
-            start_time = (
-                meeting.actual_start_time
-                or meeting.start_time
-                or ""
-            )
-
-            end_time = meeting.actual_end_time or ""
+            start_time = meeting.start_time or ""
+            end_time = meeting.end_time or ""
 
             # ==================================================
             # PRÉSENTS
@@ -3613,19 +3608,10 @@ class AssociationMeeting(models.Model):
                     )
                 )
 
-            # ==================================================
-            # HEURE LOCALE COURANTE
-            # ==================================================
-
-            current_datetime = fields.Datetime.context_timestamp(
-                meeting,
-                fields.Datetime.now(),
-            )
-
-            actual_start_time = "%02d:%02d" % (
-                current_datetime.hour,
-                current_datetime.minute,
-            )
+            if not meeting.start_time:
+                raise ValidationError(_(
+                    "Renseignez l'heure de début avant de démarrer la réunion."
+                ))
 
             # ==================================================
             # DÉMARRER LA SÉANCE
@@ -3634,7 +3620,6 @@ class AssociationMeeting(models.Model):
             meeting.write(
                 {
                     "state": "in_progress",
-                    "actual_start_time": actual_start_time,
                 }
             )
 
@@ -3644,9 +3629,9 @@ class AssociationMeeting(models.Model):
 
             meeting.message_post(
                 body=_(
-                    "La séance a été démarrée à %s."
+                    "La séance a été démarrée. Heure de début : %s."
                 )
-                % actual_start_time
+                % meeting.start_time
             )
 
         return True
@@ -3711,72 +3696,10 @@ class AssociationMeeting(models.Model):
                     )
                 )
 
-            # ==================================================
-            # HEURE EFFECTIVE DE CLÔTURE
-            # ==================================================
-
-            if not meeting.actual_end_time:
-
-                current_datetime = (
-                    fields.Datetime.context_timestamp(
-                        meeting,
-                        fields.Datetime.now(),
-                    )
-                )
-
-                current_minutes = (
-                    current_datetime.hour * 60
-                    + current_datetime.minute
-                )
-
-                available_times = dict(
-                    meeting._fields[
-                        "actual_end_time"
-                    ].selection(meeting)
-                )
-
-                selected_time = False
-                minimum_difference = None
-
-                for time_value in available_times:
-
-                    try:
-
-                        hour, minute = map(
-                            int,
-                            time_value.split(":"),
-                        )
-
-                    except (
-                        ValueError,
-                        AttributeError,
-                    ):
-
-                        continue
-
-                    time_minutes = (
-                        hour * 60
-                        + minute
-                    )
-
-                    difference = abs(
-                        time_minutes
-                        - current_minutes
-                    )
-
-                    if (
-                        minimum_difference is None
-                        or difference < minimum_difference
-                    ):
-
-                        minimum_difference = difference
-                        selected_time = time_value
-
-                if selected_time:
-
-                    meeting.actual_end_time = (
-                        selected_time
-                    )
+            if not meeting.end_time:
+                raise ValidationError(_(
+                    "Renseignez l'heure de clôture avant de clôturer la réunion."
+                ))
 
             # ==================================================
             # VERROUILLAGE DE LA RÉUNION

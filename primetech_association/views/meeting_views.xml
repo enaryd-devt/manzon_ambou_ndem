@@ -682,22 +682,13 @@
                                         <field
                                             name="start_time"
                                             readonly="state not in ('draft', 'convoked')"
-                                        />
-
-                                        <field
-                                            name="actual_start_time"
-                                            readonly="state == 'closed'"
+                                            required="1"
                                         />
 
                                         <field
                                             name="end_time"
                                             readonly="state == 'closed'"
-                                        />
-
-                                        <field
-                                            name="actual_end_time"
-                                            string="Clôture effective"
-                                            readonly="state == 'closed'"
+                                            required="1"
                                         />
 
                                     </group>

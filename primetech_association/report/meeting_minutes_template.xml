@@ -155,8 +155,7 @@
 
                                         <span
                                             t-esc="
-                                                meeting.actual_start_time
-                                                or meeting.start_time
+                                                meeting.start_time
                                                 or '-'
                                             "
                                         />
