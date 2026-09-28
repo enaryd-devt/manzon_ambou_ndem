@@ -179,6 +179,10 @@ class AssociationPayment(models.Model):
         for payment in self:
             total_due = total_paid = 0.0
             situation_lines = []
+            currency_label = payment.currency_id.name or ""
+
+            def amount_label(amount):
+                return "{:,.0f} {}".format(amount or 0.0, currency_label).replace(",", " ")
             if payment.member_id:
                 lines = SubscriptionLine.search([
                     ("member_id", "=", payment.member_id.id),
@@ -204,6 +208,9 @@ class AssociationPayment(models.Model):
                                 "due": due,
                                 "paid": min(paid, due),
                                 "balance": max(due - paid, 0.0),
+                                "due_display": amount_label(due),
+                                "paid_display": amount_label(min(paid, due)),
+                                "balance_display": amount_label(max(due - paid, 0.0)),
                             })
                     elif line.subscription_id.state == "running":
                         due = (
@@ -228,6 +235,9 @@ class AssociationPayment(models.Model):
                             "due": due,
                             "paid": paid,
                             "balance": max(due - paid, 0.0),
+                            "due_display": amount_label(due),
+                            "paid_display": amount_label(paid),
+                            "balance_display": amount_label(max(due - paid, 0.0)),
                         })
             payment.member_total_due = total_due
             payment.member_total_paid = total_paid
