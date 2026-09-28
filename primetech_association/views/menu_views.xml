@@ -24,7 +24,7 @@
         action="action_meeting" sequence="20"/>
     <menuitem id="menu_penalty" name="Discipline et sanctions" parent="menu_association_life"
         action="action_penalty" sequence="30"
-        groups="primetech_association.group_association_meeting_president,primetech_association.group_association_meeting_censor,primetech_association.group_association_manager,primetech_association.group_association_admin"/>
+        groups="primetech_association.group_association_meeting_president,primetech_association.group_association_meeting_censor,primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"/>
 
     <!-- Finances -->
     <menuitem id="menu_finance" name="Finances" parent="menu_association_root" sequence="40" groups="primetech_association.group_association_user"/>
@@ -48,19 +48,20 @@
 
     <menuitem id="menu_finance_operations" name="Recettes et dépenses"
         parent="menu_finance" sequence="20"
-        groups="primetech_association.group_association_manager,primetech_association.group_association_admin,primetech_association.group_association_accountant"/>
+        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin,primetech_association.group_association_accountant"/>
     <menuitem id="menu_donation" name="Dons" parent="menu_finance_operations"
         action="action_donation" sequence="10"
-        groups="primetech_association.group_association_manager,primetech_association.group_association_admin,primetech_association.group_association_accountant"/>
+        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin,primetech_association.group_association_accountant"/>
     <menuitem id="menu_income" name="Autres recettes" parent="menu_finance_operations"
         action="action_income" sequence="20"
-        groups="primetech_association.group_association_manager,primetech_association.group_association_admin,primetech_association.group_association_accountant"/>
+        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin,primetech_association.group_association_accountant"/>
     <menuitem id="menu_expense" name="Dépenses" parent="menu_finance_operations"
         action="action_expense" sequence="30"
-        groups="primetech_association.group_association_manager,primetech_association.group_association_admin,primetech_association.group_association_accountant"/>
+        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin,primetech_association.group_association_accountant"/>
 
     <menuitem id="menu_association_bank" name="Trésorerie et comptes"
-        parent="menu_finance" sequence="30"/>
+        parent="menu_finance" sequence="30"
+        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin,primetech_association.group_association_accountant"/>
     <menuitem id="menu_association_fund" name="Comptes de trésorerie"
         parent="menu_association_bank" action="action_association_fund" sequence="10"/>
     <menuitem id="menu_association_fund_transaction" name="Mouvements de trésorerie"

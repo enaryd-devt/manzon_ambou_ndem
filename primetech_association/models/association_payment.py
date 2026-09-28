@@ -185,34 +185,38 @@ class AssociationPayment(models.Model):
         (for example a recovery) is due as a single line. Archived
         subscriptions are never included.
         """
-        PaymentLine = self.env["association.payment.line"]
-        Period = self.env["association.subscription.period"]
-        SubscriptionLine = self.env["association.subscription.line"]
+        # A member may print only their own receipt, but does not have broad
+        # read access to subscriptions or sanctions.  Build the report data
+        # with elevated rights and expose only the computed receipt values.
+        PaymentLine = self.env["association.payment.line"].sudo()
+        Period = self.env["association.subscription.period"].sudo()
+        SubscriptionLine = self.env["association.subscription.line"].sudo()
         for payment in self:
+            receipt_payment = payment.sudo()
             # On a receipt, the "Montant total dû" is the outstanding debt,
             # not the gross amount originally called.  It must therefore be
             # the sum of the remaining balances only.
             total_paid = total_balance = 0.0
             situation_lines = []
             payment_lines = []
-            currency_label = payment.currency_id.name or ""
+            currency_label = receipt_payment.currency_id.name or ""
 
             def amount_label(amount):
                 return "{:,.0f} {}".format(amount or 0.0, currency_label).replace(",", " ")
 
             # Frozen allocations describe exactly what this receipt paid,
             # including a partial payment.
-            for allocation in payment.priority_allocation_payload or []:
+            for allocation in receipt_payment.priority_allocation_payload or []:
                 amount = float(allocation.get("amount") or 0.0)
-                penalty = self.env["association.penalty"].browse(allocation.get("penalty_id")).exists()
+                penalty = self.env["association.penalty"].sudo().browse(allocation.get("penalty_id")).exists()
                 if amount > 0:
                     payment_lines.append({
                         "label": _("Sanction") + (" - %s" % penalty.display_name if penalty else ""),
                         "amount_display": amount_label(amount),
                     })
-            for pay_line in payment.line_ids.filtered(lambda item: item.amount_paid > 0):
+            for pay_line in receipt_payment.line_ids.filtered(lambda item: item.amount_paid > 0):
                 subscription = pay_line.subscription_id or pay_line.subscription_line_id.subscription_id
-                period = pay_line.subscription_period_id or payment.subscription_period_id
+                period = pay_line.subscription_period_id or receipt_payment.subscription_period_id
                 kind = _("Recouvrement") if subscription and subscription.subscription_type == "recovery" else _("Cotisation")
                 label = subscription.display_name if subscription else _("Cotisation")
                 if period:
@@ -221,17 +225,17 @@ class AssociationPayment(models.Model):
                     "label": "%s - %s" % (kind, label),
                     "amount_display": amount_label(pay_line.amount_paid),
                 })
-            for allocation in payment.membership_fee_allocation_payload or []:
+            for allocation in receipt_payment.membership_fee_allocation_payload or []:
                 amount = float(allocation.get("amount") or 0.0)
-                fee = self.env["association.membership.fee"].browse(allocation.get("membership_fee_id")).exists()
+                fee = self.env["association.membership.fee"].sudo().browse(allocation.get("membership_fee_id")).exists()
                 if amount > 0:
                     payment_lines.append({
                         "label": _("Frais d'adhésion") + (" - %s" % fee.display_name if fee else ""),
                         "amount_display": amount_label(amount),
                     })
-            if payment.member_id:
+            if receipt_payment.member_id:
                 lines = SubscriptionLine.search([
-                    ("member_id", "=", payment.member_id.id),
+                    ("member_id", "=", receipt_payment.member_id.id),
                     ("subscription_id.active", "=", True),
                     ("subscription_id.state", "in", ["running", "closed"]),
                 ])
@@ -296,13 +300,13 @@ class AssociationPayment(models.Model):
                         })
             # Financial sanctions remain receivable independently from a
             # subscription.  Include only their unpaid/partial balances.
-            penalties = self.env["association.penalty"].search([
-                ("member_id", "=", payment.member_id.id),
-                ("company_id", "=", payment.company_id.id),
+            penalties = self.env["association.penalty"].sudo().search([
+                ("member_id", "=", receipt_payment.member_id.id),
+                ("company_id", "=", receipt_payment.company_id.id),
                 ("penalty_type", "=", "fine"),
                 ("state", "in", ["validated", "executed"]),
                 ("amount_remaining", ">", 0),
-            ]) if payment.member_id else self.env["association.penalty"]
+            ]) if receipt_payment.member_id else self.env["association.penalty"].sudo()
             for penalty in penalties:
                 due = (penalty.amount_paid or 0.0) + (penalty.amount_remaining or 0.0)
                 paid = penalty.amount_paid or 0.0
