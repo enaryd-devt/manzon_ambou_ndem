@@ -177,7 +177,10 @@ class AssociationPayment(models.Model):
         Period = self.env["association.subscription.period"]
         SubscriptionLine = self.env["association.subscription.line"]
         for payment in self:
-            total_due = total_paid = 0.0
+            # On a receipt, the "Montant total dû" is the outstanding debt,
+            # not the gross amount originally called.  It must therefore be
+            # the sum of the remaining balances only.
+            total_paid = total_balance = 0.0
             situation_lines = []
             currency_label = payment.currency_id.name or ""
 
@@ -200,19 +203,21 @@ class AssociationPayment(models.Model):
                         for period in periods:
                             due = PaymentLine._get_period_due_for_line(line, period)
                             paid = PaymentLine._get_period_paid_for_line(line, period)
-                            total_due += due
-                            total_paid += min(paid, due)
+                            paid = min(paid, due)
+                            balance = max(due - paid, 0.0)
+                            total_paid += paid
+                            total_balance += balance
                             situation_lines.append({
                                 "label": "%s — %s" % (
                                     line.subscription_id.display_name,
                                     period.display_name,
                                 ),
                                 "due": due,
-                                "paid": min(paid, due),
-                                "balance": max(due - paid, 0.0),
+                                "paid": paid,
+                                "balance": balance,
                                 "due_display": amount_label(due),
-                                "paid_display": amount_label(min(paid, due)),
-                                "balance_display": amount_label(max(due - paid, 0.0)),
+                                "paid_display": amount_label(paid),
+                                "balance_display": amount_label(balance),
                             })
                     elif not all_periods and line.subscription_id.state == "running":
                         due = (
@@ -226,9 +231,10 @@ class AssociationPayment(models.Model):
                             ("subscription_period_id", "=", False),
                             ("payment_id.subscription_period_id", "=", False),
                         ])
-                        total_due += due
                         paid = min(sum(paid_lines.mapped("amount_paid")), due)
                         total_paid += paid
+                        balance = max(due - paid, 0.0)
+                        total_balance += balance
                         situation_lines.append({
                             "label": "%s — %s" % (
                                 line.subscription_id.display_name,
@@ -236,14 +242,14 @@ class AssociationPayment(models.Model):
                             ),
                             "due": due,
                             "paid": paid,
-                            "balance": max(due - paid, 0.0),
+                            "balance": balance,
                             "due_display": amount_label(due),
                             "paid_display": amount_label(paid),
-                            "balance_display": amount_label(max(due - paid, 0.0)),
+                            "balance_display": amount_label(balance),
                         })
-            payment.member_total_due = total_due
+            payment.member_total_due = total_balance
             payment.member_total_paid = total_paid
-            payment.member_total_balance = max(total_due - total_paid, 0.0)
+            payment.member_total_balance = total_balance
             payment.member_receipt_situation_lines = situation_lines
 
     payment_method = fields.Selection(
