@@ -14,7 +14,7 @@
 
                 <field name="member_id"/>
                 <field name="subscription_id"/>
-                <field name="subscription_period_id"/>
+                <field name="cycle_label"/>
                 <field name="subscription_line_id"/>
 
                 <filter
@@ -162,7 +162,7 @@
                         <field name="member_id"/>
                         <field name="member_code"/>
                         <field name="subscription_id"/>
-                        <field name="subscription_period_id"/>
+                        <field name="cycle_label"/>
                         <field name="subscription_line_id"/>
                         <field name="period_state" widget="badge"/>
 

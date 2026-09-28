@@ -1399,6 +1399,37 @@ class AssociationMember(models.Model):
             if not subscription_line.subscription_id.active:
                 periods = periods.filtered(lambda period: period in historic_periods)
 
+            if not periods and subscription_line.subscription_id.active:
+                subscription = subscription_line.subscription_id
+                amount_due = (
+                    subscription_line.recovery_amount
+                    if subscription.subscription_type == "recovery"
+                    else subscription.amount
+                ) or 0.0
+                amount_paid = subscription_line.amount_paid or 0.0
+                balance = max(amount_due - amount_paid, 0.0)
+                payment_state = (
+                    "paid" if amount_due and balance <= 0.01
+                    else "partial" if amount_paid else "not_paid"
+                )
+                last_payment = PaymentLine.search([
+                    ("subscription_line_id", "=", subscription_line.id),
+                    ("payment_id.state", "=", "confirmed"),
+                ], order="payment_date desc, id desc", limit=1)
+                report_records |= Report.create({
+                    "member_id": self.id,
+                    "subscription_id": subscription.id,
+                    "subscription_line_id": subscription_line.id,
+                    "amount_due": amount_due,
+                    "base_amount_due": amount_due,
+                    "contribution_paid_amount": amount_paid,
+                    "subscription_balance_amount": balance,
+                    "amount_paid": amount_paid,
+                    "balance": balance,
+                    "payment_state": payment_state,
+                    "last_payment_date": last_payment.payment_id.payment_date if last_payment else False,
+                })
+
             for period in periods:
 
                 amount_paid = PaymentLine._get_period_paid_for_line(

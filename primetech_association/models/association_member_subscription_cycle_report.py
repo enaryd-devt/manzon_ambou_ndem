@@ -34,7 +34,12 @@ class AssociationMemberSubscriptionCycleReport(models.TransientModel):
         comodel_name="association.subscription.period",
         string="Cycle",
         readonly=True,
-        required=True,
+    )
+
+    cycle_label = fields.Char(
+        string="Cycle",
+        compute="_compute_cycle_label",
+        readonly=True,
     )
 
     subscription_line_id = fields.Many2one(
@@ -57,6 +62,15 @@ class AssociationMemberSubscriptionCycleReport(models.TransientModel):
         readonly=True,
         store=True,
     )
+
+    @api.depends("subscription_period_id", "subscription_period_id.name")
+    def _compute_cycle_label(self):
+        for report in self:
+            report.cycle_label = (
+                report.subscription_period_id.display_name
+                if report.subscription_period_id
+                else _("Sans cycle")
+            )
 
     company_id = fields.Many2one(
         related="subscription_id.company_id",
