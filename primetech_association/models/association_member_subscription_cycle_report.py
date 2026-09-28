@@ -87,7 +87,7 @@ class AssociationMemberSubscriptionCycleReport(models.TransientModel):
     )
 
     amount_due = fields.Monetary(
-        string="Montant dû",
+        string="Total dû",
         currency_field="currency_id",
         readonly=True,
     )
@@ -129,13 +129,13 @@ class AssociationMemberSubscriptionCycleReport(models.TransientModel):
     )
 
     amount_paid = fields.Monetary(
-        string="Montant payé",
+        string="Total réglé",
         currency_field="currency_id",
         readonly=True,
     )
 
     balance = fields.Monetary(
-        string="Reste à payer",
+        string="Reste total",
         currency_field="currency_id",
         readonly=True,
     )
@@ -223,14 +223,14 @@ class AssociationMemberSubscriptionCycleReport(models.TransientModel):
                     )
                 )
 
-                amount_paid = breakdown[
-                    "contribution_paid_amount"
-                ]
+                amount_paid = (
+                    breakdown["contribution_paid_amount"]
+                    + breakdown["penalty_paid_amount"]
+                )
 
                 balance = max(
-                    breakdown[
-                        "subscription_balance_amount"
-                    ],
+                    breakdown["subscription_balance_amount"]
+                    + breakdown["penalty_balance_amount"],
                     0.0,
                 )
 
@@ -277,10 +277,10 @@ class AssociationMemberSubscriptionCycleReport(models.TransientModel):
 
                 reports.write(
                     {
-                        "amount_due":
-                            breakdown[
-                                "base_amount_due"
-                            ],
+                        "amount_due": (
+                            breakdown["base_amount_due"]
+                            + breakdown["penalty_due_amount"]
+                        ),
 
                         "base_amount_due":
                             breakdown[

@@ -95,19 +95,52 @@
                     widget="badge"/>
 
                 <field
+                    name="base_amount_due"
+                    string="Cotisation due"
+                    sum="Total cotisations dues"/>
+
+                <field
+                    name="contribution_paid_amount"
+                    string="Cotisation réglée"
+                    sum="Total cotisations réglées"/>
+
+                <field
+                    name="subscription_balance_amount"
+                    string="Reste cotisation"
+                    sum="Reste cotisations"/>
+
+                <field
+                    name="penalty_due_amount"
+                    string="Pénalités dues"
+                    sum="Total pénalités dues"
+                    optional="show"/>
+
+                <field
+                    name="penalty_paid_amount"
+                    string="Pénalités réglées"
+                    sum="Total pénalités réglées"
+                    optional="show"/>
+
+                <field
+                    name="penalty_balance_amount"
+                    string="Reste pénalités"
+                    sum="Reste pénalités"
+                    optional="show"/>
+
+                <field
                     name="amount_due"
-                    string="Montant cotisation"
-                    sum="Total cotisations"/>
+                    string="Total dû"
+                    sum="Total dû"/>
 
                 <field
                     name="amount_paid"
-                    string="Montant payé"
-                    sum="Total payé"/>
+                    string="Total réglé"
+                    sum="Total réglé"/>
 
                 <field
                     name="balance"
-                    string="Reste à payer"
-                    sum="Reste à payer"/>
+                    string="Reste total"
+                    sum="Reste total"/>
 
                 <field
                     name="payment_state"

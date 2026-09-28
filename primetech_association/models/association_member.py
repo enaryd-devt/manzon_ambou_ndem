@@ -1435,18 +1435,21 @@ class AssociationMember(models.Model):
                     already_paid=amount_paid,
                 )
 
-                amount_due = breakdown[
-                    "base_amount_due"
-                ]
+                # Keep the three totals distinct from the contribution-only
+                # amounts below: they include the cycle penalty as well.
+                amount_due = (
+                    breakdown["base_amount_due"]
+                    + breakdown["penalty_due_amount"]
+                )
 
-                amount_paid = breakdown[
-                    "contribution_paid_amount"
-                ]
+                amount_paid = (
+                    breakdown["contribution_paid_amount"]
+                    + breakdown["penalty_paid_amount"]
+                )
 
                 balance = max(
-                    breakdown[
-                        "subscription_balance_amount"
-                    ],
+                    breakdown["subscription_balance_amount"]
+                    + breakdown["penalty_balance_amount"],
                     0.0,
                 )
 

@@ -795,6 +795,10 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
                 priority_allocations.append({"penalty_id": penalty.id, "amount": allocated})
                 remaining -= allocated
 
+        # The mandated order only applies to payments collected in a meeting:
+        # sanctions, subscription cycles (oldest first), then recoveries.
+        # Membership fees must not consume an amount before that sequence.
+        is_meeting_payment = self.origin == "meeting" and bool(self.meeting_id)
         membership_fee_allocations = []
         MembershipFee = self.env["association.membership.fee"]
         membership_fees = MembershipFee.search([
@@ -803,13 +807,15 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
             ("state", "=", "due"),
             ("amount_remaining", ">", 0),
         ], order="id asc")
-        for fee in membership_fees:
-            if remaining <= 0:
-                break
-            allocated = min(remaining, fee.amount_remaining or 0.0)
-            if allocated > 0:
-                membership_fee_allocations.append({"membership_fee_id": fee.id, "amount": allocated})
-                remaining -= allocated
+        # Preserve the established allocation order outside a meeting.
+        if not is_meeting_payment:
+            for fee in membership_fees:
+                if remaining <= 0:
+                    break
+                allocated = min(remaining, fee.amount_remaining or 0.0)
+                if allocated > 0:
+                    membership_fee_allocations.append({"membership_fee_id": fee.id, "amount": allocated})
+                    remaining -= allocated
 
         candidates = []
         if self.origin == "meeting":
@@ -823,17 +829,18 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
         for line in lines:
             if line.subscription_id.subscription_type == "recovery":
                 if line.balance > 0.01:
-                    # Après les sanctions et frais d'adhésion, les
-                    # recouvrements individuels sont réglés avant toute
-                    # cotisation périodique.
-                    candidates.append((0, line.subscription_id.due_date or fields.Date.today(), line.id, line, False, line.balance))
+                    # Les recouvrements individuels viennent après les
+                    # cycles périodiques pour un encaissement en réunion.
+                    recovery_priority = 1 if is_meeting_payment else 0
+                    candidates.append((recovery_priority, line.subscription_id.due_date or fields.Date.today(), line.id, line, False, line.balance))
                 continue
             for period in PaymentLine._get_unsettled_periods_for_line(line):
                 due = PaymentLine._get_period_due_for_line(line, period)
                 paid = PaymentLine._get_period_paid_for_line(line, period)
                 balance = max(due - paid, 0.0)
                 if balance > 0.01:
-                    candidates.append((1, period.due_date or fields.Date.today(), line.id, line, period, balance))
+                    cycle_priority = 0 if is_meeting_payment else 1
+                    candidates.append((cycle_priority, period.due_date or fields.Date.today(), line.id, line, period, balance))
         for _priority, _date, _line_id, line, period, balance in sorted(candidates, key=lambda item: (item[0], item[1], item[2], item[4].id if item[4] else 0)):
             if remaining <= 0:
                 break
@@ -845,6 +852,16 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
                 "amount_paid": allocated,
             }))
             remaining -= allocated
+        # Fees are settled last in a meeting: they are neither sanctions nor
+        # subscription cycles, and must not preempt recovery subscriptions.
+        if is_meeting_payment:
+            for fee in membership_fees:
+                if remaining <= 0:
+                    break
+                allocated = min(remaining, fee.amount_remaining or 0.0)
+                if allocated > 0:
+                    membership_fee_allocations.append({"membership_fee_id": fee.id, "amount": allocated})
+                    remaining -= allocated
         if not allocation_values and not priority_allocations and not membership_fee_allocations:
             raise ValidationError(_("Aucun recouvrement non soldé n’a été trouvé pour ce membre."))
         Payment = self.env["association.payment"]
