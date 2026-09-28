@@ -858,6 +858,29 @@ class AssociationDashboard(models.AbstractModel):
         }
 
     @api.model
+    def get_member_payment_receipt_download_action(self, payment_id):
+        """Return a receipt action only for the logged-in member's payment."""
+        company = self.env.company
+        member = self.env["association.member"].sudo().search([
+            ("user_id", "=", self.env.user.id),
+            ("company_id", "=", company.id),
+            ("state", "=", "active"),
+            ("active", "=", True),
+        ], limit=1)
+        if not member:
+            return False
+        payment = self.env["association.payment"].sudo().search([
+            ("id", "=", payment_id),
+            ("member_id", "=", member.id),
+            ("state", "in", ["collected", "confirmed"]),
+        ], limit=1)
+        if not payment:
+            return False
+        return self.env.ref(
+            "primetech_association.action_report_payment_receipt"
+        ).report_action(payment)
+
+    @api.model
     def get_member_minutes_preview(self, meeting_id):
         """Return a shared meeting minute only to its active ordinary member."""
         company = self.env.company

@@ -329,6 +329,18 @@ export class AssociationDashboard extends Component {
         this.state.paymentDetail = false;
     }
 
+    async downloadMemberReceipt(payment) {
+        if (!payment?.id) {
+            return;
+        }
+        const reportAction = await this.orm.call(
+            "association.dashboard", "get_member_payment_receipt_download_action", [payment.id]
+        );
+        if (reportAction) {
+            return this.action.doAction(reportAction);
+        }
+    }
+
     async openMemberPenalty(penaltyId) {
         if (!penaltyId) {
             return;

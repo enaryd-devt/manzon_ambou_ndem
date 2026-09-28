@@ -190,10 +190,12 @@ class AssociationPayment(models.Model):
                     ("subscription_id.state", "in", ["running", "closed"]),
                 ])
                 for line in lines:
-                    periods = Period.search([
+                    all_periods = Period.search([
                         ("subscription_id", "=", line.subscription_id.id),
-                        ("state", "=", "closed"),
                     ])
+                    periods = all_periods.filtered(
+                        lambda period: period.state == "closed"
+                    )
                     if periods:
                         for period in periods:
                             due = PaymentLine._get_period_due_for_line(line, period)
@@ -212,7 +214,7 @@ class AssociationPayment(models.Model):
                                 "paid_display": amount_label(min(paid, due)),
                                 "balance_display": amount_label(max(due - paid, 0.0)),
                             })
-                    elif line.subscription_id.state == "running":
+                    elif not all_periods and line.subscription_id.state == "running":
                         due = (
                             line.recovery_amount
                             if line.subscription_id.subscription_type == "recovery"
