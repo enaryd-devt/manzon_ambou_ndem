@@ -163,8 +163,20 @@ class AssociationPayment(models.Model):
         string="Détail de la situation du membre",
         compute="_compute_member_financial_situation",
     )
+    member_receipt_payment_lines = fields.Json(
+        string="Détail du règlement du reçu",
+        compute="_compute_member_financial_situation",
+    )
 
-    @api.depends("member_id")
+    @api.depends(
+        "member_id",
+        "company_id",
+        "line_ids.amount_paid",
+        "line_ids.subscription_id",
+        "line_ids.subscription_period_id",
+        "priority_allocation_payload",
+        "membership_fee_allocation_payload",
+    )
     def _compute_member_financial_situation(self):
         """Receivable member dues for the receipt.
 
@@ -182,10 +194,41 @@ class AssociationPayment(models.Model):
             # the sum of the remaining balances only.
             total_paid = total_balance = 0.0
             situation_lines = []
+            payment_lines = []
             currency_label = payment.currency_id.name or ""
 
             def amount_label(amount):
                 return "{:,.0f} {}".format(amount or 0.0, currency_label).replace(",", " ")
+
+            # Frozen allocations describe exactly what this receipt paid,
+            # including a partial payment.
+            for allocation in payment.priority_allocation_payload or []:
+                amount = float(allocation.get("amount") or 0.0)
+                penalty = self.env["association.penalty"].browse(allocation.get("penalty_id")).exists()
+                if amount > 0:
+                    payment_lines.append({
+                        "label": _("Sanction") + (" - %s" % penalty.display_name if penalty else ""),
+                        "amount_display": amount_label(amount),
+                    })
+            for pay_line in payment.line_ids.filtered(lambda item: item.amount_paid > 0):
+                subscription = pay_line.subscription_id or pay_line.subscription_line_id.subscription_id
+                period = pay_line.subscription_period_id or payment.subscription_period_id
+                kind = _("Recouvrement") if subscription and subscription.subscription_type == "recovery" else _("Cotisation")
+                label = subscription.display_name if subscription else _("Cotisation")
+                if period:
+                    label = "%s - %s" % (label, period.display_name)
+                payment_lines.append({
+                    "label": "%s - %s" % (kind, label),
+                    "amount_display": amount_label(pay_line.amount_paid),
+                })
+            for allocation in payment.membership_fee_allocation_payload or []:
+                amount = float(allocation.get("amount") or 0.0)
+                fee = self.env["association.membership.fee"].browse(allocation.get("membership_fee_id")).exists()
+                if amount > 0:
+                    payment_lines.append({
+                        "label": _("Frais d'adhésion") + (" - %s" % fee.display_name if fee else ""),
+                        "amount_display": amount_label(amount),
+                    })
             if payment.member_id:
                 lines = SubscriptionLine.search([
                     ("member_id", "=", payment.member_id.id),
@@ -205,6 +248,8 @@ class AssociationPayment(models.Model):
                             paid = PaymentLine._get_period_paid_for_line(line, period)
                             paid = min(paid, due)
                             balance = max(due - paid, 0.0)
+                            if balance <= 0:
+                                continue
                             total_paid += paid
                             total_balance += balance
                             situation_lines.append({
@@ -232,8 +277,10 @@ class AssociationPayment(models.Model):
                             ("payment_id.subscription_period_id", "=", False),
                         ])
                         paid = min(sum(paid_lines.mapped("amount_paid")), due)
-                        total_paid += paid
                         balance = max(due - paid, 0.0)
+                        if balance <= 0:
+                            continue
+                        total_paid += paid
                         total_balance += balance
                         situation_lines.append({
                             "label": "%s — %s" % (
@@ -247,10 +294,35 @@ class AssociationPayment(models.Model):
                             "paid_display": amount_label(paid),
                             "balance_display": amount_label(balance),
                         })
+            # Financial sanctions remain receivable independently from a
+            # subscription.  Include only their unpaid/partial balances.
+            penalties = self.env["association.penalty"].search([
+                ("member_id", "=", payment.member_id.id),
+                ("company_id", "=", payment.company_id.id),
+                ("penalty_type", "=", "fine"),
+                ("state", "in", ["validated", "executed"]),
+                ("amount_remaining", ">", 0),
+            ]) if payment.member_id else self.env["association.penalty"]
+            for penalty in penalties:
+                due = (penalty.amount_paid or 0.0) + (penalty.amount_remaining or 0.0)
+                paid = penalty.amount_paid or 0.0
+                balance = penalty.amount_remaining or 0.0
+                total_paid += paid
+                total_balance += balance
+                situation_lines.append({
+                    "label": "%s - %s" % (_("Sanction"), penalty.display_name),
+                    "due": due,
+                    "paid": paid,
+                    "balance": balance,
+                    "due_display": amount_label(due),
+                    "paid_display": amount_label(paid),
+                    "balance_display": amount_label(balance),
+                })
             payment.member_total_due = total_balance
             payment.member_total_paid = total_paid
             payment.member_total_balance = total_balance
             payment.member_receipt_situation_lines = situation_lines
+            payment.member_receipt_payment_lines = payment_lines
 
     payment_method = fields.Selection(
         selection="_get_payment_method_selection",
