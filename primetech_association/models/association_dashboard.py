@@ -718,6 +718,10 @@ class AssociationDashboard(models.AbstractModel):
             "is_active": True,
             "account_balance": member_account.balance if member_account else 0.0,
             "account_name": member_account.name if member_account else "",
+            "financial_situation": {
+                "total_due": max(member_account.balance if member_account else 0.0, 0.0),
+                "label": _("Montant total dû"),
+            },
             "payments_total": sum(payments.filtered(lambda p: p.state in ("collected", "confirmed")).mapped("amount")),
             "payment_count": len(payments),
             "penalty_count": len(penalties),
