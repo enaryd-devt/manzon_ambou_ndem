@@ -39,7 +39,7 @@
     <record id="rule_association_member_own_payment" model="ir.rule">
         <field name="name">Membre ordinaire - paiements personnels</field>
         <field name="model_id" ref="model_association_payment"/>
-        <field name="domain_force">[('member_id.user_id', '=', user.id)]</field>
+        <field name="domain_force">[('member_id.user_id', '=', user.id), ('state', 'in', ('validated', 'executed'))]</field>
         <field name="groups" eval="[(4, ref('group_association_member'))]"/>
         <field name="perm_read" eval="True"/><field name="perm_write" eval="False"/><field name="perm_create" eval="False"/><field name="perm_unlink" eval="False"/>
     </record>

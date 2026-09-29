@@ -691,7 +691,12 @@ class AssociationDashboard(models.AbstractModel):
             ("report_shared", "=", True),
         ], order="closed_at desc, id desc")]
         payments = Payment.search([("member_id", "=", member.id)], order="payment_date desc, id desc")
-        penalties = Penalty.search([("member_id", "=", member.id)], order="incident_date desc, id desc")
+        # Ordinary members only see sanctions that have been formally validated
+        # or executed. Draft and lifted/cancelled records stay internal.
+        penalties = Penalty.search([
+            ("member_id", "=", member.id),
+            ("state", "in", ["validated", "executed"]),
+        ], order="incident_date desc, id desc")
         member_account = MemberAccount.search([("member_id", "=", member.id)], limit=1)
         subscription_lines = SubscriptionLine.search([
             ("member_id", "=", member.id),
@@ -751,6 +756,7 @@ class AssociationDashboard(models.AbstractModel):
         ], limit=1)
         penalty = self.env["association.penalty"].sudo().search([
             ("id", "=", penalty_id), ("member_id", "=", member.id),
+            ("state", "in", ["validated", "executed"]),
         ], limit=1)
         if not penalty:
             return False
