@@ -3,6 +3,7 @@
 import {
     Component,
     markup,
+    onMounted,
     onWillStart,
     useState,
 } from "@odoo/owl";
@@ -323,6 +324,27 @@ export class AssociationDashboard extends Component {
         this.state.paymentDetail = await this.orm.call(
             "association.dashboard", "get_member_payment_detail", [paymentId]
         );
+
+        onMounted(() => {
+            const cards = document.querySelectorAll(".member_portal_priority article");
+            cards.forEach((card, index) => card.addEventListener("click", () => {
+                this.openMemberKpiDetail(index);
+            }));
+        });
+    }
+
+    openMemberKpiDetail(index) {
+        const member = this.state.data.member || {};
+        const situation = member.financial_situation || {};
+        const currency = this.state.data.currency?.symbol || "";
+        const amount = (value) => `${this.formatAmount(value || 0)} ${currency}`;
+        const details = [
+            `Solde de votre compte\n${amount(member.account_balance)}\n\nCe solde est détaillé dans les comptes de trésorerie ci-dessous.`,
+            `Ma situation financière\nTotal dû : ${amount(situation.total_due)}\n\nCycles clôturés : ${amount(situation.closed_cycles)}\nRecouvrements : ${amount(situation.recoveries)}\nCotisations sans cycle : ${amount(situation.without_cycle)}\nSanctions et pénalités : ${amount(situation.penalties)}`,
+            `Cotisations suivies\n${member.subscriptions?.length || 0} cotisation(s), y compris les recouvrements.\n\nConsultez le détail des montants, paiements et restes dans « Mes cotisations ».`,
+            `Sanctions enregistrées\n${member.penalty_count || 0} sanction(s) validée(s) dans votre historique.\n\nRouge : en cours de règlement. Vert : levée.`,
+        ];
+        window.alert(details[index] || "Aucun détail disponible.");
     }
 
     closeMemberPayment() {
