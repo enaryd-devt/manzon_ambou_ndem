@@ -3,7 +3,6 @@
 import {
     Component,
     markup,
-    onMounted,
     onWillStart,
     useState,
 } from "@odoo/owl";
@@ -325,12 +324,6 @@ export class AssociationDashboard extends Component {
             "association.dashboard", "get_member_payment_detail", [paymentId]
         );
 
-        onMounted(() => {
-            const cards = document.querySelectorAll(".member_portal_priority article");
-            cards.forEach((card, index) => card.addEventListener("click", () => {
-                this.openMemberKpiDetail(index);
-            }));
-        });
     }
 
     openMemberKpiDetail(index) {
