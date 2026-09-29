@@ -711,7 +711,7 @@ class AssociationDashboard(models.AbstractModel):
         def _member_penalty_state_label(penalty):
             if penalty.penalty_type == "fine" and (penalty.amount_remaining or 0.0) <= 0.01:
                 return _("Levée")
-            return _("Validée")
+            return _("En cours")
         Period = self.env["association.subscription.period"].sudo()
         PaymentLine = self.env["association.payment.line"].sudo()
         closed_cycles_due = recovery_due = no_cycle_due = cycle_penalties_due = 0.0
