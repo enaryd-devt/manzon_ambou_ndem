@@ -29,9 +29,74 @@ class AssociationMeetingMemberSituation(models.Model):
         ("meeting_member_situation_unique", "unique(meeting_id, member_id)", "Ce membre est déjà présent dans la trésorerie de la réunion."),
     ]
 
+    def _get_subscription_line_balance(self, subscription_line):
+        """Return every outstanding amount of one active subscription line.
+
+        The meeting treasury intentionally has a broader scope than the
+        member receipt: it also calls the *running* cycle.  This lets the
+        treasurer collect all responsibilities during the meeting, while the
+        allocation logic still keeps its own payment priorities.
+        """
+        PaymentLine = self.env["association.payment.line"]
+        Period = self.env["association.subscription.period"]
+        subscription = subscription_line.subscription_id
+
+        if not subscription or not subscription.active or subscription.state != "running":
+            return 0.0
+
+        # A recovery is a single, individual debt and deliberately has no
+        # cycle.  Its possible late penalty is part of the same balance.
+        if subscription.subscription_type == "recovery":
+            due = (
+                (subscription_line.recovery_amount or 0.0)
+                + (subscription_line.penalty_amount or 0.0)
+            )
+            paid = sum(PaymentLine.search([
+                ("subscription_line_id", "=", subscription_line.id),
+                ("payment_id.state", "=", "confirmed"),
+                ("subscription_period_id", "=", False),
+                ("payment_id.subscription_period_id", "=", False),
+            ]).mapped("amount_paid"))
+            return max(due - paid, 0.0)
+
+        # Includes both unpaid/partial closed cycles and the current running
+        # one.  _get_period_due_for_line also includes the applicable cycle
+        # penalty without counting it twice.
+        periods = PaymentLine._get_unsettled_periods_for_line(subscription_line)
+        if periods:
+            return sum(
+                max(
+                    PaymentLine._get_period_due_for_line(subscription_line, period)
+                    - PaymentLine._get_period_paid_for_line(subscription_line, period),
+                    0.0,
+                )
+                for period in periods
+            )
+
+        # A started contribution can legitimately have no cycle (special,
+        # registration or legacy contribution).  Count it as one debt only
+        # when the subscription truly has no cycle at all; a cancelled or
+        # draft cycle must never be converted into an additional debt.
+        has_cycle = Period.with_context(active_test=False).search_count([
+            ("subscription_id", "=", subscription.id),
+        ])
+        if has_cycle:
+            return 0.0
+
+        due = (
+            (subscription.amount or 0.0)
+            + (subscription_line.penalty_amount or 0.0)
+        )
+        paid = sum(PaymentLine.search([
+            ("subscription_line_id", "=", subscription_line.id),
+            ("payment_id.state", "=", "confirmed"),
+            ("subscription_period_id", "=", False),
+            ("payment_id.subscription_period_id", "=", False),
+        ]).mapped("amount_paid"))
+        return max(due - paid, 0.0)
+
     @api.depends("member_id", "meeting_id.meeting_payment_ids.state", "meeting_id.meeting_payment_ids.amount")
     def _compute_situation(self):
-        PaymentLine = self.env["association.payment.line"]
         Penalty = self.env["association.penalty"]
         Fee = self.env["association.membership.fee"]
         SubscriptionLine = self.env["association.subscription.line"]
@@ -45,12 +110,35 @@ class AssociationMeetingMemberSituation(models.Model):
                 continue
             company = rec.company_id
             rec.has_member_account = bool(Account.search_count([("member_id", "=", rec.member_id.id), ("company_id", "=", company.id), ("active", "=", True)]))
-            due = sum(Penalty.search([("member_id", "=", rec.member_id.id), ("company_id", "=", company.id), ("penalty_type", "=", "fine"), ("recovery_origin", "=", "sanction"), ("state", "in", ("validated", "executed")), ("amount_remaining", ">", 0)]).mapped("amount_remaining"))
-            due += sum(Fee.search([("member_id", "=", rec.member_id.id), ("company_id", "=", company.id), ("state", "=", "due"), ("amount_remaining", ">", 0)]).mapped("amount_remaining"))
-            lines = SubscriptionLine.search([("member_id", "=", rec.member_id.id), ("company_id", "=", company.id), ("active", "=", True), ("subscription_id.state", "=", "running")])
+            # Financial sanctions include every validated/executed fine with
+            # a balance, irrespective of its source.  Non-financial
+            # disciplinary records do not carry an amount due.
+            due = sum(Penalty.search([
+                ("member_id", "=", rec.member_id.id),
+                ("company_id", "=", company.id),
+                ("penalty_type", "=", "fine"),
+                ("state", "in", ("validated", "executed")),
+                ("amount_remaining", ">", 0),
+            ]).mapped("amount_remaining"))
+
+            # A membership fee remains in state ``due`` after a partial
+            # payment.  amount_remaining is therefore the reliable value.
+            due += sum(Fee.search([
+                ("member_id", "=", rec.member_id.id),
+                ("company_id", "=", company.id),
+                ("state", "!=", "cancelled"),
+                ("amount_remaining", ">", 0),
+            ]).mapped("amount_remaining"))
+
+            lines = SubscriptionLine.search([
+                ("member_id", "=", rec.member_id.id),
+                ("company_id", "=", company.id),
+                ("active", "=", True),
+                ("subscription_id.active", "=", True),
+                ("subscription_id.state", "=", "running"),
+            ])
             for line in lines:
-                for period in PaymentLine._get_unsettled_periods_for_line(line):
-                    due += max(PaymentLine._get_period_due_for_line(line, period) - PaymentLine._get_period_paid_for_line(line, period), 0.0)
+                due += rec._get_subscription_line_balance(line)
             paid = sum(rec.meeting_id.meeting_payment_ids.filtered(lambda p: p.member_id == rec.member_id and p.state == "confirmed").mapped("amount"))
             rec.amount_due = due
             rec.amount_paid_in_meeting = paid
