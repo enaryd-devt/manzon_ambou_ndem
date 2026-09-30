@@ -1133,15 +1133,16 @@
                                 class="row g-1 mb-1"
                                 invisible="not subscription_period_id">
 
-                                <div class="col-12 pt-1">
-                                    <span class="text-uppercase text-muted fw-semibold small">
+                                <div class="col-12 col-lg-4">
+                                    <div class="border rounded-3 p-2 h-100">
+                                    <div class="text-uppercase text-muted fw-semibold small mb-1">
                                         <i class="fa fa-arrow-circle-down me-1"/> Encaissements
-                                    </span>
-                                </div>
+                                    </div>
+                                    <div class="row g-1">
 
                                 <!-- MONTANT ATTENDU -->
 
-                                <div class="col-6 col-lg-4">
+                                <div class="col-12">
 
                                     <div class="border rounded-3 px-2 py-1 h-100">
 
@@ -1176,7 +1177,7 @@
 
                                 <!-- COLLECTÉ -->
 
-                                <div class="col-6 col-lg-4">
+                                <div class="col-12">
 
                                     <div class="border rounded-3 px-2 py-1 h-100">
 
@@ -1212,7 +1213,7 @@
 
                                 <!-- RECETTES DE SÉANCE -->
 
-                                <div class="col-6 col-lg-4">
+                                <div class="col-12">
 
                                     <div class="border rounded-3 px-2 py-1 h-100">
 
@@ -1246,15 +1247,20 @@
                                 </div>
 
 
-                                <div class="col-12 pt-2">
-                                    <span class="text-uppercase text-muted fw-semibold small">
-                                        <i class="fa fa-exchange me-1"/> Utilisation de la séance
-                                    </span>
+                                    </div>
+                                    </div>
                                 </div>
+
+                                <div class="col-12 col-lg-4">
+                                    <div class="border rounded-3 p-2 h-100">
+                                    <div class="text-uppercase text-muted fw-semibold small mb-1">
+                                        <i class="fa fa-exchange me-1"/> Utilisation de la séance
+                                    </div>
+                                    <div class="row g-1">
 
                                 <!-- ATTRIBUÉ -->
 
-                                <div class="col-6 col-lg-6">
+                                <div class="col-12">
 
                                     <div class="border rounded-3 px-2 py-1 h-100">
 
@@ -1290,7 +1296,7 @@
 
                                 <!-- DÉPENSES DE SÉANCE -->
 
-                                <div class="col-6 col-lg-6">
+                                <div class="col-12">
 
                                     <div class="border rounded-3 px-2 py-1 h-100">
 
@@ -1324,15 +1330,20 @@
                                 </div>
 
 
-                                <div class="col-12 pt-2">
-                                    <span class="text-uppercase text-muted fw-semibold small">
-                                        <i class="fa fa-money me-1"/> Situation de caisse
-                                    </span>
+                                    </div>
+                                    </div>
                                 </div>
+
+                                <div class="col-12 col-lg-4">
+                                    <div class="border rounded-3 p-2 h-100">
+                                    <div class="text-uppercase text-muted fw-semibold small mb-1">
+                                        <i class="fa fa-money me-1"/> Situation de caisse
+                                    </div>
+                                    <div class="row g-1">
 
                                 <!-- DISPONIBLE -->
 
-                                <div class="col-6 col-lg-6">
+                                <div class="col-12">
 
                                     <div class="border rounded-3 px-2 py-1 h-100">
 
@@ -1368,7 +1379,7 @@
 
                                 <!-- BÉNÉFICIAIRES -->
 
-                                <div class="col-6 col-lg-6">
+                                <div class="col-12">
 
                                     <div class="border rounded-3 px-2 py-1 h-100">
 
@@ -1395,6 +1406,10 @@
 
                                     </div>
 
+                                </div>
+
+                                    </div>
+                                    </div>
                                 </div>
 
                             </div>
