@@ -49,6 +49,7 @@ export class AssociationDashboard extends Component {
                 penaltyDetail: false,
                 subscriptionDetail: false,
                 treasuryDetail: false,
+                globalFinanceDetail: false,
                 minutesPreview: false,
                 recoveryReportPreview: false,
             },
@@ -387,6 +388,20 @@ export class AssociationDashboard extends Component {
 
     closeMemberTreasury() {
         this.state.treasuryDetail = false;
+    }
+
+    async openMemberGlobalFinance(documentType, documentId) {
+        if (!documentType || !documentId) {
+            return;
+        }
+        this.state.globalFinanceDetail = await this.orm.call(
+            "association.dashboard", "get_member_global_finance_detail",
+            [documentType, documentId]
+        );
+    }
+
+    closeMemberGlobalFinance() {
+        this.state.globalFinanceDetail = false;
     }
 
     async downloadSharedMinutes(meeting) {

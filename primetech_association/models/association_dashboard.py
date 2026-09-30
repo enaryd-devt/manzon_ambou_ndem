@@ -645,6 +645,11 @@ class AssociationDashboard(models.AbstractModel):
             "directory": [],
             "shared_minutes": [],
             "shared_recovery_reports": [],
+            "association_finance": {
+                "expenses": {"total": 0.0, "count": 0, "items": []},
+                "donations": {"total": 0.0, "count": 0, "items": []},
+                "incomes": {"total": 0.0, "count": 0, "items": []},
+            },
         }
         if not member:
             return values
@@ -657,6 +662,64 @@ class AssociationDashboard(models.AbstractModel):
                 "state": member_state_labels.get(member.state, member.state or ""),
             }
             return values
+
+        # The member portal exposes only accounting documents that have been
+        # validated.  Draft and cancelled documents stay strictly internal.
+        Expense = self.env["association.expense"].sudo()
+        Donation = self.env["association.donation"].sudo()
+        Income = self.env["association.income"].sudo()
+        expense_records = Expense.search([
+            ("company_id", "=", company.id), ("state", "=", "validated"),
+        ], order="expense_date desc, id desc")
+        donation_records = Donation.search([
+            ("company_id", "=", company.id), ("state", "=", "validated"),
+        ], order="donation_date desc, id desc")
+        income_records = Income.search([
+            ("company_id", "=", company.id), ("state", "=", "validated"),
+        ], order="income_date desc, id desc")
+        donation_type_labels = dict(
+            Donation._fields["donation_type"]._description_selection(self.env)
+        )
+        values["association_finance"] = {
+            "expenses": {
+                "total": sum(expense_records.mapped("amount")),
+                "count": len(expense_records),
+                "items": [{
+                    "id": expense.id,
+                    "name": expense.subject or expense.display_name,
+                    "date": fields.Date.to_string(expense.expense_date) if expense.expense_date else "",
+                    "amount": expense.amount or 0.0,
+                } for expense in expense_records[:200]],
+            },
+            "donations": {
+                "total": sum(
+                    donation.amount if donation.donation_type == "financial"
+                    else donation.estimated_value
+                    for donation in donation_records
+                ),
+                "count": len(donation_records),
+                "items": [{
+                    "id": donation.id,
+                    "name": donation.member_id.display_name or donation.donor_name or donation.display_name,
+                    "date": fields.Date.to_string(donation.donation_date) if donation.donation_date else "",
+                    "amount": (
+                        donation.amount if donation.donation_type == "financial"
+                        else donation.estimated_value
+                    ) or 0.0,
+                    "type": donation_type_labels.get(donation.donation_type, donation.donation_type or ""),
+                } for donation in donation_records[:200]],
+            },
+            "incomes": {
+                "total": sum(income_records.mapped("amount")),
+                "count": len(income_records),
+                "items": [{
+                    "id": income.id,
+                    "name": income.source_name or income.display_name,
+                    "date": fields.Date.to_string(income.income_date) if income.income_date else "",
+                    "amount": income.amount or 0.0,
+                } for income in income_records[:200]],
+            },
+        }
 
         values["treasury_accounts"] = [{
             "id": fund.id,
@@ -783,6 +846,63 @@ class AssociationDashboard(models.AbstractModel):
             } for line in subscription_lines],
         }
         return values
+
+    @api.model
+    def get_member_global_finance_detail(self, document_type, document_id):
+        """Return one validated association finance document to a member."""
+        company = self.env.company
+        member = self.env["association.member"].sudo().search([
+            ("user_id", "=", self.env.user.id),
+            ("company_id", "=", company.id),
+            ("state", "=", "active"),
+            ("active", "=", True),
+        ], limit=1)
+        model_by_type = {
+            "expense": "association.expense",
+            "donation": "association.donation",
+            "income": "association.income",
+        }
+        model = model_by_type.get(document_type)
+        if not member or not model or not document_id:
+            return False
+        document = self.env[model].sudo().search([
+            ("id", "=", document_id),
+            ("company_id", "=", company.id),
+            ("state", "=", "validated"),
+        ], limit=1)
+        if not document:
+            return False
+        if document_type == "expense":
+            return {
+                "title": document.subject or document.display_name,
+                "category": dict(document._fields["expense_type"]._description_selection(self.env)).get(
+                    document.expense_type, document.expense_type or ""
+                ),
+                "date": fields.Date.to_string(document.expense_date) if document.expense_date else "",
+                "amount": document.amount or 0.0,
+                "description": document.description or "",
+            }
+        if document_type == "donation":
+            amount = document.amount if document.donation_type == "financial" else document.estimated_value
+            donor = document.member_id.display_name or document.donor_name or _("Donateur anonyme")
+            return {
+                "title": donor,
+                "category": dict(document._fields["donation_type"]._description_selection(self.env)).get(
+                    document.donation_type, document.donation_type or ""
+                ),
+                "date": fields.Date.to_string(document.donation_date) if document.donation_date else "",
+                "amount": amount or 0.0,
+                "description": document.description or "",
+            }
+        return {
+            "title": document.source_name or document.display_name,
+            "category": dict(document._fields["income_type"]._description_selection(self.env)).get(
+                document.income_type, document.income_type or ""
+            ),
+            "date": fields.Date.to_string(document.income_date) if document.income_date else "",
+            "amount": document.amount or 0.0,
+            "description": document.description or "",
+        }
 
     @api.model
     def get_member_penalty_detail(self, penalty_id):
