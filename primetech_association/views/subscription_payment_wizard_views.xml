@@ -70,7 +70,7 @@
                                 py-2
                                 text-end
                             "
-                            invisible="origin == 'meeting'"
+                            invisible="1"
                             style="
                                 min-width: 220px;
                                 background:
@@ -121,7 +121,7 @@
                             py-3
                             mb-3
                         "
-                        invisible="origin == 'meeting'">
+                        invisible="1">
 
                         <div class="row g-3">
 
@@ -243,7 +243,7 @@
                     <!-- SITUATION DU MEMBRE                               -->
                     <!-- ================================================= -->
 
-                    <div class="rounded border px-3 py-3 mb-3" invisible="origin != 'meeting' or not global_lines_html">
+                    <div class="rounded border px-3 py-3 mb-3" invisible="not global_lines_html">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <div><strong>Situation globale du membre</strong><div class="text-muted small">Les responsabilités non réglées sont affectées automatiquement selon leur priorité.</div></div>
                             <div class="text-end"><small class="text-muted d-block">Total à régler</small><field name="global_due_amount" widget="monetary" options="{'currency_field': 'currency_id'}" class="fw-bold fs-4" readonly="1"/></div>
@@ -251,7 +251,7 @@
                         <field name="global_lines_html" nolabel="1" readonly="1"/>
                     </div>
 
-                    <div class="row g-2 mb-3" invisible="origin == 'meeting'">
+                    <div class="row g-2 mb-3" invisible="1">
 
                         <!-- MONTANT DÛ -->
 
