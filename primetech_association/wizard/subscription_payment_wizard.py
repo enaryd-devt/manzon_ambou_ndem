@@ -371,28 +371,55 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
             else:
                 lines = subscription_line
             if payment_origin == "meeting":
-                # The global meeting assistant deliberately hides the technical
-                # cycles.  The same complete balance used by the treasury line
-                # is exposed as a responsibility by contribution instead.
+                # The cycle is not a field to manipulate in the global
+                # assistant.  It remains visible in the situation table so
+                # the treasurer can understand each contribution balance.
                 Situation = self.env["association.meeting.member.situation"]
                 for line in lines:
-                    balance = Situation._get_subscription_line_balance(line)
-                    if balance <= 0.01:
+                    subscription = line.subscription_id
+                    if subscription.subscription_type == "recovery":
+                        balance = Situation._get_subscription_line_balance(line)
+                        if balance > 0.01:
+                            global_due += balance
+                            global_rows.append(
+                                "<tr><td>Recouvrement</td><td>%s</td>"
+                                "<td class='text-end'>%.2f</td></tr>"
+                                % (html_escape(subscription.display_name), balance)
+                            )
                         continue
-                    global_due += balance
-                    category = (
-                        "Recouvrement"
-                        if line.subscription_id.subscription_type == "recovery"
-                        else "Cotisation"
-                    )
-                    global_rows.append(
-                        "<tr><td>%s</td><td>%s</td><td class='text-end'>%.2f</td></tr>"
-                        % (
-                            html_escape(category),
-                            html_escape(line.subscription_id.display_name),
-                            balance,
+
+                    periods = PaymentLine._get_unsettled_periods_for_line(line)
+                    if periods:
+                        for line_period in periods:
+                            due = PaymentLine._get_period_due_for_line(line, line_period)
+                            paid = PaymentLine._get_period_paid_for_line(line, line_period)
+                            balance = max(due - paid, 0.0)
+                            if balance <= 0.01:
+                                continue
+                            global_due += balance
+                            global_rows.append(
+                                "<tr><td>%s</td><td>%s — %s</td>"
+                                "<td class='text-end'>%.2f</td></tr>"
+                                % (
+                                    html_escape(subscription.display_name),
+                                    html_escape("Cycle"),
+                                    html_escape(line_period.display_name),
+                                    balance,
+                                )
+                            )
+                        continue
+
+                    # Contributions without cycles are shown as one global
+                    # responsibility.  The helper avoids any conversion of a
+                    # cancelled/draft cycle into a debt.
+                    balance = Situation._get_subscription_line_balance(line)
+                    if balance > 0.01:
+                        global_due += balance
+                        global_rows.append(
+                            "<tr><td>%s</td><td>Sans cycle</td>"
+                            "<td class='text-end'>%.2f</td></tr>"
+                            % (html_escape(subscription.display_name), balance)
                         )
-                    )
             else:
                 for line in lines:
                     if line.subscription_id.subscription_type == "recovery":
