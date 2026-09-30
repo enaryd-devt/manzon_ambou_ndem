@@ -936,6 +936,12 @@ class AssociationMeeting(models.Model):
     # STATISTIQUES DE LA CAGNOTTE
     # ==========================================================
 
+    treasury_expected_amount = fields.Monetary(
+        string="Montant attendu",
+        compute="_compute_pot_statistics",
+        currency_field="currency_id",
+    )
+
     pot_collected_amount = fields.Monetary(
         string="Cagnotte collectée",
         compute="_compute_pot_statistics",
@@ -1103,6 +1109,7 @@ class AssociationMeeting(models.Model):
     # ==========================================================
 
     @api.depends(
+        "treasury_member_situation_ids.amount_due",
         "subscription_line_ids.payment_state",
         "subscription_line_ids.amount_paid",
         "meeting_payment_ids.state",
@@ -1124,6 +1131,9 @@ class AssociationMeeting(models.Model):
 
         for meeting in self:
 
+            meeting.treasury_expected_amount = sum(
+                meeting.treasury_member_situation_ids.mapped("amount_due")
+            )
             meeting.pot_collected_amount = 0.0
             meeting.pot_allocated_amount = 0.0
             meeting.pot_available_amount = 0.0
