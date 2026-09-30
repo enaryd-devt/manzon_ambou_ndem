@@ -7,9 +7,16 @@
                 <sheet>
                     <div class="alert alert-info">Le membre est ajouté à la cotisation en cours. Vous décidez ci-dessous si les cycles déjà terminés deviennent aussi exigibles.</div>
                     <group>
+                        <field name="currency_id" invisible="1"/>
+                        <field name="subscription_type" invisible="1"/>
                         <field name="subscription_id"/>
                         <field name="member_id"/>
                         <field name="include_past_periods"/>
+                        <field name="recovery_amount"
+                               widget="monetary"
+                               options="{'currency_field': 'currency_id'}"
+                               required="subscription_type == 'recovery'"
+                               invisible="subscription_type != 'recovery'"/>
                     </group>
                 </sheet>
                 <footer>
