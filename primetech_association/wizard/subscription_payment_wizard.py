@@ -188,6 +188,7 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
         subscription = (
             subscription_line.subscription_id
         )
+        payment_origin = self.env.context.get("default_origin", "subscription")
 
         if subscription.state != "running":
             raise ValidationError(
@@ -206,7 +207,10 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
         # Un recouvrement est une dette unique par membre : il ne possède
         # volontairement aucun cycle. Les montants calculés sur la ligne
         # servent directement à initialiser l'assistant.
-        if subscription.subscription_type == "recovery":
+        if (
+            subscription.subscription_type == "recovery"
+            and payment_origin != "meeting"
+        ):
             amount_due = subscription_line.amount_due or 0.0
             amount_paid = subscription_line.amount_paid or 0.0
             balance = subscription_line.balance or 0.0
@@ -263,7 +267,6 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
 
             period = periods[:1]
 
-        payment_origin = self.env.context.get("default_origin", "subscription")
         if not period and payment_origin != "meeting":
             raise ValidationError(
                 _(
@@ -333,7 +336,6 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
                 ("member_id", "=", subscription_line.member_id.id),
                 ("company_id", "=", subscription_line.company_id.id),
                 ("penalty_type", "=", "fine"),
-                ("recovery_origin", "=", "sanction"),
                 ("state", "in", ("validated", "executed")),
                 ("amount_remaining", ">", 0),
             ], order="recovery_priority asc, incident_date asc, id asc")
@@ -363,30 +365,55 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
                     ("member_id", "=", subscription_line.member_id.id),
                     ("company_id", "=", subscription_line.company_id.id),
                     ("active", "=", True),
+                    ("subscription_id.active", "=", True),
                     ("subscription_id.state", "=", "running"),
                 ])
             else:
                 lines = subscription_line
-            for line in lines:
-                if line.subscription_id.subscription_type == "recovery":
-                    balance = line.balance or 0.0
-                    if balance > 0.01:
-                        global_due += balance
-                        global_rows.append("<tr><td>%s</td><td>Échéance : %s</td><td class='text-end'>%.2f</td></tr>" % (
-                            html_escape(line.subscription_id.display_name or "Recouvrement"),
-                            line.subscription_id.due_date or "-", balance,
-                        ))
-                    continue
-                for line_period in PaymentLine._get_unsettled_periods_for_line(line):
-                    due = PaymentLine._get_period_due_for_line(line, line_period)
-                    paid = PaymentLine._get_period_paid_for_line(line, line_period)
-                    balance = max(due - paid, 0.0)
-                    if balance > 0.01:
-                        global_due += balance
-                        global_rows.append("<tr><td>%s</td><td>%s</td><td class='text-end'>%.2f</td></tr>" % (
-                            html_escape(line.subscription_id.display_name or "Cotisation"),
-                            html_escape(line_period.display_name or "Cycle"), balance,
-                        ))
+            if payment_origin == "meeting":
+                # The global meeting assistant deliberately hides the technical
+                # cycles.  The same complete balance used by the treasury line
+                # is exposed as a responsibility by contribution instead.
+                Situation = self.env["association.meeting.member.situation"]
+                for line in lines:
+                    balance = Situation._get_subscription_line_balance(line)
+                    if balance <= 0.01:
+                        continue
+                    global_due += balance
+                    category = (
+                        "Recouvrement"
+                        if line.subscription_id.subscription_type == "recovery"
+                        else "Cotisation"
+                    )
+                    global_rows.append(
+                        "<tr><td>%s</td><td>%s</td><td class='text-end'>%.2f</td></tr>"
+                        % (
+                            html_escape(category),
+                            html_escape(line.subscription_id.display_name),
+                            balance,
+                        )
+                    )
+            else:
+                for line in lines:
+                    if line.subscription_id.subscription_type == "recovery":
+                        balance = line.balance or 0.0
+                        if balance > 0.01:
+                            global_due += balance
+                            global_rows.append("<tr><td>%s</td><td>Échéance : %s</td><td class='text-end'>%.2f</td></tr>" % (
+                                html_escape(line.subscription_id.display_name or "Recouvrement"),
+                                line.subscription_id.due_date or "-", balance,
+                            ))
+                        continue
+                    for line_period in PaymentLine._get_unsettled_periods_for_line(line):
+                        due = PaymentLine._get_period_due_for_line(line, line_period)
+                        paid = PaymentLine._get_period_paid_for_line(line, line_period)
+                        balance = max(due - paid, 0.0)
+                        if balance > 0.01:
+                            global_due += balance
+                            global_rows.append("<tr><td>%s</td><td>%s</td><td class='text-end'>%.2f</td></tr>" % (
+                                html_escape(line.subscription_id.display_name or "Cotisation"),
+                                html_escape(line_period.display_name or "Cycle"), balance,
+                            ))
             amount_received = global_due if default_amount_received in (None, False) else max(default_amount_received or 0.0, 0.0)
         values.update(
             {
@@ -783,7 +810,6 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
             ("member_id", "=", self.member_id.id),
             ("company_id", "=", company.id),
             ("penalty_type", "=", "fine"),
-            ("recovery_origin", "=", "sanction"),
             ("state", "in", ("validated", "executed")),
             ("amount_remaining", ">", 0),
         ], order="recovery_priority asc, incident_date asc, id asc")

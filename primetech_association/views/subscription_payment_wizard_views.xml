@@ -12,7 +12,7 @@
 
         <field name="arch" type="xml">
 
-            <form string="Paiement de cotisation">
+            <form string="Encaissement">
 
                 <sheet>
 
@@ -23,6 +23,7 @@
                     <field
                         name="currency_id"
                         invisible="1"/>
+                    <field name="subscription_line_id" invisible="1"/>
 
                     <!-- ================================================= -->
                     <!-- EN-TÊTE                                           -->
@@ -38,8 +39,12 @@
 
                         <div class="oe_title mb-0">
 
-                            <h1 class="mb-1">
+                            <h1 class="mb-1" invisible="origin == 'meeting'">
                                 Paiement de cotisation
+                            </h1>
+
+                            <h1 class="mb-1" invisible="origin != 'meeting'">
+                                Encaissement global
                             </h1>
 
                             <div class="text-muted">
@@ -65,6 +70,7 @@
                                 py-2
                                 text-end
                             "
+                            invisible="origin == 'meeting'"
                             style="
                                 min-width: 220px;
                                 background:
@@ -114,7 +120,8 @@
                             px-3
                             py-3
                             mb-3
-                        ">
+                        "
+                        invisible="origin == 'meeting'">
 
                         <div class="row g-3">
 
@@ -211,19 +218,40 @@
 
                     </div>
 
+                    <!-- La cotisation et le cycle sont uniquement des donnees
+                         techniques d'affectation dans cet encaissement global. -->
+                    <div class="rounded border px-3 py-3 mb-3" invisible="origin != 'meeting'">
+                        <div class="row g-3">
+                            <div class="col-lg-6">
+                                <div class="text-muted text-uppercase" style="font-size: 10px;">Membre</div>
+                                <div class="fw-bold mt-1">
+                                    <i class="fa fa-user me-1" title="Membre"/>
+                                    <field name="member_id" nolabel="1"/>
+                                </div>
+                            </div>
+                            <div class="col-lg-6" style="border-left: 1px solid #dee2e6;">
+                                <div class="text-muted text-uppercase" style="font-size: 10px;">Réunion</div>
+                                <div class="fw-bold mt-1">
+                                    <i class="fa fa-users me-1" title="Réunion"/>
+                                    <field name="meeting_id" nolabel="1"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- ================================================= -->
                     <!-- SITUATION DU MEMBRE                               -->
                     <!-- ================================================= -->
 
-                    <div class="rounded border px-3 py-3 mb-3" invisible="not global_lines_html">
+                    <div class="rounded border px-3 py-3 mb-3" invisible="origin != 'meeting' or not global_lines_html">
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <div><strong>Recouvrements du membre</strong><div class="text-muted small">Toutes les cotisations non réglées sont incluses, pénalités comprises.</div></div>
+                            <div><strong>Situation globale du membre</strong><div class="text-muted small">Les responsabilités non réglées sont affectées automatiquement selon leur priorité.</div></div>
                             <div class="text-end"><small class="text-muted d-block">Total à régler</small><field name="global_due_amount" widget="monetary" options="{'currency_field': 'currency_id'}" class="fw-bold fs-4" readonly="1"/></div>
                         </div>
                         <field name="global_lines_html" nolabel="1" readonly="1"/>
                     </div>
 
-                    <div class="row g-2 mb-3">
+                    <div class="row g-2 mb-3" invisible="origin == 'meeting'">
 
                         <!-- MONTANT DÛ -->
 
