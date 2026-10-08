@@ -638,6 +638,9 @@ class AssociationDashboard(models.AbstractModel):
         values = {
             "member_portal": True,
             "user_name": self.env.user.name,
+            "user_id": self.env.user.id,
+            "avatar_version": fields.Datetime.to_string(self.env.user.write_date) if self.env.user.write_date else "",
+            "member_theme": self.env.user.association_member_theme or "system",
             "company": {"name": company.display_name},
             "currency": {"symbol": company.currency_id.symbol or ""},
             "member": False,
@@ -645,6 +648,7 @@ class AssociationDashboard(models.AbstractModel):
             "directory": [],
             "shared_minutes": [],
             "shared_recovery_reports": [],
+            "upcoming_meetings": [],
             "association_finance": {
                 "expenses": {"total": 0.0, "count": 0, "items": []},
                 "donations": {"total": 0.0, "count": 0, "items": []},
@@ -733,6 +737,15 @@ class AssociationDashboard(models.AbstractModel):
             "state": member_state_labels.get(item.state, item.state or ""),
         } for item in Member.search([("company_id", "=", company.id), ("active", "=", True)], order="name")]
         Meeting = self.env["association.meeting"].sudo()
+        values["upcoming_meetings"] = [{
+            "id": meeting.id,
+            "title": meeting.title or meeting.name or _("Réunion"),
+            "date": fields.Date.to_string(meeting.meeting_date) if meeting.meeting_date else "",
+        } for meeting in Meeting.search([
+            ("company_id", "=", company.id),
+            ("meeting_date", ">=", fields.Date.context_today(self)),
+            ("state", "in", ("draft", "confirmed")),
+        ], order="meeting_date, id", limit=3)]
         values["shared_minutes"] = [{
             "id": meeting.id,
             "title": meeting.title or meeting.name,
@@ -824,7 +837,10 @@ class AssociationDashboard(models.AbstractModel):
             "payments": [{"id": p.id, "name": p.name or "", "date": fields.Date.to_string(p.payment_date) if p.payment_date else "", "amount": p.amount, "state": p.state or ""} for p in payments],
             "financial_penalties": [{"id": p.id, "name": p.display_name, "amount": p.amount_remaining or 0.0, "state": _member_penalty_state_label(p)} for p in financial_sanctions],
             "financial_alert": {
-                "sanction_count": len(financial_sanctions),
+                # All validated/executed sanctions are still active for the
+                # member. Financial fines are included as well, even when the
+                # amount was partially paid.
+                "sanction_count": len(penalties),
                 "penalty_count": subscription_penalty_count,
             },
             "sanctions": [{
@@ -846,6 +862,43 @@ class AssociationDashboard(models.AbstractModel):
             } for line in subscription_lines],
         }
         return values
+
+    @api.model
+    def set_member_theme(self, theme):
+        """Save the mobile theme for the currently authenticated member."""
+        allowed_themes = {"system", "ocean", "emerald", "violet", "sunset", "black"}
+        if theme not in allowed_themes:
+            return False
+        user = self.env.user
+        if not user.has_group("primetech_association.group_association_member"):
+            return False
+        # An ordinary member cannot write res.users directly.  The target is
+        # always the authenticated user and only this harmless preference is
+        # changed, so the elevation remains narrowly scoped.
+        user.sudo().write({"association_member_theme": theme})
+        return theme
+
+    @api.model
+    def update_member_profile_image(self, image):
+        """Allow an ordinary member to update only their own profile photo."""
+        user = self.env.user
+        if not user.has_group("primetech_association.group_association_member"):
+            return False
+        if not image or not isinstance(image, str):
+            return False
+        user.sudo().write({"image_1920": image})
+        member = self.env["association.member"].sudo().search([
+            ("user_id", "=", user.id),
+            ("company_id", "=", self.env.company.id),
+        ], limit=1)
+        if member:
+            member.write({"image_1920": image})
+        # The browser caches /web/image aggressively.  Returning the write
+        # timestamp lets the client request the refreshed avatar immediately.
+        user.invalidate_recordset(["write_date"])
+        return {
+            "avatar_version": fields.Datetime.to_string(user.write_date) if user.write_date else "",
+        }
 
     @api.model
     def get_member_global_finance_detail(self, document_type, document_id):

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-inherit="primetech_association.AssociationDashboard" t-inherit-mode="extension" owl="1">
+        <xpath expr="//section[contains(@class, 'member_portal')]/header[contains(@class, 'member_portal_head')]" position="attributes">
+            <attribute name="t-att-class">'member_portal_head member_theme_' + (state.data.member_theme || 'system')</attribute>
+        </xpath>
+        <xpath expr="//section[contains(@class, 'member_portal')]/header[contains(@class, 'member_portal_head')]" position="before">
+            <t t-portal="'body'"><div t-att-class="'member_mobile_topbar member_theme_' + (state.data.member_theme || 'system') + ((state.memberMenuOpen || state.memberMenuClosing) ? ' member_menu_active' : '')">
+                <div class="member_mobile_brand"><span class="member_mobile_logo"><i class="fa fa-users"/></span><span><b t-esc="state.data.company.name || 'ASSOCIATION'"/><small>Espace membre</small></span></div>
+                <div class="member_mobile_tools"><button title="Actualiser" t-on-click="loadDashboard"><i class="fa fa-refresh"/></button><button class="member_mobile_avatar" title="Mon compte" t-on-click="toggleMemberMenu"><img t-att-src="'/web/image/res.users/' + state.data.user_id + '/avatar_128?unique=' + (state.data.avatar_version || '')" alt="Photo de profil"/></button><t t-if="state.memberMenuOpen || state.memberMenuClosing" t-portal="'body'"><div t-att-class="'member_mobile_menu_backdrop' + (state.memberMenuClosing ? ' is-closing' : '')" t-on-click="closeMemberMenu"/></t><div t-if="state.memberMenuOpen || state.memberMenuClosing" t-att-class="'member_mobile_account_menu' + (state.memberMenuClosing ? ' is-closing' : '')" t-on-click.stop=""><button t-on-click="openMemberProfile"><i class="fa fa-user"/><span>Mon profil</span></button><button t-on-click="changeMemberPassword"><i class="fa fa-key"/><span>Modifier le mot de passe</span></button><button t-on-click="toggleMemberTheme"><i class="fa fa-paint-brush"/><span>Thème</span><i class="fa fa-angle-right"/></button><div t-if="state.memberThemeOpen" class="member_mobile_theme_picker member_mobile_theme_palette" aria-label="Choisir un thème"><button title="Thème du système" t-on-click="() => this.setMemberTheme('system')"><b class="theme-system"/></button><button title="Bleu océan" t-on-click="() => this.setMemberTheme('ocean')"><b class="theme-ocean"/></button><button title="Vert émeraude" t-on-click="() => this.setMemberTheme('emerald')"><b class="theme-emerald"/></button><button title="Violet" t-on-click="() => this.setMemberTheme('violet')"><b class="theme-violet"/></button><button title="Orange coucher de soleil" t-on-click="() => this.setMemberTheme('sunset')"><b class="theme-sunset"/></button><button title="Noir" t-on-click="() => this.setMemberTheme('black')"><b class="theme-black"/></button></div><button class="danger" t-on-click="logoutMember"><i class="fa fa-sign-out"/><span>Se déconnecter</span></button></div></div>
+            </div></t>
+        </xpath>
+        <xpath expr="//div[contains(@class, 'member_payment_modal_backdrop')]" position="attributes">
+            <attribute name="t-portal">'body'</attribute>
+        </xpath>
+        <xpath expr="//section[contains(@class, 'member_portal')]" position="inside">
+            <t t-portal="'body'">
+                <nav t-att-class="'member_mobile_navigation member_theme_' + (state.data.member_theme || 'system')" aria-label="Navigation membre">
+                    <button t-att-class="state.memberPage === 'home' ? 'is-active' : ''" t-on-click="() => this.openMemberPage('home')"><i class="fa fa-home"/><span>Accueil</span></button>
+                    <button t-att-class="state.memberPage === 'subscriptions' ? 'is-active' : ''" t-on-click="() => this.openMemberPage('subscriptions')"><i class="fa fa-list-alt"/><span>Cotisations</span></button>
+                    <button t-att-class="state.memberPage === 'payments' ? 'is-active' : ''" t-on-click="() => this.openMemberPage('payments')"><i class="fa fa-credit-card"/><span>Paiements</span></button>
+                    <button t-att-class="state.memberPage === 'meetings' ? 'is-active' : ''" t-on-click="() => this.openMemberPage('meetings')"><i class="fa fa-calendar"/><span>Réunions</span></button>
+                    <button t-att-class="state.memberPage === 'more' ? 'is-active' : ''" t-on-click="() => this.openMemberPage('more')"><i class="fa fa-ellipsis-h"/><span>Plus</span></button>
+                </nav>
+            </t>
+            <div t-if="state.memberProfileOpen" class="member_payment_modal_backdrop" t-on-click="closeMemberProfile"><section class="member_payment_modal member_profile_modal" t-on-click.stop=""><header><div><small>Mon profil</small><h2>Photo de profil</h2></div><button title="Fermer" t-on-click="closeMemberProfile"><i class="fa fa-times"/></button></header><div class="member_payment_modal_content"><div class="member_profile_photo"><img t-att-src="state.memberProfileImage || ('/web/image/res.users/' + state.data.user_id + '/image_1920?unique=' + (state.data.avatar_version || ''))" alt="Photo de profil"/></div><label class="member_profile_upload"><i class="fa fa-camera"/> Choisir une photo<input type="file" accept="image/*" t-on-change="onMemberAvatarSelected"/></label><p>Choisissez une image pour personnaliser votre profil.</p></div><footer><button class="btn btn-primary" t-att-disabled="!state.memberProfileImage" t-on-click="saveMemberProfileImage"><i class="fa fa-save"/> Enregistrer la modification</button></footer></section></div>
+        </xpath>
+    </t>
+</templates>

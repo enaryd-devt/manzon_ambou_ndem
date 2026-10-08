@@ -2,12 +2,12 @@
 <odoo>
     <!-- Navigation compacte : les entrées de même nature partagent un sous-menu. -->
     <menuitem id="menu_association_root" name="Associations" sequence="10"
-        groups="primetech_association.group_association_user,primetech_association.group_association_member"
+        groups="primetech_association.group_association_user"
         web_icon="primetech_association,static/description/icon.png"/>
 
     <menuitem id="menu_dashboard" name="Tableau de bord" parent="menu_association_root"
         action="action_association_dashboard_client" sequence="10"
-        groups="primetech_association.group_association_member,primetech_association.group_association_manager,primetech_association.group_association_admin"/>
+        groups="primetech_association.group_association_manager,primetech_association.group_association_admin"/>
 
     <!-- Adhérents -->
     <menuitem id="menu_members_root" name="Adhérents" parent="menu_association_root" sequence="20" groups="primetech_association.group_association_user"/>

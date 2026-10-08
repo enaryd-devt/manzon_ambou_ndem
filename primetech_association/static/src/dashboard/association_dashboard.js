@@ -3,6 +3,7 @@
 import {
     Component,
     markup,
+    onMounted,
     onWillStart,
     useState,
 } from "@odoo/owl";
@@ -52,6 +53,12 @@ export class AssociationDashboard extends Component {
                 globalFinanceDetail: false,
                 minutesPreview: false,
                 recoveryReportPreview: false,
+                memberPage: "home",
+                memberMenuOpen: false,
+                memberMenuClosing: false,
+                memberThemeOpen: false,
+                memberProfileOpen: false,
+                memberProfileImage: false,
             },
             filters: {period: "all", months: 6, date_from: "", date_to: ""},
 
@@ -65,6 +72,14 @@ export class AssociationDashboard extends Component {
             }
         );
 
+        // A member uses the dashboard as a dedicated personal space. The
+        // server does not grant application menus to this role; this class
+        // also removes the web-client shell around the personal dashboard.
+        onMounted(() => {
+            if (this.state.data.member_portal) {
+                document.body.classList.add("o_association_member_only");
+            }
+        });
     }
 
 
@@ -72,7 +87,7 @@ export class AssociationDashboard extends Component {
     // CHARGEMENT
     // =========================================================
 
-    async loadDashboard() {
+    async loadDashboard(resetMemberPage = true) {
 
         this.state.loading = true;
 
@@ -85,6 +100,10 @@ export class AssociationDashboard extends Component {
             );
 
             this.state.data = data;
+            // The member space must always open on its mobile home screen.
+            if (resetMemberPage && data.member_portal) {
+                this.state.memberPage = "home";
+            }
 
         } finally {
 
@@ -482,6 +501,105 @@ export class AssociationDashboard extends Component {
             target.classList.add("member_subscription_penalty_focus");
             setTimeout(() => target.classList.remove("member_subscription_penalty_focus"), 2200);
         });
+    }
+
+    scrollToMemberSection(selector) {
+        document.querySelector(selector)?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+        });
+    }
+
+    openMemberPage(page) {
+        this.state.memberPage = page || "home";
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    toggleMemberMenu() {
+        if (this.state.memberMenuOpen) {
+            this.closeMemberMenu();
+            return;
+        }
+        this.state.memberMenuClosing = false;
+        this.state.memberMenuOpen = true;
+        this.state.memberThemeOpen = false;
+    }
+
+    closeMemberMenu(immediate = false) {
+        if (!this.state.memberMenuOpen && !this.state.memberMenuClosing) {
+            return;
+        }
+        this.state.memberThemeOpen = false;
+        if (immediate) {
+            this.state.memberMenuOpen = false;
+            this.state.memberMenuClosing = false;
+            return;
+        }
+        this.state.memberMenuClosing = true;
+        this.state.memberMenuOpen = false;
+        setTimeout(() => {
+            this.state.memberMenuClosing = false;
+        }, 180);
+    }
+
+    toggleMemberTheme() {
+        this.state.memberThemeOpen = !this.state.memberThemeOpen;
+    }
+
+    async setMemberTheme(theme) {
+        const savedTheme = await this.orm.call("association.dashboard", "set_member_theme", [theme]);
+        if (savedTheme) {
+            this.state.data.member_theme = savedTheme;
+            this.closeMemberMenu();
+        }
+    }
+
+    openMemberProfile() {
+        this.closeMemberMenu(true);
+        this.state.memberProfileImage = false;
+        this.state.memberProfileOpen = true;
+    }
+
+    closeMemberProfile() {
+        this.state.memberProfileOpen = false;
+    }
+
+    onMemberAvatarSelected(event) {
+        const [file] = event.target.files || [];
+        if (!file) {
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+            this.state.memberProfileImage = reader.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    async saveMemberProfileImage() {
+        if (!this.state.memberProfileImage) {
+            return;
+        }
+        const image = this.state.memberProfileImage.split(",", 2)[1];
+        const saved = await this.orm.call(
+            "association.dashboard", "update_member_profile_image", [image]
+        );
+        if (saved) {
+            this.state.data.avatar_version = saved.avatar_version || Date.now().toString();
+            this.closeMemberProfile();
+            await this.loadDashboard(false);
+        }
+    }
+
+    async changeMemberPassword() {
+        const action = await this.orm.call(
+            "res.users", "preference_change_password", [[this.state.data.user_id]]
+        );
+        return this.action.doAction(action);
+    }
+
+    logoutMember() {
+        window.location.assign("/web/session/logout");
     }
 
     openRecord(model, recordId, name) {

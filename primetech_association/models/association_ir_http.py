@@ -18,6 +18,9 @@ class AssociationIrHttp(models.AbstractModel):
         if self.env.user.has_group(
             "primetech_association.group_association_member"
         ):
+            # Consumed as soon as the web client starts so application
+            # navigation never flashes before the member dashboard is loaded.
+            info["primetech_association_member_only"] = True
             dashboard_action = self.env.ref(
                 "primetech_association.action_association_dashboard_client",
                 raise_if_not_found=False,

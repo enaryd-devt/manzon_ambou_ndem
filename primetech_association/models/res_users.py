@@ -31,6 +31,18 @@ MEETING_ROLE_XMLIDS = {
 class ResUsers(models.Model):
     _inherit = 'res.users'
 
+    association_member_theme = fields.Selection(
+        [
+            ('system', 'Thème du système'),
+            ('ocean', 'Bleu océan'),
+            ('emerald', 'Vert émeraude'),
+            ('violet', 'Violet'),
+            ('sunset', 'Orange coucher de soleil'),
+            ('black', 'Noir'),
+        ],
+        string='Thème de l’espace membre', default='system',
+    )
+
     association_member_id = fields.Many2one(
         'association.member',
         string='Membre associé',

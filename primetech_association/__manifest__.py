@@ -78,7 +78,7 @@ Bonnes pratiques
   des membres cohérents.
 """,
 
-    "version": "18.0.1.0.0",
+    "version": "18.0.1.0.17",
 
     "author": "PrimeTech Services",
 
@@ -203,6 +203,8 @@ Bonnes pratiques
             "primetech_association/static/src/dashboard/association_dashboard.js",
             "primetech_association/static/src/dashboard/association_dashboard.xml",
             "primetech_association/static/src/dashboard/member_minutes.xml",
+            "primetech_association/static/src/dashboard/member_mobile_shell.xml",
+            "primetech_association/static/src/dashboard/member_mobile_reference.xml",
             "primetech_association/static/src/dashboard/association_dashboard.scss",
             "primetech_association/static/src/scss/member_card.scss",
             "primetech_association/static/src/scss/member_list_filter.scss",
@@ -210,6 +212,8 @@ Bonnes pratiques
             "primetech_association/static/src/js/refresh_subscription_table.js",
             "primetech_association/static/src/js/meeting_live_sync.js",
             "primetech_association/static/src/js/member_list_filter.js",
+            "primetech_association/static/src/js/member_navigation_lock.js",
+            "primetech_association/static/src/xml/member_navigation_lock.xml",
         ],
     },
 
