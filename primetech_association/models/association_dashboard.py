@@ -787,6 +787,12 @@ class AssociationDashboard(models.AbstractModel):
         financial_sanctions = penalties.filtered(
             lambda penalty: penalty.penalty_type == "fine" and (penalty.amount_remaining or 0.0) > 0
         )
+        active_alert_sanctions = penalties.filtered(
+            lambda penalty: not (
+                penalty.penalty_type == "fine"
+                and (penalty.amount_remaining or 0.0) <= 0.01
+            )
+        )
         def _member_penalty_state_label(penalty):
             if penalty.penalty_type == "fine" and (penalty.amount_remaining or 0.0) <= 0.01:
                 return _("Levée")
@@ -840,10 +846,9 @@ class AssociationDashboard(models.AbstractModel):
             "payments": [{"id": p.id, "name": p.name or "", "date": fields.Date.to_string(p.payment_date) if p.payment_date else "", "amount": p.amount, "state": p.state or ""} for p in payments],
             "financial_penalties": [{"id": p.id, "name": p.display_name, "amount": p.amount_remaining or 0.0, "state": _member_penalty_state_label(p)} for p in financial_sanctions],
             "financial_alert": {
-                # All validated/executed sanctions are still active for the
-                # member. Financial fines are included as well, even when the
-                # amount was partially paid.
-                "sanction_count": len(penalties),
+                # A settled fine is a lifted sanction and must no longer
+                # trigger the member alert.
+                "sanction_count": len(active_alert_sanctions),
                 "penalty_count": subscription_penalty_count,
             },
             "sanctions": [{
@@ -851,6 +856,9 @@ class AssociationDashboard(models.AbstractModel):
                 "name": p.display_name,
                 "amount": p.amount_remaining if p.penalty_type == "fine" else 0.0,
                 "state": _member_penalty_state_label(p),
+                "type": _("Financière") if p.penalty_type == "fine" else _("Disciplinaire"),
+                "type_code": "financial" if p.penalty_type == "fine" else "disciplinary",
+                "is_active_alert": p in active_alert_sanctions,
             } for p in penalties],
             "subscriptions": [{
                 "id": line.id,

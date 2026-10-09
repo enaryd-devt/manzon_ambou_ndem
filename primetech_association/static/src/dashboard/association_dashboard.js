@@ -481,15 +481,15 @@ export class AssociationDashboard extends Component {
     }
 
     scrollToMemberSanctions() {
-        const targets = document.querySelectorAll(".member_financial_sanction_target");
-        document.querySelector(".member_sanctions_panel")?.scrollIntoView({
-            behavior: "smooth",
-            block: "start",
-        });
-        targets.forEach((target) => {
-            target.classList.add("member_financial_sanction_focus");
-            setTimeout(() => target.classList.remove("member_financial_sanction_focus"), 2200);
-        });
+        this.openMemberPage("more");
+        setTimeout(() => {
+            const targets = document.querySelectorAll(".member_financial_sanction_target");
+            targets[0]?.scrollIntoView({ behavior: "smooth", block: "center" });
+            targets.forEach((target) => {
+                target.classList.add("member_financial_sanction_focus");
+                setTimeout(() => target.classList.remove("member_financial_sanction_focus"), 2200);
+            });
+        }, 50);
     }
 
     scrollToMemberFinancialItem() {
