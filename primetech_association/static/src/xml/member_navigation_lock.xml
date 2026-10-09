@@ -2,9 +2,6 @@
 <templates xml:space="preserve">
     <!-- Do not render the application switcher for the dedicated member area. -->
     <t t-inherit="web.NavBar.AppsMenu" t-inherit-mode="extension" owl="1">
-        <xpath expr="//t[@t-if='env.isSmall']" position="attributes">
-            <attribute name="t-if">env.isSmall and !isAssociationMemberOnly</attribute>
-        </xpath>
         <xpath expr="//div[contains(@class, 'o_navbar_apps_menu')]" position="attributes">
             <attribute name="t-if">!isScopedApp and !isAssociationMemberOnly</attribute>
         </xpath>
