@@ -312,6 +312,15 @@ export class AssociationDashboard extends Component {
         return this.openRecord("association.payment", paymentId, "Paiement");
     }
 
+    formatMemberDate(date) {
+        const value = String(date || "");
+        const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (iso) {
+            return `${iso[3]}/${iso[2]}/${iso[1]}`;
+        }
+        return value;
+    }
+
     get memberFinancialAlertLabel() {
         const alert = this.state.data.member?.financial_alert || {};
         const labels = [];
