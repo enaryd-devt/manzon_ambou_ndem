@@ -631,7 +631,10 @@ class AssociationDashboard(models.AbstractModel):
         member = Member.search([
             ("user_id", "=", self.env.user.id), ("company_id", "=", company.id),
         ], limit=1)
-        funds = Fund.search([("company_id", "=", company.id), ("active", "=", True)], order="sequence, name")
+        funds = Fund.search([("company_id", "=", company.id), ("active", "=", True)]).sorted(
+            key=lambda fund: fund.current_balance or 0.0,
+            reverse=True,
+        )
         member_state_labels = dict(
             Member._fields["state"]._description_selection(self.env)
         )
