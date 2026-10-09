@@ -854,10 +854,15 @@ class AssociationDashboard(models.AbstractModel):
             "sanctions": [{
                 "id": p.id,
                 "name": p.display_name,
-                "amount": p.amount_remaining if p.penalty_type == "fine" else 0.0,
+                "amount": (
+                    p.amount_remaining
+                    if (p.amount_remaining or 0.0) > 0.01
+                    else (p.amount or 0.0)
+                ) if p.penalty_type == "fine" else False,
                 "state": _member_penalty_state_label(p),
                 "type": _("Financière") if p.penalty_type == "fine" else _("Disciplinaire"),
                 "type_code": "financial" if p.penalty_type == "fine" else "disciplinary",
+                "is_lifted": p.penalty_type == "fine" and (p.amount_remaining or 0.0) <= 0.01,
                 "is_active_alert": p in active_alert_sanctions,
             } for p in penalties],
             "subscriptions": [{
