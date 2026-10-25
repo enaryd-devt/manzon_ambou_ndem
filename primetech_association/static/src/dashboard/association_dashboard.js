@@ -64,6 +64,8 @@ export class AssociationDashboard extends Component {
 
         });
 
+        this.restoreDashboardState();
+
         onWillStart(
             async () => {
 
@@ -78,6 +80,8 @@ export class AssociationDashboard extends Component {
         onMounted(() => {
             if (this.state.data.member_portal) {
                 document.body.classList.add("o_association_member_only");
+            } else {
+                window.requestAnimationFrame(() => document.querySelector(".o_association_dashboard")?.scrollTo({top: this._restoredScrollTop || 0}));
             }
         });
     }
@@ -128,6 +132,22 @@ export class AssociationDashboard extends Component {
     onMonthsChange(ev) {
         this.state.filters.months = Number(ev.target.value);
         return this.loadDashboard();
+    }
+
+    restoreDashboardState() {
+        try {
+            const saved = JSON.parse(window.sessionStorage.getItem("primetech_association.dashboard_state") || "{}");
+            if (saved.filters) Object.assign(this.state.filters, saved.filters);
+            this._restoredScrollTop = saved.scrollTop || 0;
+        } catch { this._restoredScrollTop = 0; }
+    }
+
+    saveDashboardState() {
+        try {
+            window.sessionStorage.setItem("primetech_association.dashboard_state", JSON.stringify({
+                filters: {...this.state.filters}, scrollTop: document.querySelector(".o_association_dashboard")?.scrollTop || 0,
+            }));
+        } catch { /* storage unavailable */ }
     }
 
 
@@ -197,7 +217,7 @@ export class AssociationDashboard extends Component {
     // =========================================================
 
     async openAction(xmlId) {
-
+        this.saveDashboardState();
         await this.action.doAction(xmlId);
 
     }
