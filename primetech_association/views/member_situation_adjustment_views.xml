@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_member_situation_adjustment_list" model="ir.ui.view">
+        <field name="name">association.member.situation.adjustment.list</field>
+        <field name="model">association.member.situation.adjustment</field>
+        <field name="arch" type="xml">
+            <list decoration-info="state == 'draft'" decoration-success="state == 'validated'">
+                <field name="name"/>
+                <field name="adjustment_date"/>
+                <field name="fund_id"/>
+                <field name="amount_total" sum="Total"/>
+                <field name="amount_paid" sum="Encaissé"/>
+                <field name="amount_remaining" sum="Reste"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_member_situation_adjustment_form" model="ir.ui.view">
+        <field name="name">association.member.situation.adjustment.form</field>
+        <field name="model">association.member.situation.adjustment</field>
+        <field name="arch" type="xml">
+            <form string="Ajustement de situation">
+                <header>
+                    <button name="action_validate" type="object" string="Valider l'ajustement" class="oe_highlight" invisible="state != 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,validated" readonly="1"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Ex. Régularisation exceptionnelle" readonly="state != 'draft'"/></h1>
+                        <p class="text-muted">Ajoutez plusieurs membres dans ce même document. À validation, une créance est créée pour chaque ligne.</p>
+                    </div>
+                    <group>
+                        <group string="Document">
+                            <field name="adjustment_date" readonly="state != 'draft'"/>
+                            <field name="fund_id" readonly="state != 'draft'"/>
+                        </group>
+                        <group string="Synthèse">
+                            <field name="amount_total"/>
+                            <field name="amount_paid"/>
+                            <field name="amount_remaining"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Membres à ajuster">
+                            <field name="line_ids" readonly="state != 'draft'">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="member_id"/>
+                                    <field name="name" placeholder="Motif de l'ajustement"/>
+                                    <field name="amount" sum="Total"/>
+                                    <field name="fee_id" readonly="1" optional="hide"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                    <div class="alert alert-info" invisible="state != 'draft'" role="alert">
+                        Le compte de trésorerie choisi sera utilisé lors de l'encaissement. Les ajustements seront réglés après les autres éléments dus par chaque membre.
+                    </div>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_member_situation_adjustment_search" model="ir.ui.view">
+        <field name="name">association.member.situation.adjustment.search</field>
+        <field name="model">association.member.situation.adjustment</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="fund_id"/>
+                <filter string="Brouillons" name="draft" domain="[('state','=','draft')]"/>
+                <filter string="Validés" name="validated" domain="[('state','=','validated')]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_member_situation_adjustment" model="ir.actions.act_window">
+        <field name="name">Ajustements de situation</field>
+        <field name="res_model">association.member.situation.adjustment</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[]</field>
+        <field name="context">{}</field>
+        <field name="search_view_id" ref="view_member_situation_adjustment_search"/>
+    </record>
+</odoo>

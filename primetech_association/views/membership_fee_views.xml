@@ -61,7 +61,4 @@
     <record id="action_membership_fee" model="ir.actions.act_window">
         <field name="name">Frais d’adhésion</field><field name="res_model">association.membership.fee</field><field name="view_mode">list,form</field><field name="domain">[('fee_type','=','membership')]</field><field name="context">{'default_fee_type': 'membership'}</field><field name="search_view_id" ref="view_membership_fee_search"/>
     </record>
-    <record id="action_member_situation_adjustment" model="ir.actions.act_window">
-        <field name="name">Ajustements de situation</field><field name="res_model">association.membership.fee</field><field name="view_mode">list,form</field><field name="domain">[('fee_type','=','adjustment')]</field><field name="context">{'default_fee_type': 'adjustment', 'default_state': 'draft'}</field><field name="search_view_id" ref="view_membership_fee_search"/>
-    </record>
 </odoo>

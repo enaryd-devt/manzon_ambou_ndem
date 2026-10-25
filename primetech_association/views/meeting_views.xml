@@ -1452,12 +1452,13 @@
 
                                 <!-- TABLEAU -->
 
-                                <div class="pt-member-list-searchbar">
-                                    <i class="fa fa-search"/>
+                                <div class="pt-member-list-searchbar pt-treasury-member-search">
+                                    <span class="pt-treasury-search-icon"><i class="fa fa-search"/></span>
                                     <input
                                         type="search"
                                         class="pt-member-list-search"
                                         placeholder="Rechercher un membre..."/>
+                                    <span class="pt-treasury-search-hint"><i class="fa fa-filter"/> Nom ou code membre</span>
                                 </div>
 
                                 <field

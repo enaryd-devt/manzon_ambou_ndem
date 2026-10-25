@@ -38,6 +38,76 @@
     background: transparent;
 }
 
+/* Trésorerie de réunion : recherche volontairement mise en avant afin de
+   faciliter l'identification du membre avant l'encaissement. */
+.pt-treasury-member-search {
+    max-width: none;
+    min-height: 48px;
+    margin: 12px 12px 16px;
+    padding: 6px 10px 6px 7px;
+    gap: 10px;
+    border: 1px solid color-mix(in srgb, var(--o-brand-primary, #714b67) 40%, #d8dee6);
+    border-radius: 10px;
+    background: linear-gradient(100deg, color-mix(in srgb, var(--o-brand-primary, #714b67) 8%, #fff), #fff 56%);
+    box-shadow: 0 3px 10px rgba(35, 52, 78, .08);
+    transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
+
+    .pt-treasury-search-icon {
+        display: grid;
+        width: 34px;
+        height: 34px;
+        flex: 0 0 34px;
+        place-items: center;
+        border-radius: 8px;
+        background: var(--o-brand-primary, #714b67);
+
+        .fa {
+            color: #fff;
+            font-size: 15px;
+        }
+    }
+
+    .pt-member-list-search {
+        min-height: 34px;
+        color: var(--o-main-text-color, #24324a);
+        font-size: 14px;
+        font-weight: 600;
+
+        &::placeholder {
+            color: #718096;
+            font-weight: 400;
+        }
+    }
+
+    .pt-treasury-search-hint {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 8px;
+        border-radius: 6px;
+        background: rgba(100, 116, 139, .10);
+        color: #64748b;
+        font-size: 11px;
+        white-space: nowrap;
+    }
+
+    &:focus-within {
+        border-color: var(--o-brand-primary, #714b67);
+        background: #fff;
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--o-brand-primary, #714b67) 16%, transparent), 0 4px 12px rgba(35, 52, 78, .10);
+    }
+}
+
+@media (max-width: 576px) {
+    .pt-treasury-member-search {
+        margin-inline: 8px;
+
+        .pt-treasury-search-hint {
+            display: none;
+        }
+    }
+}
+
 .pt-member-filter-hidden {
     display: none !important;
 }

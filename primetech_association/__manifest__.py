@@ -124,6 +124,7 @@ Bonnes pratiques
         "views/member_card_wizard_views.xml",
         "views/member_activation_wizard_views.xml",
         "views/membership_fee_views.xml",
+        "views/member_situation_adjustment_views.xml",
         "views/member_card_views.xml",
 
         "views/committee_views.xml",

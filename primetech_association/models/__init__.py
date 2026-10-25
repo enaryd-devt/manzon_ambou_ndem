@@ -19,6 +19,7 @@ from . import association_skill
 
 from . import association_member
 from . import association_membership_fee
+from . import association_member_situation_adjustment
 from . import association_committee
 from . import association_committee_line
 
