@@ -71,6 +71,16 @@ class AssociationMembershipFee(models.Model):
             record.with_context(allow_adjustment_state_change=True).write({"state": "due"})
         return True
 
+    def action_validate_membership_fee(self):
+        """Confirm a manually created membership fee without changing auto-created fees."""
+        for record in self:
+            if record.fee_type != "membership" or record.state != "draft":
+                continue
+            if record.amount <= 0:
+                raise ValidationError(_("Le montant du frais d'adhésion doit être supérieur à zéro."))
+            record.write({"state": "due"})
+        return True
+
     @api.depends("amount", "amount_paid", "state")
     def _compute_amount_remaining(self):
         for record in self:

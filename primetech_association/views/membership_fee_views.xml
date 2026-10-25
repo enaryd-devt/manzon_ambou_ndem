@@ -20,15 +20,19 @@
         <field name="name">association.membership.fee.form</field>
         <field name="model">association.membership.fee</field>
         <field name="arch" type="xml">
-            <form string="Créance membre">
+            <form string="Frais d’adhésion" class="pt-membership-fee-form">
                 <header>
+                    <button name="action_validate_membership_fee" type="object" string="Valider le frais d’adhésion"
+                        class="oe_highlight" invisible="fee_type != 'membership' or state != 'draft'"/>
                     <button name="action_validate_adjustment" type="object" string="Valider l'ajustement"
                         class="oe_highlight" invisible="fee_type != 'adjustment' or state != 'draft'"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,due,paid,cancelled" readonly="1"/>
                 </header>
                 <sheet>
-                    <div class="oe_title">
-                        <h1><field name="name" placeholder="Ex. Régularisation de cotisation" readonly="fee_type == 'adjustment' and state != 'draft'"/></h1>
+                    <div class="oe_title pt-membership-fee-title">
+                        <div class="pt-membership-fee-icon"><i class="fa fa-id-card-o"/></div>
+                        <div><span class="pt-membership-fee-kicker" invisible="fee_type != 'membership'">Frais d’adhésion</span><span class="pt-membership-fee-kicker" invisible="fee_type != 'adjustment'">Créance membre</span>
+                        <h1><field name="name" placeholder="Ex. Frais d’inscription" readonly="fee_type == 'adjustment' and state != 'draft'"/></h1></div>
                         <div class="text-muted" invisible="fee_type != 'adjustment'">
                             Cet ajustement augmente le montant dû par le membre et sera encaissé en dernière priorité.
                         </div>
@@ -48,6 +52,9 @@
                     <div class="alert alert-info" invisible="fee_type != 'adjustment' or state != 'draft'" role="alert">
                         Vérifiez le membre, le montant et le compte de trésorerie avant validation. Ces informations seront verrouillées ensuite.
                     </div>
+                    <div class="alert alert-primary" invisible="fee_type != 'membership' or state != 'draft'" role="alert">
+                        Vérifiez les informations puis validez le frais. Il sera alors disponible pour l’encaissement.
+                    </div>
                 </sheet>
                 <chatter/>
             </form>
@@ -59,6 +66,6 @@
         <field name="arch" type="xml"><search><field name="member_id"/><field name="fee_type"/><field name="fund_id"/><filter string="À régler" name="due" domain="[('state','=','due')]"/><filter string="Réglés" name="paid" domain="[('state','=','paid')]"/></search></field>
     </record>
     <record id="action_membership_fee" model="ir.actions.act_window">
-        <field name="name">Frais d’adhésion</field><field name="res_model">association.membership.fee</field><field name="view_mode">list,form</field><field name="domain">[('fee_type','=','membership')]</field><field name="context">{'default_fee_type': 'membership'}</field><field name="search_view_id" ref="view_membership_fee_search"/>
+        <field name="name">Frais d’adhésion</field><field name="res_model">association.membership.fee</field><field name="view_mode">list,form</field><field name="domain">[('fee_type','=','membership')]</field><field name="context">{'default_fee_type': 'membership', 'default_state': 'draft'}</field><field name="search_view_id" ref="view_membership_fee_search"/>
     </record>
 </odoo>

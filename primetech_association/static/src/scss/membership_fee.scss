@@ -1,0 +1,44 @@
+.pt-membership-fee-form {
+    .pt-membership-fee-title {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 24px;
+        padding: 18px 20px;
+        border: 1px solid color-mix(in srgb, var(--o-brand-primary, #714b67) 22%, #e5e7eb);
+        border-radius: 12px;
+        background: linear-gradient(110deg, color-mix(in srgb, var(--o-brand-primary, #714b67) 9%, #fff), #fff 62%);
+
+        h1 {
+            margin: 2px 0 0;
+        }
+    }
+
+    .pt-membership-fee-icon {
+        display: grid;
+        width: 48px;
+        height: 48px;
+        flex: 0 0 48px;
+        place-items: center;
+        border-radius: 12px;
+        background: var(--o-brand-primary, #714b67);
+        color: #fff;
+        font-size: 22px;
+        box-shadow: 0 5px 12px color-mix(in srgb, var(--o-brand-primary, #714b67) 28%, transparent);
+    }
+
+    .pt-membership-fee-kicker {
+        color: var(--o-brand-primary, #714b67);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: .07em;
+        text-transform: uppercase;
+    }
+
+    .o_group {
+        padding: 12px 14px;
+        border: 1px solid #e7ebf0;
+        border-radius: 10px;
+        background: #fff;
+    }
+}
