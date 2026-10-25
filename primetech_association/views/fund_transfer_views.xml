@@ -22,7 +22,6 @@
             <form string="Transfert de fonds" class="pt-fund-transfer-form">
                 <header>
                     <button name="action_validate" type="object" string="Valider le transfert" class="oe_highlight" invisible="state != 'draft'"/>
-                    <button name="action_cancel" type="object" string="Annuler le brouillon" class="btn-secondary" invisible="state != 'draft'"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,validated,cancelled" readonly="1"/>
                 </header>
                 <sheet>
