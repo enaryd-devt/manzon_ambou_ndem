@@ -57,6 +57,6 @@
     <xpath expr="//h2[normalize-space()='Soldes de trésorerie']" position="replace"><h2><i class="fa fa-bank"/> Soldes de trésorerie</h2></xpath>
     <xpath expr="//h2[normalize-space()='Liste des membres']" position="replace"><h2><i class="fa fa-users"/> Liste des membres</h2></xpath>
     <xpath expr="//button[contains(@class, 'member_subscription_link')]" position="attributes"><attribute name="t-att-class">'member_subscription_row member_subscription_link' + (subscription.penalty_due ? ' member_subscription_penalty_target' : '')</attribute></xpath>
-    <xpath expr="//button[contains(@class, 'member_sanction_link')]" position="attributes"><attribute name="t-att-class">'member_sanction_link' + (sanction.amount ? ' member_financial_sanction_target' : '')</attribute></xpath>
+    <xpath expr="//button[contains(@t-att-class, 'member_sanction_link')]" position="attributes"><attribute name="t-att-class">'member_sanction_link' + (sanction.is_active_alert ? ' member_financial_sanction_target' : '') + (sanction.is_lifted ? ' is-lifted' : '')</attribute></xpath>
   </t>
 </templates>

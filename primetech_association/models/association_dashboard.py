@@ -627,6 +627,7 @@ class AssociationDashboard(models.AbstractModel):
         Penalty = self.env["association.penalty"].sudo()
         Fund = self.env["association.fund"].sudo()
         MemberAccount = self.env["association.member.account"].sudo()
+        MembershipFee = self.env["association.membership.fee"].sudo()
         SubscriptionLine = self.env["association.subscription.line"].sudo()
         member = Member.search([
             ("user_id", "=", self.env.user.id), ("company_id", "=", company.id),
@@ -770,13 +771,22 @@ class AssociationDashboard(models.AbstractModel):
             ("report_shared", "=", True),
         ], order="closed_at desc, id desc")]
         payments = Payment.search([("member_id", "=", member.id)], order="payment_date desc, id desc")
-        # Ordinary members only see sanctions that have been formally validated
-        # or executed. Draft and lifted/cancelled records stay internal.
+        # Ordinary members see the outcome of every formal sanction. Draft
+        # records remain internal, while lifted and cancelled sanctions stay
+        # visible with their final status.
         penalties = Penalty.search([
             ("member_id", "=", member.id),
-            ("state", "in", ["validated", "executed"]),
+            ("state", "in", ["validated", "executed", "lifted", "cancelled"]),
         ], order="incident_date desc, id desc")
         member_account = MemberAccount.search([("member_id", "=", member.id)], limit=1)
+        adjustments = MembershipFee.search([
+            ("member_id", "=", member.id),
+            ("company_id", "=", company.id),
+            ("fee_type", "=", "adjustment"),
+            ("state", "=", "due"),
+            ("amount_remaining", ">", 0),
+        ])
+        adjustment_due = sum(adjustments.mapped("amount_remaining"))
         subscription_lines = SubscriptionLine.search([
             ("member_id", "=", member.id),
             ("active", "=", True), ("subscription_id.active", "=", True),
@@ -784,22 +794,43 @@ class AssociationDashboard(models.AbstractModel):
         payment_state_labels = dict(
             SubscriptionLine._fields["payment_state"]._description_selection(self.env)
         )
+        penalty_payment_state_labels = dict(
+            Penalty._fields["payment_state"]._description_selection(self.env)
+        )
+        penalty_state_labels = dict(
+            Penalty._fields["state"]._description_selection(self.env)
+        )
         financial_sanctions = penalties.filtered(
-            lambda penalty: penalty.penalty_type == "fine" and (penalty.amount_remaining or 0.0) > 0
+            lambda penalty: (
+                penalty.penalty_type == "fine"
+                and penalty.state in ("validated", "executed")
+                and (penalty.amount_remaining or 0.0) > 0
+            )
         )
         active_alert_sanctions = penalties.filtered(
-            lambda penalty: not (
-                penalty.penalty_type == "fine"
-                and (penalty.amount_remaining or 0.0) <= 0.01
+            lambda penalty: (
+                penalty.state in ("validated", "executed")
+                and (
+                    penalty.penalty_type != "fine"
+                    or penalty.payment_state in ("not_paid", "partial")
+                )
             )
         )
         def _member_penalty_state_label(penalty):
-            if penalty.penalty_type == "fine" and (penalty.amount_remaining or 0.0) <= 0.01:
-                return _("Levée")
-            return _("En cours")
+            if penalty.penalty_type == "fine":
+                label = penalty_payment_state_labels.get(
+                    penalty.payment_state, penalty.payment_state or ""
+                )
+                if penalty.state in ("validated", "executed") and penalty.payment_state in ("not_paid", "partial"):
+                    return _("En cours — %s") % label
+                return label
+            if penalty.state in ("validated", "executed"):
+                return _("En cours")
+            return penalty_state_labels.get(penalty.state, penalty.state or "")
         Period = self.env["association.subscription.period"].sudo()
         PaymentLine = self.env["association.payment.line"].sudo()
         closed_cycles_due = recovery_due = no_cycle_due = cycle_penalties_due = 0.0
+        financial_situation_lines = []
         for line in subscription_lines:
             periods = Period.search([
                 ("subscription_id", "=", line.subscription_id.id),
@@ -812,8 +843,28 @@ class AssociationDashboard(models.AbstractModel):
                     breakdown = PaymentLine._get_period_amount_breakdown_for_line(
                         line, period, current_amount=0.0, already_paid=paid,
                     )
-                    closed_cycles_due += max(breakdown["subscription_balance_amount"], 0.0)
-                    cycle_penalties_due += max(breakdown["penalty_balance_amount"], 0.0)
+                    subscription_balance = max(breakdown["subscription_balance_amount"], 0.0)
+                    penalty_balance = max(breakdown["penalty_balance_amount"], 0.0)
+                    closed_cycles_due += subscription_balance
+                    cycle_penalties_due += penalty_balance
+                    if subscription_balance > 0.01:
+                        financial_situation_lines.append({
+                            "key": "subscription-%s-%s" % (line.id, period.id),
+                            "type": _("Cotisation"),
+                            "label": line.subscription_id.display_name or _("Cotisation"),
+                            "detail": period.display_name or _("Cycle clôturé"),
+                            "amount": subscription_balance,
+                            "icon": "calendar",
+                        })
+                    if penalty_balance > 0.01:
+                        financial_situation_lines.append({
+                            "key": "subscription-penalty-%s-%s" % (line.id, period.id),
+                            "type": _("Pénalité de cotisation"),
+                            "label": line.subscription_id.display_name or _("Cotisation"),
+                            "detail": period.display_name or _("Cycle clôturé"),
+                            "amount": penalty_balance,
+                            "icon": "warning",
+                        })
             else:
                 amount_due = (
                     line.recovery_amount if line.subscription_id.subscription_type == "recovery"
@@ -824,6 +875,33 @@ class AssociationDashboard(models.AbstractModel):
                     recovery_due += balance
                 else:
                     no_cycle_due += balance
+                if balance > 0.01:
+                    financial_situation_lines.append({
+                        "key": "subscription-%s" % line.id,
+                        "type": _("Recouvrement") if line.subscription_id.subscription_type == "recovery" else _("Cotisation"),
+                        "label": line.subscription_id.display_name or _("Cotisation"),
+                        "detail": _("Sans cycle"),
+                        "amount": balance,
+                        "icon": "history" if line.subscription_id.subscription_type == "recovery" else "calendar",
+                    })
+        for penalty in financial_sanctions:
+            financial_situation_lines.append({
+                "key": "penalty-%s" % penalty.id,
+                "type": _("Sanction financière"),
+                "label": penalty.display_name,
+                "detail": _member_penalty_state_label(penalty),
+                "amount": penalty.amount_remaining or 0.0,
+                "icon": "gavel",
+            })
+        for adjustment in adjustments:
+            financial_situation_lines.append({
+                "key": "adjustment-%s" % adjustment.id,
+                "type": _("Ajustement de situation"),
+                "label": adjustment.name,
+                "detail": adjustment.fund_id.display_name or _("Compte de trésorerie"),
+                "amount": adjustment.amount_remaining or 0.0,
+                "icon": "sliders",
+            })
         subscription_penalty_count = len(subscription_lines.filtered(
             lambda line: (line.cycle_penalty_amount or 0.0) > 0
         ))
@@ -833,12 +911,14 @@ class AssociationDashboard(models.AbstractModel):
             "account_balance": member_account.balance if member_account else 0.0,
             "account_name": member_account.name if member_account else "",
             "financial_situation": {
-                "total_due": closed_cycles_due + recovery_due + no_cycle_due + cycle_penalties_due + sum(financial_sanctions.mapped("amount_remaining")),
+                "total_due": closed_cycles_due + recovery_due + no_cycle_due + cycle_penalties_due + sum(financial_sanctions.mapped("amount_remaining")) + adjustment_due,
                 "label": _("Montant total dû"),
                 "closed_cycles": closed_cycles_due,
                 "recoveries": recovery_due,
                 "without_cycle": no_cycle_due,
                 "penalties": cycle_penalties_due + sum(financial_sanctions.mapped("amount_remaining")),
+                "adjustments": adjustment_due,
+                "lines": financial_situation_lines,
             },
             "payments_total": sum(payments.filtered(lambda p: p.state in ("collected", "confirmed")).mapped("amount")),
             "payment_count": len(payments),
@@ -862,7 +942,7 @@ class AssociationDashboard(models.AbstractModel):
                 "state": _member_penalty_state_label(p),
                 "type": _("Financière") if p.penalty_type == "fine" else _("Disciplinaire"),
                 "type_code": "financial" if p.penalty_type == "fine" else "disciplinary",
-                "is_lifted": p.penalty_type == "fine" and (p.amount_remaining or 0.0) <= 0.01,
+                "is_lifted": p.state == "lifted",
                 "is_active_alert": p in active_alert_sanctions,
             } for p in penalties],
             "subscriptions": [{
@@ -982,19 +1062,26 @@ class AssociationDashboard(models.AbstractModel):
         ], limit=1)
         penalty = self.env["association.penalty"].sudo().search([
             ("id", "=", penalty_id), ("member_id", "=", member.id),
-            ("state", "in", ["validated", "executed"]),
+            ("state", "in", ["validated", "executed", "lifted", "cancelled"]),
         ], limit=1)
         if not penalty:
             return False
         type_labels = dict(penalty._fields["penalty_type"]._description_selection(self.env))
         incident_labels = dict(penalty._fields["incident_type"]._description_selection(self.env))
         state_labels = dict(penalty._fields["state"]._description_selection(self.env))
+        payment_state_labels = dict(
+            penalty._fields["payment_state"]._description_selection(self.env)
+        )
         return {
             "id": penalty.id,
             "name": penalty.display_name or "",
             "is_financial": penalty.penalty_type == "fine",
             "type": type_labels.get(penalty.penalty_type, penalty.penalty_type or ""),
-            "state": state_labels.get(penalty.state, penalty.state or ""),
+            "state": (
+                payment_state_labels.get(penalty.payment_state, penalty.payment_state or "")
+                if penalty.penalty_type == "fine"
+                else state_labels.get(penalty.state, penalty.state or "")
+            ),
             "incident": incident_labels.get(penalty.incident_type, penalty.incident_type or ""),
             "date": fields.Datetime.to_string(penalty.incident_date) if penalty.incident_date else "",
             "description": penalty.penalty_description or "",

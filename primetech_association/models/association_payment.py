@@ -229,8 +229,9 @@ class AssociationPayment(models.Model):
                 amount = float(allocation.get("amount") or 0.0)
                 fee = self.env["association.membership.fee"].sudo().browse(allocation.get("membership_fee_id")).exists()
                 if amount > 0:
+                    fee_label = _("Ajustement de situation") if fee and fee.fee_type == "adjustment" else _("Frais d'adhésion")
                     payment_lines.append({
-                        "label": _("Frais d'adhésion") + (" - %s" % fee.display_name if fee else ""),
+                        "label": fee_label + (" - %s" % fee.display_name if fee else ""),
                         "amount_display": amount_label(amount),
                     })
             if receipt_payment.member_id:
@@ -315,6 +316,28 @@ class AssociationPayment(models.Model):
                 total_balance += balance
                 situation_lines.append({
                     "label": "%s - %s" % (_("Sanction"), penalty.display_name),
+                    "due": due,
+                    "paid": paid,
+                    "balance": balance,
+                    "due_display": amount_label(due),
+                    "paid_display": amount_label(paid),
+                    "balance_display": amount_label(balance),
+                })
+            adjustments = self.env["association.membership.fee"].sudo().search([
+                ("member_id", "=", receipt_payment.member_id.id),
+                ("company_id", "=", receipt_payment.company_id.id),
+                ("fee_type", "=", "adjustment"),
+                ("state", "=", "due"),
+                ("amount_remaining", ">", 0),
+            ]) if receipt_payment.member_id else self.env["association.membership.fee"].sudo()
+            for adjustment in adjustments:
+                due = (adjustment.amount_paid or 0.0) + (adjustment.amount_remaining or 0.0)
+                paid = adjustment.amount_paid or 0.0
+                balance = adjustment.amount_remaining or 0.0
+                total_paid += paid
+                total_balance += balance
+                situation_lines.append({
+                    "label": "%s - %s" % (_("Ajustement de situation"), adjustment.display_name),
                     "due": due,
                     "paid": paid,
                     "balance": balance,
@@ -1402,7 +1425,11 @@ class AssociationPayment(models.Model):
                         "transaction_type": "in",
                         "amount": settled,
                         "transaction_date": record.payment_date,
-                        "description": _("Frais d’adhésion encaissé - %(member)s - %(fee)s") % {"member": fee.member_id.display_name, "fee": fee.name},
+                        "description": (
+                            _("Ajustement de situation encaissé - %(member)s - %(fee)s")
+                            if fee.fee_type == "adjustment"
+                            else _("Frais d’adhésion encaissé - %(member)s - %(fee)s")
+                        ) % {"member": fee.member_id.display_name, "fee": fee.name},
                         "company_id": record.company_id.id,
                         "payment_id": record.id,
                         "origin_model": "association.membership.fee",

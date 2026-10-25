@@ -356,7 +356,9 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
             ])
             for fee in membership_fees:
                 global_due += fee.amount_remaining or 0.0
-                global_rows.append("<tr class='table-info'><td>Frais d’adhésion</td><td>%s</td><td class='text-end'>%.2f</td></tr>" % (
+                fee_label = "Ajustement de situation" if fee.fee_type == "adjustment" else "Frais d’adhésion"
+                global_rows.append("<tr class='table-info'><td>%s</td><td>%s</td><td class='text-end'>%.2f</td></tr>" % (
+                    fee_label,
                     html_escape(fee.name), fee.amount_remaining or 0.0,
                 ))
             if payment_origin == "meeting":
@@ -857,6 +859,14 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
         membership_fees = MembershipFee.search([
             ("member_id", "=", self.member_id.id),
             ("company_id", "=", company.id),
+            ("fee_type", "=", "membership"),
+            ("state", "=", "due"),
+            ("amount_remaining", ">", 0),
+        ], order="id asc")
+        adjustments = MembershipFee.search([
+            ("member_id", "=", self.member_id.id),
+            ("company_id", "=", company.id),
+            ("fee_type", "=", "adjustment"),
             ("state", "=", "due"),
             ("amount_remaining", ">", 0),
         ], order="id asc")
@@ -915,6 +925,15 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
                 if allocated > 0:
                     membership_fee_allocations.append({"membership_fee_id": fee.id, "amount": allocated})
                     remaining -= allocated
+        # Ajustements de situation : toujours servis en dernier, après les
+        # sanctions, frais d'adhésion et cotisations du membre.
+        for adjustment in adjustments:
+            if remaining <= 0:
+                break
+            allocated = min(remaining, adjustment.amount_remaining or 0.0)
+            if allocated > 0:
+                membership_fee_allocations.append({"membership_fee_id": adjustment.id, "amount": allocated})
+                remaining -= allocated
         if not allocation_values and not priority_allocations and not membership_fee_allocations:
             raise ValidationError(_("Aucun recouvrement non soldé n’a été trouvé pour ce membre."))
         Payment = self.env["association.payment"]

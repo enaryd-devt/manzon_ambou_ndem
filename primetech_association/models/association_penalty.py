@@ -239,12 +239,14 @@ class AssociationPenalty(models.Model):
 
     payment_state = fields.Selection(
         selection=[
-            ("not_payable", "Non payable"),
+            ("not_payable", "Sans règlement"),
             ("not_paid", "Non payé"),
             ("partial", "Partiellement payé"),
             ("paid", "Payé"),
+            ("lifted", "Levée"),
+            ("cancelled", "Annulée"),
         ],
-        string="Suivi du règlement",
+        string="Statut de suivi",
         compute="_compute_payment_state",
         store=True,
         index=True,
@@ -301,7 +303,7 @@ class AssociationPenalty(models.Model):
     # ==========================================================
 
     corrective_action_required = fields.Boolean(
-        string="Action requise pour lever la sanction",
+        string="Action corrective à suivre",
         default=False,
         tracking=True,
     )
@@ -311,7 +313,7 @@ class AssociationPenalty(models.Model):
         tracking=True,
         help=(
             "Action que le membre doit accomplir "
-            "pour permettre la levée de la sanction."
+            "dans le cadre du suivi de la sanction. Elle ne bloque pas sa levée."
         ),
     )
 
@@ -471,7 +473,11 @@ class AssociationPenalty(models.Model):
                SET amount = 0.0,
                    amount_paid = 0.0,
                    amount_remaining = 0.0,
-                   payment_state = 'not_payable'
+                   payment_state = CASE
+                       WHEN state = 'lifted' THEN 'lifted'
+                       WHEN state = 'cancelled' THEN 'cancelled'
+                       ELSE 'not_payable'
+                   END
              WHERE COALESCE(penalty_type, 'observation') != 'fine'
             """
         )
@@ -485,6 +491,8 @@ class AssociationPenalty(models.Model):
                        0.0
                    ),
                    payment_state = CASE
+                       WHEN state = 'lifted' THEN 'lifted'
+                       WHEN state = 'cancelled' THEN 'cancelled'
                        WHEN COALESCE(amount, 0.0) <= 0.0
                            THEN 'not_paid'
                        WHEN GREATEST(
@@ -525,6 +533,7 @@ class AssociationPenalty(models.Model):
             )
 
     @api.depends(
+        "state",
         "penalty_type",
         "amount",
         "amount_paid",
@@ -549,9 +558,19 @@ class AssociationPenalty(models.Model):
                 or 0.0
             )
 
-            if record.penalty_type != "fine":
+            if record.state == "lifted":
 
-                record.payment_state = "not_payable"
+                record.payment_state = "lifted"
+
+            elif record.state == "cancelled":
+
+                record.payment_state = "cancelled"
+
+            elif record.penalty_type != "fine":
+
+                record.payment_state = (
+                    "lifted" if record.state == "lifted" else "not_payable"
+                )
 
             elif amount <= 0:
 
@@ -751,6 +770,14 @@ class AssociationPenalty(models.Model):
 
         for record in self:
 
+            if record.penalty_type == "fine":
+                raise UserError(
+                    _(
+                        "Une sanction financière doit être réglée ou levée, "
+                        "et ne peut pas être marquée exécutée."
+                    )
+                )
+
             if record.state != "validated":
 
                 raise UserError(
@@ -773,9 +800,27 @@ class AssociationPenalty(models.Model):
     # LEVER LA SANCTION
     # ==========================================================
 
+    def action_open_lift_wizard(self):
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Lever la sanction"),
+            "res_model": "association.penalty.lift.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {"default_penalty_id": self.id},
+        }
+
     def action_lift(self):
 
         for record in self:
+
+            if record.penalty_type == "fine" and record.amount_remaining <= 0.01:
+                raise UserError(
+                    _(
+                        "Une sanction financière entièrement réglée ne peut plus être levée."
+                    )
+                )
 
             if record.state not in (
                 "validated",
@@ -789,34 +834,10 @@ class AssociationPenalty(models.Model):
                     )
                 )
 
-            if (
-                record.corrective_action_required
-                and not record.corrective_action_done
-            ):
-
+            if not (record.lift_reason or "").strip():
                 raise UserError(
                     _(
-                        "Impossible de lever la sanction.\n\n"
-                        "Le membre n'a pas encore accompli "
-                        "l'action corrective demandée."
-                    )
-                )
-
-            if (
-                record.penalty_type == "fine"
-                and record.amount_remaining > 0
-            ):
-
-                raise UserError(
-                    _(
-                        "Impossible de lever la sanction.\n\n"
-                        "Le montant de la sanction financière "
-                        "n'est pas entièrement réglé.\n\n"
-                        "Reste à payer : %s %s"
-                    )
-                    % (
-                        record.amount_remaining,
-                        record.currency_id.symbol or "",
+                        "Un motif de levée est obligatoire avant de lever la sanction."
                     )
                 )
 
@@ -845,15 +866,30 @@ class AssociationPenalty(models.Model):
 
         for record in self:
 
+            if record.penalty_type == "fine" and record.amount_remaining <= 0.01:
+                raise UserError(
+                    _(
+                        "Une sanction financière entièrement réglée ne peut plus être annulée."
+                    )
+                )
+
             if record.state not in (
                 "draft",
                 "validated",
+                "executed",
             ):
 
                 raise UserError(
                     _(
                         "Cette sanction ne peut plus "
                         "être annulée."
+                    )
+                )
+
+            if not (record.cancellation_reason or "").strip():
+                raise UserError(
+                    _(
+                        "Un motif d'annulation est obligatoire avant d'annuler la sanction."
                     )
                 )
 

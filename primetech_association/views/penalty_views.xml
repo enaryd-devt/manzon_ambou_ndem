@@ -133,7 +133,10 @@
                         string="Annuler"
                         icon="fa-times"
                         groups="primetech_association.group_association_meeting_president,primetech_association.group_association_meeting_censor,primetech_association.group_association_manager,primetech_association.group_association_admin"
-                        invisible="state not in ('draft', 'validated')"
+                        invisible="
+                            state not in ('draft', 'validated', 'executed')
+                            or (penalty_type == 'fine' and payment_state == 'paid')
+                        "
                         confirm="Confirmez-vous l'annulation de cette sanction ?"
                     />
 
@@ -143,7 +146,7 @@
                         string="Marquer exécutée"
                         icon="fa-check-circle"
                         groups="primetech_association.group_association_meeting_president,primetech_association.group_association_meeting_censor,primetech_association.group_association_manager,primetech_association.group_association_admin"
-                        invisible="state != 'validated'"
+                        invisible="state != 'validated' or penalty_type == 'fine'"
                     />
 
                     <button
@@ -162,7 +165,7 @@
                     />
 
                     <button
-                        name="action_lift"
+                        name="action_open_lift_wizard"
                         type="object"
                         string="Lever la sanction"
                         icon="fa-unlock"
@@ -170,8 +173,24 @@
                         groups="primetech_association.group_association_meeting_president,primetech_association.group_association_meeting_censor,primetech_association.group_association_manager,primetech_association.group_association_admin"
                         invisible="
                             state not in ('validated', 'executed')
+                            or (penalty_type == 'fine' and payment_state == 'paid')
                         "
                         confirm="Confirmez-vous la levée de cette sanction ?"
+                    />
+
+                    <button
+                        name="action_open_meeting_payment"
+                        type="object"
+                        string="Payer la sanction"
+                        icon="fa-money"
+                        class="btn-primary"
+                        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
+                        invisible="
+                            penalty_type != 'fine'
+                            or state not in ('validated', 'executed')
+                            or payment_state == 'paid'
+                            or amount_remaining &lt;= 0
+                        "
                     />
 
                     <field
@@ -453,7 +472,7 @@
 
                             <field
                                 name="payment_state"
-                                string="Règlement"
+                                string="Statut de suivi"
                                 invisible="penalty_type == 'fine'"
                                 readonly="1"
                             />
@@ -702,7 +721,7 @@
 
                             <group>
 
-                                <group string="Condition de levée">
+                                <group string="Suivi de l'action corrective">
 
                                     <field
                                         name="corrective_action_required"
@@ -777,8 +796,8 @@
 
                                 <div class="small mt-1">
 
-                                    Le motif de levée est optionnel et peut être
-                                    ajouté pour conserver le contexte de la décision.
+                                    Le motif de levée est obligatoire afin de
+                                    conserver le contexte de la décision.
 
                                 </div>
 
@@ -822,16 +841,16 @@
                         <!-- ============================================= -->
 
                         <page
-                            string="Annulation (facultative)"
+                            string="Annulation"
                             name="cancellation">
 
-                            <group string="Motif d'annulation (facultatif)">
+                            <group string="Motif d'annulation">
 
                                 <field
                                     name="cancellation_reason"
                                     nolabel="1"
                                     readonly="state == 'cancelled'"
-                                    placeholder="Ajoutez un motif si nécessaire..."
+                                    placeholder="Précisez le motif justifiant l'annulation..."
                                 />
 
                             </group>
