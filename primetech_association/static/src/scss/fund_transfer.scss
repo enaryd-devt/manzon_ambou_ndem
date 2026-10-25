@@ -1,0 +1,24 @@
+.pt-fund-transfer-form {
+    .pt-fund-transfer-title {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 8px;
+        padding: 18px 20px;
+        border: 1px solid color-mix(in srgb, var(--o-brand-primary, #714b67) 24%, #e4e8ef);
+        border-radius: 13px;
+        background: linear-gradient(115deg, color-mix(in srgb, var(--o-brand-primary, #714b67) 10%, #fff), #fff 64%);
+
+        h1 { margin: 2px 0 0; }
+    }
+
+    .pt-fund-transfer-icon { display: grid; width: 50px; height: 50px; place-items: center; border-radius: 13px; background: var(--o-brand-primary, #714b67); color: #fff; font-size: 22px; box-shadow: 0 6px 14px color-mix(in srgb, var(--o-brand-primary, #714b67) 28%, transparent); }
+    .pt-fund-transfer-kicker { color: var(--o-brand-primary, #714b67); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .pt-fund-transfer-intro { margin: 0 0 20px; color: #68758a; font-size: 13px; }
+
+    .pt-fund-transfer-accounts > .o_group { padding: 14px; border: 1px solid #e3e8f0; border-radius: 11px; background: #fff; }
+    .pt-fund-transfer-balance { padding: 7px 9px; border-radius: 7px; background: #eef6ff; font-weight: 800; }
+    .pt-fund-transfer-balance.source { background: #fff2f3; color: #a52d40; }
+    .pt-fund-transfer-balance.destination { background: #ebf8f0; color: #167a50; }
+    .pt-fund-transfer-justification { margin-top: 14px; padding: 12px 14px; border: 1px solid #e7ebf1; border-radius: 11px; background: #fff; }
+}

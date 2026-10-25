@@ -137,6 +137,7 @@ Bonnes pratiques
         "views/income_views.xml",
         "views/expense_views.xml",
         "views/fund_views.xml",
+        "views/fund_transfer_views.xml",
 
        
 
@@ -211,6 +212,7 @@ Bonnes pratiques
             "primetech_association/static/src/scss/member_card.scss",
             "primetech_association/static/src/scss/member_list_filter.scss",
             "primetech_association/static/src/scss/membership_fee.scss",
+            "primetech_association/static/src/scss/fund_transfer.scss",
 
             "primetech_association/static/src/js/refresh_subscription_table.js",
             "primetech_association/static/src/js/meeting_live_sync.js",

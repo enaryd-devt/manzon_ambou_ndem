@@ -734,6 +734,7 @@ class AssociationDashboard(models.AbstractModel):
             "name": fund.display_name,
             "balance": fund.current_balance,
         } for fund in funds]
+        values["treasury_total"] = sum(funds.mapped("current_balance"))
         values["directory"] = [{
             "id": item.id,
             "name": item.display_name,

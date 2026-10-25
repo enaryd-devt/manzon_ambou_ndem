@@ -69,6 +69,9 @@
         parent="menu_association_bank" action="action_association_fund" sequence="10"/>
     <menuitem id="menu_association_fund_transaction" name="Mouvements de trésorerie"
         parent="menu_association_bank" action="action_association_fund_transaction" sequence="20"/>
+    <menuitem id="menu_association_fund_transfer" name="Transferts de fonds"
+        parent="menu_association_bank" action="action_association_fund_transfer" sequence="25"
+        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin,primetech_association.group_association_accountant"/>
     <menuitem id="menu_association_member_account" name="Comptes des membres"
         parent="menu_association_bank" action="action_association_member_account" sequence="30"/>
     <menuitem id="menu_association_member_account_transaction" name="Mouvements des comptes membres"

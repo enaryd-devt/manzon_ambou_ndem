@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_association_fund_transfer_list" model="ir.ui.view">
+        <field name="name">association.fund.transfer.list</field>
+        <field name="model">association.fund.transfer</field>
+        <field name="arch" type="xml">
+            <list decoration-info="state == 'draft'" decoration-success="state == 'validated'" decoration-muted="state == 'cancelled'">
+                <field name="name"/>
+                <field name="transfer_date"/>
+                <field name="source_fund_id"/>
+                <field name="destination_fund_id"/>
+                <field name="amount" sum="Total"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_association_fund_transfer_form" model="ir.ui.view">
+        <field name="name">association.fund.transfer.form</field>
+        <field name="model">association.fund.transfer</field>
+        <field name="arch" type="xml">
+            <form string="Transfert de fonds" class="pt-fund-transfer-form">
+                <header>
+                    <button name="action_validate" type="object" string="Valider le transfert" class="oe_highlight" invisible="state != 'draft'"/>
+                    <button name="action_cancel" type="object" string="Annuler le brouillon" class="btn-secondary" invisible="state != 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,validated,cancelled" readonly="1"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" type="object" name="action_view_transactions" icon="fa-exchange" invisible="transaction_count == 0">
+                            <field name="transaction_count" widget="statinfo" string="Mouvements générés"/>
+                        </button>
+                    </div>
+                    <div class="oe_title pt-fund-transfer-title">
+                        <div class="pt-fund-transfer-icon"><i class="fa fa-exchange"/></div>
+                        <div><span class="pt-fund-transfer-kicker">Transfert interne</span><h1><field name="name" readonly="1"/></h1></div>
+                    </div>
+                    <p class="pt-fund-transfer-intro">Déplace un montant entre deux comptes de trésorerie sans modifier le solde total de l’association.</p>
+                    <group class="pt-fund-transfer-accounts">
+                        <group string="Compte source">
+                            <field name="transfer_date" readonly="state != 'draft'"/>
+                            <field name="source_fund_id" readonly="state != 'draft'"/>
+                            <field name="source_balance" class="pt-fund-transfer-balance source"/>
+                        </group>
+                        <group string="Compte destination">
+                            <field name="destination_fund_id" readonly="state != 'draft'"/>
+                            <field name="destination_balance" class="pt-fund-transfer-balance destination"/>
+                            <field name="amount" readonly="state != 'draft'"/>
+                        </group>
+                    </group>
+                    <group string="Justificatif" class="pt-fund-transfer-justification">
+                        <field name="description" readonly="state != 'draft'"/>
+                        <field name="note" readonly="state != 'draft'"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_association_fund_transfer_search" model="ir.ui.view">
+        <field name="name">association.fund.transfer.search</field>
+        <field name="model">association.fund.transfer</field>
+        <field name="arch" type="xml"><search><field name="name"/><field name="source_fund_id"/><field name="destination_fund_id"/><filter string="Brouillons" name="draft" domain="[('state','=','draft')]"/><filter string="Validés" name="validated" domain="[('state','=','validated')]"/></search></field>
+    </record>
+
+    <record id="action_association_fund_transfer" model="ir.actions.act_window">
+        <field name="name">Transferts de fonds</field>
+        <field name="res_model">association.fund.transfer</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_association_fund_transfer_search"/>
+    </record>
+</odoo>
