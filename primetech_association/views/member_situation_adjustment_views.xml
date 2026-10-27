@@ -8,6 +8,7 @@
                 <field name="name"/>
                 <field name="adjustment_date"/>
                 <field name="fund_id"/>
+                <field name="payment_priority" optional="show"/>
                 <field name="amount_total" sum="Total"/>
                 <field name="amount_paid" sum="Encaissé"/>
                 <field name="amount_remaining" sum="Reste"/>
@@ -34,6 +35,7 @@
                         <group string="Document">
                             <field name="adjustment_date" readonly="state != 'draft'"/>
                             <field name="fund_id" readonly="state != 'draft'"/>
+                            <field name="payment_priority" readonly="state != 'draft'"/>
                         </group>
                         <group string="Synthèse">
                             <field name="amount_total"/>

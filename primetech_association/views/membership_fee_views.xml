@@ -12,6 +12,7 @@
                 <field name="amount" sum="Total"/>
                 <field name="amount_paid" sum="Réglé"/>
                 <field name="amount_remaining" sum="Reste"/>
+                <field name="payment_priority" optional="show"/>
                 <field name="state"/>
             </list>
         </field>
@@ -42,6 +43,7 @@
                             <field name="fee_type" readonly="fee_type == 'adjustment' and state != 'draft'"/>
                             <field name="member_id" readonly="fee_type == 'adjustment' and state != 'draft'"/>
                             <field name="fund_id" readonly="fee_type == 'adjustment' and state != 'draft'"/>
+                            <field name="payment_priority"/>
                         </group>
                         <group string="Situation financière">
                             <field name="amount" readonly="fee_type == 'adjustment' and state != 'draft'"/>

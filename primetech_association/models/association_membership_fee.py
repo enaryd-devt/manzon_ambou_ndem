@@ -3,6 +3,24 @@
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
+# Priorité de règlement partagée par les cotisations, frais d'adhésion et
+# ajustements.  La clé fixe l'ordre d'affectation : "1" est réglé en premier.
+# Les sanctions financières restent toujours réglées avant ces niveaux.
+PAYMENT_PRIORITY_SELECTION = [
+    ("1", "Très haute"),
+    ("2", "Haute"),
+    ("3", "Normale"),
+    ("4", "Basse"),
+    ("5", "Très basse"),
+]
+PAYMENT_PRIORITY_DEFAULT = "3"
+PAYMENT_PRIORITY_HELP = (
+    "Ordre de règlement lors d'un encaissement : les éléments de priorité "
+    "« Très haute » sont réglés en premier, ceux de priorité « Très basse » en "
+    "dernier. Les sanctions financières sont toujours réglées avant tout le "
+    "reste. À priorité égale, l'ordre standard du module s'applique."
+)
+
 
 class AssociationMembershipFee(models.Model):
     _name = "association.membership.fee"
@@ -23,6 +41,11 @@ class AssociationMembershipFee(models.Model):
     currency_id = fields.Many2one(related="company_id.currency_id", readonly=True)
     fund_id = fields.Many2one("association.fund", string="Compte de trésorerie", required=True, ondelete="restrict", domain="[('company_id', '=', company_id), ('active', '=', True)]", tracking=True)
     amount = fields.Monetary(string="Montant exigible", currency_field="currency_id", required=True, tracking=True)
+    payment_priority = fields.Selection(
+        PAYMENT_PRIORITY_SELECTION, string="Priorité de règlement",
+        default=PAYMENT_PRIORITY_DEFAULT, required=True, tracking=True,
+        help=PAYMENT_PRIORITY_HELP,
+    )
     amount_paid = fields.Monetary(string="Montant réglé", currency_field="currency_id", default=0.0, readonly=True)
     amount_remaining = fields.Monetary(string="Reste à régler", currency_field="currency_id", compute="_compute_amount_remaining", store=True)
     state = fields.Selection([

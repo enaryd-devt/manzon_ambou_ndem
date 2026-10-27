@@ -192,11 +192,24 @@ class AssociationMeetingSubscriptionSession(models.Model):
         lines.
         """
         for session in self:
-            confirmed_payments = session.payment_ids.filtered(
-                lambda payment: payment.state in ("collected", "confirmed")
-            )
+            confirmed_payments = session.get_meeting_payments()
             session.payment_count = len(confirmed_payments)
             session.payment_total = sum(confirmed_payments.mapped("amount"))
+
+    def get_meeting_payments(self):
+        """Real collections of the meeting, as shown in its treasury tab.
+
+        Global payments made from the member table are linked to the meeting
+        (``meeting_id``) and not always to the session; older payments may
+        only carry the session link.  Both are therefore included.
+        """
+        self.ensure_one()
+        return self.env["association.payment"].search([
+            ("state", "=", "confirmed"),
+            "|",
+            ("meeting_id", "=", self.meeting_id.id),
+            ("meeting_subscription_session_id", "=", self.id),
+        ], order="payment_date, id")
 
     def action_start_collection(self):
         for session in self:
@@ -376,16 +389,16 @@ class AssociationMeetingSubscriptionSession(models.Model):
         self.ensure_one()
         if self.snapshot_ids:
             return True
+        if self.meeting_id.treasury_member_situation_ids:
+            self._create_treasury_snapshot()
+            self.collection_ids.action_freeze_cycle_snapshot()
+            return True
+        # Legacy meetings without member treasury rows: cycle situation.
         PaymentLine = self.env["association.payment.line"]
         values = []
         for line in self.subscription_id.line_ids.filtered("active"):
-            payment_lines = PaymentLine.search([
-                ("subscription_line_id", "=", line.id),
-                ("payment_id.subscription_period_id", "=", self.period_id.id),
-                ("payment_id.state", "in", ("collected", "confirmed")),
-            ])
-            due = (self.subscription_id.amount or 0.0) + (line.penalty_amount or 0.0)
-            paid = sum(payment_lines.mapped("amount_paid"))
+            due = PaymentLine._get_period_due_for_line(line, self.period_id)
+            paid = min(PaymentLine._get_period_paid_for_line(line, self.period_id), due)
             balance = max(due - paid, 0.0)
             values.append({
                 "session_id": self.id, "member_id": line.member_id.id,
@@ -397,6 +410,49 @@ class AssociationMeetingSubscriptionSession(models.Model):
             })
         self.env["association.meeting.subscription.snapshot"].create(values)
         self.collection_ids.action_freeze_cycle_snapshot()
+        return True
+
+    def _create_treasury_snapshot(self):
+        """Freeze the meeting treasury table, member by member.
+
+        Same rows and amounts as the "Trésorerie" tab: what was actually
+        collected in the meeting and what remains due at closure.
+        """
+        self.ensure_one()
+        payments = self.get_meeting_payments()
+        values = []
+        for situation in self.meeting_id.treasury_member_situation_ids:
+            member = situation.member_id
+            member_payments = payments.filtered(lambda payment: payment.member_id == member)
+            collected = sum(
+                payment.amount
+                - (payment.processed_surplus_amount if payment.surplus_action == "refund" else 0.0)
+                for payment in member_payments
+            )
+            # Part of the collections that settled a due (excludes any
+            # surplus credited to the member account).
+            settled = sum(
+                sum(payment.line_ids.mapped("amount_paid"))
+                + (payment.priority_allocation_amount or 0.0)
+                + (payment.membership_fee_allocation_amount or 0.0)
+                for payment in member_payments
+            )
+            balance = situation.amount_due or 0.0
+            values.append({
+                "session_id": self.id,
+                "member_id": member.id,
+                "member_name": member.display_name,
+                "member_code": member.member_code,
+                "amount_due": balance + settled,
+                "amount_paid": collected,
+                "balance": balance,
+                "penalty_amount": 0.0,
+                "payment_state": (
+                    "paid" if balance <= 0.01
+                    else "partial" if collected > 0.01 else "not_paid"
+                ),
+            })
+        self.env["association.meeting.subscription.snapshot"].create(values)
         return True
 
     def action_print_report(self):

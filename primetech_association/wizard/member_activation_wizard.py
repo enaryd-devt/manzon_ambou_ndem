@@ -1,6 +1,12 @@
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
+from ..models.association_membership_fee import (
+    PAYMENT_PRIORITY_DEFAULT,
+    PAYMENT_PRIORITY_HELP,
+    PAYMENT_PRIORITY_SELECTION,
+)
+
 
 class AssociationMemberActivationWizard(models.TransientModel):
     _name = "association.member.activation.wizard"
@@ -16,6 +22,11 @@ class AssociationMemberActivationWizard(models.TransientModel):
     )
     fund_id = fields.Many2one("association.fund", string="Compte de trésorerie des frais d’adhésion",
                               domain="[('company_id', '=', company_id), ('active', '=', True)]")
+    payment_priority = fields.Selection(
+        PAYMENT_PRIORITY_SELECTION, string="Priorité de règlement",
+        default=PAYMENT_PRIORITY_DEFAULT, required=True,
+        help="Appliquée aux frais d’adhésion créés. " + PAYMENT_PRIORITY_HELP,
+    )
     registration_fee_amount = fields.Monetary(string="Frais d’inscription", currency_field="currency_id", required=True, default=0.0)
     insurance_fee_amount = fields.Monetary(string="Frais d’assurance", currency_field="currency_id", required=True, default=0.0)
     forfait_recovery_fee_amount = fields.Monetary(string="Recouvrement forfaitaire", currency_field="currency_id", required=True, default=0.0)
@@ -106,6 +117,7 @@ class AssociationMemberActivationWizard(models.TransientModel):
                     "fund_id": self.fund_id.id,
                     "name": label,
                     "amount": amount,
+                    "payment_priority": self.payment_priority,
                 })
         self.member_id.with_context(confirm_membership_activation=True).action_activate()
         return {"type": "ir.actions.client", "tag": "soft_reload"}

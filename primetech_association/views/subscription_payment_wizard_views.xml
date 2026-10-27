@@ -39,11 +39,11 @@
 
                         <div class="oe_title mb-0">
 
-                            <h1 class="mb-1" invisible="origin == 'meeting'">
+                            <h1 class="mb-1" invisible="origin in ('meeting', 'member')">
                                 Paiement de cotisation
                             </h1>
 
-                            <h1 class="mb-1" invisible="origin != 'meeting'">
+                            <h1 class="mb-1" invisible="origin not in ('meeting', 'member')">
                                 Encaissement global
                             </h1>
 

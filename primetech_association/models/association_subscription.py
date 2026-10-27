@@ -16,6 +16,12 @@ from dateutil.relativedelta import relativedelta
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 
+from .association_membership_fee import (
+    PAYMENT_PRIORITY_DEFAULT,
+    PAYMENT_PRIORITY_HELP,
+    PAYMENT_PRIORITY_SELECTION,
+)
+
 
 class AssociationSubscription(models.Model):
     _name = "association.subscription"
@@ -161,6 +167,15 @@ class AssociationSubscription(models.Model):
         required=True,
         default=0.0,
         tracking=True,
+    )
+
+    payment_priority = fields.Selection(
+        PAYMENT_PRIORITY_SELECTION,
+        string="Priorité de règlement",
+        default=PAYMENT_PRIORITY_DEFAULT,
+        required=True,
+        tracking=True,
+        help=PAYMENT_PRIORITY_HELP,
     )
 
     # ==========================================================

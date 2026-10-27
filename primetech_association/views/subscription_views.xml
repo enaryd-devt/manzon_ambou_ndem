@@ -10,9 +10,10 @@
         <field name="model">association.member.subscription.cycle.report</field>
         <field name="arch" type="xml">
 
-            <search string="Situation des cotisations">
+            <search string="Situation du membre">
 
                 <field name="member_id"/>
+                <field name="label"/>
                 <field name="subscription_id"/>
                 <field name="cycle_label"/>
                 <field name="subscription_line_id"/>
@@ -35,6 +36,28 @@
                 <separator/>
 
                 <filter
+                    name="filter_type_subscription"
+                    string="Cotisations et recouvrements"
+                    domain="[('situation_type', 'in', ['subscription', 'recovery'])]"/>
+
+                <filter
+                    name="filter_type_penalty"
+                    string="Sanctions financières"
+                    domain="[('situation_type', '=', 'penalty')]"/>
+
+                <filter
+                    name="filter_type_membership"
+                    string="Frais d'adhésion"
+                    domain="[('situation_type', '=', 'membership')]"/>
+
+                <filter
+                    name="filter_type_adjustment"
+                    string="Ajustements de situation"
+                    domain="[('situation_type', '=', 'adjustment')]"/>
+
+                <separator/>
+
+                <filter
                     name="filter_running"
                     string="Cycles en cours"
                     domain="[('period_state', '=', 'running')]"/>
@@ -45,6 +68,11 @@
                     domain="[('period_state', '=', 'closed')]"/>
 
                 <group expand="0" string="Regrouper par">
+
+                    <filter
+                        name="group_situation_type"
+                        string="Type"
+                        context="{'group_by': 'situation_type'}"/>
 
                     <filter
                         name="group_subscription"
@@ -74,7 +102,7 @@
         <field name="arch" type="xml">
 
             <list
-                string="Cotisations du membre"
+                string="Situation du membre"
                 create="0"
                 edit="0"
                 delete="0"
@@ -82,9 +110,13 @@
                 decoration-warning="payment_state == 'partial'"
                 decoration-success="payment_state == 'paid'">
 
-                <field name="subscription_id"/>
+                <field name="situation_type"/>
 
-                <field name="subscription_period_id"/>
+                <field name="label"/>
+
+                <field name="subscription_id" optional="hide"/>
+
+                <field name="subscription_period_id" optional="hide"/>
 
                 <field
                     name="subscription_line_id"
@@ -92,40 +124,44 @@
 
                 <field
                     name="period_state"
-                    widget="badge"/>
+                    widget="badge"
+                    optional="show"/>
 
                 <field
                     name="base_amount_due"
                     string="Cotisation due"
-                    sum="Total cotisations dues"/>
+                    sum="Total cotisations dues"
+                    optional="hide"/>
 
                 <field
                     name="contribution_paid_amount"
                     string="Cotisation réglée"
-                    sum="Total cotisations réglées"/>
+                    sum="Total cotisations réglées"
+                    optional="hide"/>
 
                 <field
                     name="subscription_balance_amount"
                     string="Reste cotisation"
-                    sum="Reste cotisations"/>
+                    sum="Reste cotisations"
+                    optional="hide"/>
 
                 <field
                     name="penalty_due_amount"
                     string="Pénalités dues"
                     sum="Total pénalités dues"
-                    optional="show"/>
+                    optional="hide"/>
 
                 <field
                     name="penalty_paid_amount"
                     string="Pénalités réglées"
                     sum="Total pénalités réglées"
-                    optional="show"/>
+                    optional="hide"/>
 
                 <field
                     name="penalty_balance_amount"
                     string="Reste pénalités"
                     sum="Reste pénalités"
-                    optional="show"/>
+                    optional="hide"/>
 
                 <field
                     name="amount_due"
@@ -175,13 +211,13 @@
         <field name="model">association.member.subscription.cycle.report</field>
         <field name="arch" type="xml">
 
-            <form string="Situation de cotisation" create="0" edit="0" delete="0">
+            <form string="Situation du membre" create="0" edit="0" delete="0">
 
                 <header>
                     <button
                         name="action_register_payment"
                         type="object"
-                        string="Régler cette cotisation"
+                        string="Régler"
                         icon="fa-money"
                         class="btn-primary"
                         groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
@@ -194,16 +230,21 @@
 
                         <field name="member_id"/>
                         <field name="member_code"/>
-                        <field name="subscription_id"/>
-                        <field name="cycle_label"/>
-                        <field name="subscription_line_id"/>
-                        <field name="period_state" widget="badge"/>
+                        <field name="situation_type"/>
+                        <field name="label"/>
+                        <field name="subscription_id" invisible="not subscription_id"/>
+                        <field name="cycle_label" invisible="not cycle_label"/>
+                        <field name="subscription_line_id" invisible="not subscription_line_id"/>
+                        <field name="period_state" widget="badge" invisible="not subscription_period_id"/>
+                        <field name="subscription_period_id" invisible="1"/>
+                        <field name="penalty_id" invisible="not penalty_id"/>
+                        <field name="membership_fee_id" invisible="not membership_fee_id"/>
 
                     </group>
 
                     <group>
 
-                        <field name="amount_due" string="Montant cotisation"/>
+                        <field name="amount_due" string="Montant dû"/>
                         <field name="amount_paid" string="Montant payé"/>
                         <field name="balance" string="Reste à payer"/>
                         <field name="payment_state" widget="badge"/>
@@ -347,6 +388,8 @@
                 <field name="date"/>
 
                 <field name="due_date"/>
+
+                <field name="payment_priority" optional="show"/>
 
                 <field
                     name="line_count"
@@ -1192,6 +1235,8 @@
                                     name="penalty_enabled"
                                     string="Appliquer les pénalités"
                                     widget="boolean_toggle"/>
+
+                                <field name="payment_priority"/>
 
                             </group>
 

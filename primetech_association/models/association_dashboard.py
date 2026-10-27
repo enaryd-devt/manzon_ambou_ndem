@@ -780,14 +780,6 @@ class AssociationDashboard(models.AbstractModel):
             ("state", "in", ["validated", "executed", "lifted", "cancelled"]),
         ], order="incident_date desc, id desc")
         member_account = MemberAccount.search([("member_id", "=", member.id)], limit=1)
-        adjustments = MembershipFee.search([
-            ("member_id", "=", member.id),
-            ("company_id", "=", company.id),
-            ("fee_type", "=", "adjustment"),
-            ("state", "=", "due"),
-            ("amount_remaining", ">", 0),
-        ])
-        adjustment_due = sum(adjustments.mapped("amount_remaining"))
         subscription_lines = SubscriptionLine.search([
             ("member_id", "=", member.id),
             ("active", "=", True), ("subscription_id.active", "=", True),
@@ -828,80 +820,55 @@ class AssociationDashboard(models.AbstractModel):
             if penalty.state in ("validated", "executed"):
                 return _("En cours")
             return penalty_state_labels.get(penalty.state, penalty.state or "")
-        Period = self.env["association.subscription.period"].sudo()
-        PaymentLine = self.env["association.payment.line"].sudo()
-        closed_cycles_due = recovery_due = no_cycle_due = cycle_penalties_due = 0.0
+        # Same source as the member "Situation" and the payment receipt, so
+        # the member sees exactly the amount the treasurer will collect.
+        cycles_due = recovery_due = no_cycle_due = penalties_due = 0.0
+        adjustment_due = membership_fee_due = 0.0
         financial_situation_lines = []
-        for line in subscription_lines:
-            periods = Period.search([
-                ("subscription_id", "=", line.subscription_id.id),
-            ], order="sequence, id")
-            closed_periods = periods.filtered(lambda period: period.state == "closed")
-            if periods:
-                # A running period is deliberately not yet due to the member.
-                for period in closed_periods:
-                    paid = PaymentLine._get_period_paid_for_line(line, period)
-                    breakdown = PaymentLine._get_period_amount_breakdown_for_line(
-                        line, period, current_amount=0.0, already_paid=paid,
-                    )
-                    subscription_balance = max(breakdown["subscription_balance_amount"], 0.0)
-                    penalty_balance = max(breakdown["penalty_balance_amount"], 0.0)
-                    closed_cycles_due += subscription_balance
-                    cycle_penalties_due += penalty_balance
-                    if subscription_balance > 0.01:
-                        financial_situation_lines.append({
-                            "key": "subscription-%s-%s" % (line.id, period.id),
-                            "type": _("Cotisation"),
-                            "label": line.subscription_id.display_name or _("Cotisation"),
-                            "detail": period.display_name or _("Cycle clôturé"),
-                            "amount": subscription_balance,
-                            "icon": "calendar",
-                        })
-                    if penalty_balance > 0.01:
-                        financial_situation_lines.append({
-                            "key": "subscription-penalty-%s-%s" % (line.id, period.id),
-                            "type": _("Pénalité de cotisation"),
-                            "label": line.subscription_id.display_name or _("Cotisation"),
-                            "detail": period.display_name or _("Cycle clôturé"),
-                            "amount": penalty_balance,
-                            "icon": "warning",
-                        })
+        situation_icons = {
+            "subscription": "calendar",
+            "recovery": "history",
+            "penalty": "gavel",
+            "membership": "id-card-o",
+            "adjustment": "sliders",
+        }
+        situation_types = {
+            "subscription": _("Cotisation"),
+            "recovery": _("Recouvrement"),
+            "penalty": _("Sanction financière"),
+            "membership": _("Frais d'adhésion"),
+            "adjustment": _("Ajustement de situation"),
+        }
+        for index, item in enumerate(member._get_financial_situation_items(only_outstanding=True)):
+            situation_type = item["situation_type"]
+            if situation_type == "subscription" and item.get("subscription_period_id"):
+                cycles_due += item.get("subscription_balance_amount", 0.0)
+                penalties_due += item.get("penalty_balance_amount", 0.0)
+                detail = _("Cotisation et pénalité de retard") if item.get("penalty_balance_amount", 0.0) > 0.01 else _("Cycle de cotisation")
+            elif situation_type == "subscription":
+                no_cycle_due += item["balance"]
+                detail = _("Sans cycle")
+            elif situation_type == "recovery":
+                recovery_due += item["balance"]
+                detail = _("Recouvrement individuel")
+            elif situation_type == "penalty":
+                penalties_due += item["balance"]
+                penalty = Penalty.browse(item["penalty_id"])
+                detail = _member_penalty_state_label(penalty)
+            elif situation_type == "adjustment":
+                adjustment_due += item["balance"]
+                fee = MembershipFee.browse(item["membership_fee_id"])
+                detail = fee.fund_id.display_name or _("Compte de trésorerie")
             else:
-                amount_due = (
-                    line.recovery_amount if line.subscription_id.subscription_type == "recovery"
-                    else line.subscription_id.amount
-                ) or 0.0
-                balance = max(amount_due - (line.amount_paid or 0.0), 0.0)
-                if line.subscription_id.subscription_type == "recovery":
-                    recovery_due += balance
-                else:
-                    no_cycle_due += balance
-                if balance > 0.01:
-                    financial_situation_lines.append({
-                        "key": "subscription-%s" % line.id,
-                        "type": _("Recouvrement") if line.subscription_id.subscription_type == "recovery" else _("Cotisation"),
-                        "label": line.subscription_id.display_name or _("Cotisation"),
-                        "detail": _("Sans cycle"),
-                        "amount": balance,
-                        "icon": "history" if line.subscription_id.subscription_type == "recovery" else "calendar",
-                    })
-        for penalty in financial_sanctions:
+                membership_fee_due += item["balance"]
+                detail = _("Frais d'adhésion")
             financial_situation_lines.append({
-                "key": "penalty-%s" % penalty.id,
-                "type": _("Sanction financière"),
-                "label": penalty.display_name,
-                "detail": _member_penalty_state_label(penalty),
-                "amount": penalty.amount_remaining or 0.0,
-                "icon": "gavel",
-            })
-        for adjustment in adjustments:
-            financial_situation_lines.append({
-                "key": "adjustment-%s" % adjustment.id,
-                "type": _("Ajustement de situation"),
-                "label": adjustment.name,
-                "detail": adjustment.fund_id.display_name or _("Compte de trésorerie"),
-                "amount": adjustment.amount_remaining or 0.0,
-                "icon": "sliders",
+                "key": "%s-%s" % (situation_type, index),
+                "type": situation_types.get(situation_type, ""),
+                "label": item["label"],
+                "detail": detail,
+                "amount": item["balance"],
+                "icon": situation_icons.get(situation_type, "file-text-o"),
             })
         subscription_penalty_count = len(subscription_lines.filtered(
             lambda line: (line.cycle_penalty_amount or 0.0) > 0
@@ -912,12 +879,13 @@ class AssociationDashboard(models.AbstractModel):
             "account_balance": member_account.balance if member_account else 0.0,
             "account_name": member_account.name if member_account else "",
             "financial_situation": {
-                "total_due": closed_cycles_due + recovery_due + no_cycle_due + cycle_penalties_due + sum(financial_sanctions.mapped("amount_remaining")) + adjustment_due,
+                "total_due": sum(line["amount"] for line in financial_situation_lines),
                 "label": _("Montant total dû"),
-                "closed_cycles": closed_cycles_due,
+                "closed_cycles": cycles_due,
                 "recoveries": recovery_due,
                 "without_cycle": no_cycle_due,
-                "penalties": cycle_penalties_due + sum(financial_sanctions.mapped("amount_remaining")),
+                "penalties": penalties_due,
+                "membership_fees": membership_fee_due,
                 "adjustments": adjustment_due,
                 "lines": financial_situation_lines,
             },

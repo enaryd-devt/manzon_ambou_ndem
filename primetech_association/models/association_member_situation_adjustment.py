@@ -3,6 +3,12 @@
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
+from .association_membership_fee import (
+    PAYMENT_PRIORITY_DEFAULT,
+    PAYMENT_PRIORITY_HELP,
+    PAYMENT_PRIORITY_SELECTION,
+)
+
 
 class AssociationMemberSituationAdjustment(models.Model):
     _name = "association.member.situation.adjustment"
@@ -18,6 +24,11 @@ class AssociationMemberSituationAdjustment(models.Model):
         "association.fund", string="Compte de trésorerie", required=True,
         ondelete="restrict", domain="[('company_id', '=', company_id), ('active', '=', True)]", tracking=True,
     )
+    payment_priority = fields.Selection(
+        PAYMENT_PRIORITY_SELECTION, string="Priorité de règlement",
+        default=PAYMENT_PRIORITY_DEFAULT, required=True, tracking=True,
+        help="Appliquée aux créances générées. " + PAYMENT_PRIORITY_HELP,
+    )
     line_ids = fields.One2many("association.member.situation.adjustment.line", "adjustment_id", string="Membres concernés", copy=True)
     amount_total = fields.Monetary(string="Montant total", currency_field="currency_id", compute="_compute_amounts", store=True)
     amount_paid = fields.Monetary(string="Montant encaissé", currency_field="currency_id", compute="_compute_amounts", store=True)
@@ -32,7 +43,7 @@ class AssociationMemberSituationAdjustment(models.Model):
             record.amount_remaining = sum(record.line_ids.mapped("fee_id.amount_remaining"))
 
     def write(self, vals):
-        protected = {"name", "adjustment_date", "fund_id", "company_id", "line_ids"}
+        protected = {"name", "adjustment_date", "fund_id", "company_id", "line_ids", "payment_priority"}
         if protected.intersection(vals) and any(record.state != "draft" for record in self):
             raise UserError(_("Un document d'ajustement validé ne peut plus être modifié."))
         return super().write(vals)
@@ -54,6 +65,7 @@ class AssociationMemberSituationAdjustment(models.Model):
                     "member_id": line.member_id.id,
                     "fund_id": record.fund_id.id,
                     "amount": line.amount,
+                    "payment_priority": record.payment_priority,
                     "state": "due",
                 })
                 line.write({"fee_id": fee.id})

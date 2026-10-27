@@ -8,7 +8,7 @@
                 <sheet>
                     <div class="alert alert-info">
                         Saisissez les frais d’adhésion et choisissez le compte de trésorerie qui les recevra.
-                        Ils seront recouvrés après les sanctions financières et avant les cotisations.
+                        Ils seront recouvrés après les sanctions financières, selon la priorité de règlement choisie ci-dessous.
                     </div>
                     <div class="alert alert-warning" role="alert">
                         <field name="is_former_member" class="oe_inline"/>
@@ -17,6 +17,7 @@
                     <group>
                         <field name="member_id"/>
                         <field name="fund_id" invisible="is_former_member" required="not is_former_member"/>
+                        <field name="payment_priority" invisible="is_former_member"/>
                     </group>
                     <group string="Frais d’adhésion à recouvrer" invisible="is_former_member">
                         <group>

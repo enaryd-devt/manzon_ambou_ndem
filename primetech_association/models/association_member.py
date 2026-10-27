@@ -695,7 +695,7 @@ class AssociationMember(models.Model):
     # ==========================================================
 
     subscription_count = fields.Integer(
-        string="Subscriptions",
+        string="Éléments de situation",
         compute="_compute_statistics",
     )
 
@@ -919,6 +919,7 @@ class AssociationMember(models.Model):
         Attendance = self.env["association.attendance"]
         Donation = self.env["association.donation"]
         Penalty = self.env["association.penalty"]
+        MembershipFee = self.env["association.membership.fee"]
         SubscriptionPenaltyRecap = self.env[
             "association.subscription.penalty.recap"
         ]
@@ -962,16 +963,31 @@ class AssociationMember(models.Model):
             rec.subscription_penalty_count = 0
 
             if can_finance:
+                # Same scope as _get_financial_situation_items().
                 subscription_lines = SubscriptionLine.search([
                     ("member_id", "=", rec.id),
+                    ("active", "=", True),
                     ("subscription_id.active", "=", True),
+                    ("subscription_id.state", "in", ["running", "closed"]),
                 ])
-                rec.subscription_count = Period.search_count([
-                    ("subscription_id", "in", subscription_lines.mapped("subscription_id").ids),
-                    ("state", "in", ["running", "closed"]),
-                ]) + len(subscription_lines.filtered(
+                rec.subscription_count = sum(
+                    Period.search_count([
+                        ("subscription_id", "=", line.subscription_id.id),
+                        ("state", "in", ["running", "closed"]),
+                    ])
+                    for line in subscription_lines
+                ) + len(subscription_lines.filtered(
                     lambda line: not line.subscription_id.period_ids
-                ))
+                )) + Penalty.sudo().search_count([
+                    ("member_id", "=", rec.id),
+                    ("company_id", "=", rec.company_id.id),
+                    ("penalty_type", "=", "fine"),
+                    ("state", "in", ["validated", "executed"]),
+                ]) + MembershipFee.sudo().search_count([
+                    ("member_id", "=", rec.id),
+                    ("company_id", "=", rec.company_id.id),
+                    ("state", "in", ["due", "paid"]),
+                ])
 
                 payments = Payment.search([
                     ("member_id", "=", rec.id),
@@ -1320,23 +1336,196 @@ class AssociationMember(models.Model):
             },
         }
 
-    def action_view_subscriptions(self):
-        """
-        Open the member cycle-by-cycle subscription situation.
+    # ==========================================================
+    # SITUATION FINANCIÈRE DU MEMBRE
+    # ==========================================================
+
+    def _get_financial_situation_items(self, only_outstanding=False):
+        """Return every financial responsibility of the member.
+
+        Single source of truth shared by the "Situation" smart button and the
+        payment receipt, so both always show the same balance.  The scope is
+        the one used by the payment wizard and the meeting treasury:
+
+        * subscription cycles (closed and running) with their late penalty;
+        * recoveries and subscriptions without cycle;
+        * validated financial sanctions;
+        * validated membership fees and situation adjustments.
+
+        Each item is a dict with the keys expected by
+        ``association.member.subscription.cycle.report``.
         """
         self.ensure_one()
+        member = self.sudo()
+        SubscriptionLine = self.env["association.subscription.line"].sudo()
+        Period = self.env["association.subscription.period"].sudo()
+        PaymentLine = self.env["association.payment.line"].sudo()
+        Penalty = self.env["association.penalty"].sudo()
+        Fee = self.env["association.membership.fee"].sudo()
+        company = member.company_id
+        items = []
 
-        SubscriptionLine = self.env[
-            "association.subscription.line"
-        ]
+        def payment_state(due, paid, balance):
+            if balance > 0.01:
+                return "partial" if paid > 0.01 else "not_paid"
+            return "paid" if due > 0.01 else "not_paid"
 
-        Period = self.env[
-            "association.subscription.period"
-        ]
+        subscription_lines = SubscriptionLine.search([
+            ("member_id", "=", member.id),
+            ("active", "=", True),
+            ("subscription_id.active", "=", True),
+            ("subscription_id.state", "in", ["running", "closed"]),
+        ])
+        for line in subscription_lines:
+            subscription = line.subscription_id
+            periods = Period.search([
+                ("subscription_id", "=", subscription.id),
+                ("state", "in", ["running", "closed"]),
+            ], order="sequence asc, id asc")
+            for period in periods:
+                paid_total = PaymentLine._get_period_paid_for_line(line, period)
+                breakdown = PaymentLine._get_period_amount_breakdown_for_line(
+                    line,
+                    period,
+                    current_amount=0.0,
+                    already_paid=paid_total,
+                )
+                due = breakdown["base_amount_due"] + breakdown["penalty_due_amount"]
+                paid = breakdown["contribution_paid_amount"] + breakdown["penalty_paid_amount"]
+                balance = max(
+                    breakdown["subscription_balance_amount"]
+                    + breakdown["penalty_balance_amount"],
+                    0.0,
+                )
+                last_payment = PaymentLine.search([
+                    ("subscription_line_id", "=", line.id),
+                    ("payment_id.state", "=", "confirmed"),
+                    "|",
+                    ("subscription_period_id", "=", period.id),
+                    "&",
+                    ("subscription_period_id", "=", False),
+                    ("payment_id.subscription_period_id", "=", period.id),
+                ], order="payment_date desc, id desc", limit=1)
+                label = "%s — %s" % (subscription.display_name, period.display_name)
+                if period.state == "running":
+                    label = "%s (%s)" % (label, _("cycle en cours"))
+                items.append({
+                    "situation_type": "subscription",
+                    "label": label,
+                    "subscription_id": subscription.id,
+                    "subscription_period_id": period.id,
+                    "subscription_line_id": line.id,
+                    "amount_due": due,
+                    "base_amount_due": breakdown["base_amount_due"],
+                    "contribution_paid_amount": breakdown["contribution_paid_amount"],
+                    "subscription_balance_amount": breakdown["subscription_balance_amount"],
+                    "penalty_due_amount": breakdown["penalty_due_amount"],
+                    "penalty_paid_amount": breakdown["penalty_paid_amount"],
+                    "penalty_balance_amount": breakdown["penalty_balance_amount"],
+                    "amount_paid": paid,
+                    "balance": balance,
+                    "payment_state": payment_state(due, paid, balance),
+                    "last_payment_date": last_payment.payment_id.payment_date if last_payment else False,
+                })
 
-        PaymentLine = self.env[
-            "association.payment.line"
-        ]
+            # A recovery is a single individual debt without cycle; other
+            # subscriptions without any cycle (special, registration, legacy)
+            # are due once.  A cancelled/draft cycle never becomes a debt.
+            is_recovery = subscription.subscription_type == "recovery"
+            if periods or (
+                not is_recovery
+                and Period.with_context(active_test=False).search_count([
+                    ("subscription_id", "=", subscription.id),
+                ])
+            ):
+                continue
+            base_due = (line.recovery_amount if is_recovery else subscription.amount) or 0.0
+            penalty_due = line.penalty_amount or 0.0
+            paid_lines = PaymentLine.search([
+                ("subscription_line_id", "=", line.id),
+                ("payment_id.state", "=", "confirmed"),
+                ("subscription_period_id", "=", False),
+                ("payment_id.subscription_period_id", "=", False),
+            ], order="payment_date desc, id desc")
+            due = base_due + penalty_due
+            paid = min(sum(paid_lines.mapped("amount_paid")), due)
+            contribution_paid = min(paid, base_due)
+            penalty_paid = max(paid - contribution_paid, 0.0)
+            balance = max(due - paid, 0.0)
+            items.append({
+                "situation_type": "recovery" if is_recovery else "subscription",
+                "label": "%s — %s" % (subscription.display_name, _("Sans cycle")),
+                "subscription_id": subscription.id,
+                "subscription_period_id": False,
+                "subscription_line_id": line.id,
+                "amount_due": due,
+                "base_amount_due": base_due,
+                "contribution_paid_amount": contribution_paid,
+                "subscription_balance_amount": max(base_due - contribution_paid, 0.0),
+                "penalty_due_amount": penalty_due,
+                "penalty_paid_amount": penalty_paid,
+                "penalty_balance_amount": max(penalty_due - penalty_paid, 0.0),
+                "amount_paid": paid,
+                "balance": balance,
+                "payment_state": payment_state(due, paid, balance),
+                "last_payment_date": paid_lines[:1].payment_id.payment_date if paid_lines else False,
+            })
+
+        penalties = Penalty.search([
+            ("member_id", "=", member.id),
+            ("company_id", "=", company.id),
+            ("penalty_type", "=", "fine"),
+            ("state", "in", ["validated", "executed"]),
+        ], order="incident_date asc, id asc")
+        for penalty in penalties:
+            paid = penalty.amount_paid or 0.0
+            balance = penalty.amount_remaining or 0.0
+            due = paid + balance
+            items.append({
+                "situation_type": "penalty",
+                "label": "%s - %s" % (_("Sanction"), penalty.display_name),
+                "penalty_id": penalty.id,
+                "amount_due": due,
+                "amount_paid": paid,
+                "balance": balance,
+                "payment_state": payment_state(due, paid, balance),
+            })
+
+        # Draft fees are not yet payable and cancelled ones are no longer due.
+        fees = Fee.search([
+            ("member_id", "=", member.id),
+            ("company_id", "=", company.id),
+            ("state", "in", ["due", "paid"]),
+        ], order="id asc")
+        for fee in fees:
+            paid = fee.amount_paid or 0.0
+            balance = fee.amount_remaining or 0.0
+            due = fee.amount or 0.0
+            is_adjustment = fee.fee_type == "adjustment"
+            items.append({
+                "situation_type": "adjustment" if is_adjustment else "membership",
+                "label": "%s - %s" % (
+                    _("Ajustement de situation") if is_adjustment else _("Frais d'adhésion"),
+                    fee.name,
+                ),
+                "membership_fee_id": fee.id,
+                "amount_due": due,
+                "amount_paid": paid,
+                "balance": balance,
+                "payment_state": payment_state(due, paid, balance),
+            })
+
+        if only_outstanding:
+            items = [item for item in items if item["balance"] > 0.01]
+        return items
+
+    def action_view_subscriptions(self):
+        """
+        Open the member financial situation: subscription cycles (paid,
+        unpaid, partial), recoveries, financial sanctions, membership fees
+        and situation adjustments.
+        """
+        self.ensure_one()
 
         Report = self.env[
             "association.member.subscription.cycle.report"
@@ -1344,226 +1533,19 @@ class AssociationMember(models.Model):
 
         Report.search(
             [
-                (
-                    "member_id",
-                    "=",
-                    self.id,
-                ),
-                (
-                    "create_uid",
-                    "=",
-                    self.env.uid,
-                ),
+                ("member_id", "=", self.id),
+                ("create_uid", "=", self.env.uid),
             ]
         ).unlink()
 
-        subscription_lines = SubscriptionLine.search(
-            [
-                (
-                    "member_id",
-                    "=",
-                    self.id,
-                ),
-                ("subscription_id.active", "=", True),
-            ]
-        )
-
-        report_records = Report
-
-        for subscription_line in subscription_lines:
-
-            periods = Period.search(
-                [
-                    (
-                        "subscription_id",
-                        "=",
-                        subscription_line.subscription_id.id,
-                    ),
-                    (
-                        "state",
-                        "in",
-                        [
-                            "running",
-                            "closed",
-                        ],
-                    ),
-                ],
-                order="sequence asc, id asc",
-            )
-            if not periods:
-                subscription = subscription_line.subscription_id
-                amount_due = (
-                    subscription_line.recovery_amount
-                    if subscription.subscription_type == "recovery"
-                    else subscription.amount
-                ) or 0.0
-                amount_paid = subscription_line.amount_paid or 0.0
-                balance = max(amount_due - amount_paid, 0.0)
-                payment_state = (
-                    "paid" if amount_due and balance <= 0.01
-                    else "partial" if amount_paid else "not_paid"
-                )
-                last_payment = PaymentLine.search([
-                    ("subscription_line_id", "=", subscription_line.id),
-                    ("payment_id.state", "=", "confirmed"),
-                ], order="payment_date desc, id desc", limit=1)
-                report_records |= Report.create({
-                    "member_id": self.id,
-                    "subscription_id": subscription.id,
-                    "subscription_line_id": subscription_line.id,
-                    "amount_due": amount_due,
-                    "base_amount_due": amount_due,
-                    "contribution_paid_amount": amount_paid,
-                    "subscription_balance_amount": balance,
-                    "amount_paid": amount_paid,
-                    "balance": balance,
-                    "payment_state": payment_state,
-                    "last_payment_date": last_payment.payment_id.payment_date if last_payment else False,
-                })
-
-            for period in periods:
-
-                amount_paid = PaymentLine._get_period_paid_for_line(
-                    subscription_line,
-                    period,
-                )
-
-                breakdown = PaymentLine._get_period_amount_breakdown_for_line(
-                    subscription_line,
-                    period,
-                    current_amount=0.0,
-                    already_paid=amount_paid,
-                )
-
-                # Keep the three totals distinct from the contribution-only
-                # amounts below: they include the cycle penalty as well.
-                amount_due = (
-                    breakdown["base_amount_due"]
-                    + breakdown["penalty_due_amount"]
-                )
-
-                amount_paid = (
-                    breakdown["contribution_paid_amount"]
-                    + breakdown["penalty_paid_amount"]
-                )
-
-                balance = max(
-                    breakdown["subscription_balance_amount"]
-                    + breakdown["penalty_balance_amount"],
-                    0.0,
-                )
-
-                if amount_paid <= 0:
-                    payment_state = "not_paid"
-
-                elif balance > 0.01:
-                    payment_state = "partial"
-
-                else:
-                    payment_state = "paid"
-
-                payment_lines = PaymentLine.search(
-                    [
-                        (
-                            "subscription_line_id",
-                            "=",
-                            subscription_line.id,
-                        ),
-                        (
-                            "payment_id.state",
-                            "=",
-                            "confirmed",
-                        ),
-                        "|",
-                        (
-                            "subscription_period_id",
-                            "=",
-                            period.id,
-                        ),
-                        "&",
-                        (
-                            "subscription_period_id",
-                            "=",
-                            False,
-                        ),
-                        (
-                            "payment_id.subscription_period_id",
-                            "=",
-                            period.id,
-                        ),
-                    ],
-                    order="payment_date desc, id desc",
-                    limit=1,
-                )
-
-                report_records |= Report.create(
-                    {
-                        "member_id":
-                            self.id,
-
-                        "subscription_id":
-                            subscription_line.subscription_id.id,
-
-                        "subscription_period_id":
-                            period.id,
-
-                        "subscription_line_id":
-                            subscription_line.id,
-
-                        "amount_due":
-                            amount_due,
-
-                        "base_amount_due":
-                            breakdown[
-                                "base_amount_due"
-                            ],
-
-                        "contribution_paid_amount":
-                            breakdown[
-                                "contribution_paid_amount"
-                            ],
-
-                        "subscription_balance_amount":
-                            breakdown[
-                                "subscription_balance_amount"
-                            ],
-
-                        "penalty_due_amount":
-                            breakdown[
-                                "penalty_due_amount"
-                            ],
-
-                        "penalty_paid_amount":
-                            breakdown[
-                                "penalty_paid_amount"
-                            ],
-
-                        "penalty_balance_amount":
-                            breakdown[
-                                "penalty_balance_amount"
-                            ],
-
-                        "amount_paid":
-                            amount_paid,
-
-                        "balance":
-                            balance,
-
-                        "payment_state":
-                            payment_state,
-
-                        "last_payment_date":
-                            (
-                                payment_lines.payment_id.payment_date
-                                if payment_lines
-                                else False
-                            ),
-                    }
-                )
+        report_records = Report.create([
+            dict(item, member_id=self.id, company_id=self.company_id.id)
+            for item in self._get_financial_situation_items()
+        ])
 
         return {
             "type": "ir.actions.act_window",
-            "name": _("Cotisations du membre"),
+            "name": _("Situation du membre"),
             "res_model": "association.member.subscription.cycle.report",
             "view_mode": "list,form",
             "views": [
@@ -1591,7 +1573,7 @@ class AssociationMember(models.Model):
                 ),
             ],
             "context": {
-                "search_default_group_payment_state": 1,
+                "search_default_group_situation_type": 1,
                 "create": False,
                 "edit": False,
                 "delete": False,

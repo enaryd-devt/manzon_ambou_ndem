@@ -27,6 +27,7 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
         selection=[
             ("subscription", "Cotisation"),
             ("meeting", "Réunion"),
+            ("member", "Situation du membre"),
         ],
         string="Origine",
         required=True,
@@ -52,7 +53,6 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
     subscription_line_id = fields.Many2one(
         comodel_name="association.subscription.line",
         string="Cotisation du membre",
-        required=True,
         readonly=True,
     )
 
@@ -87,9 +87,19 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
     # ==========================================================
 
     currency_id = fields.Many2one(
-        related="subscription_line_id.currency_id",
-        readonly=True,
+        comodel_name="res.currency",
+        compute="_compute_currency_id",
     )
+
+    @api.depends("subscription_line_id", "member_id")
+    def _compute_currency_id(self):
+        # A member-level payment (fees, adjustments) has no subscription line.
+        for wizard in self:
+            wizard.currency_id = (
+                wizard.subscription_line_id.currency_id
+                or wizard.member_id.company_id.currency_id
+                or self.env.company.currency_id
+            )
 
     # ==========================================================
     # SITUATION FINANCIÈRE
@@ -174,6 +184,8 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
         )
 
         if not subscription_line_id:
+            if self.env.context.get("default_origin") == "member":
+                values.update(self._prepare_member_situation_values())
             return values
 
         subscription_line = self.env[
@@ -481,7 +493,7 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
                     "default_meeting_id",
                 ),
                 "global_due_amount": global_due,
-                "global_lines_html": ("<table class='table table-sm'><thead><tr><th>Créance</th><th>Détail</th><th class='text-end'>Reste à régler</th></tr></thead><tbody>%s</tbody></table><small class='text-muted'>Ordre de règlement : sanctions, frais d’activation, puis cotisations.</small>" % "".join(global_rows)) if global_rows else False,
+                "global_lines_html": ("<table class='table table-sm'><thead><tr><th>Créance</th><th>Détail</th><th class='text-end'>Reste à régler</th></tr></thead><tbody>%s</tbody></table><small class='text-muted'>Ordre de règlement : sanctions d’abord, puis selon la priorité de règlement de chaque créance.</small>" % "".join(global_rows)) if global_rows else False,
             }
         )
 
@@ -489,9 +501,61 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
             values["global_lines_html"] = (
                 "<table class='table table-sm'><thead><tr><th>Créance</th><th>Détail</th>"
                 "<th class='text-end'>Reste à régler</th></tr></thead><tbody>%s</tbody></table>"
-                "<small class='text-muted'>Ordre de règlement : sanctions, frais d’adhésion, puis cotisations.</small>"
+                "<small class='text-muted'>Ordre de règlement : sanctions d’abord, puis selon la priorité de règlement de chaque créance.</small>"
             ) % "".join(global_rows)
         return values
+
+    @api.model
+    def _prepare_member_situation_values(self):
+        """Initialise a global payment from the member situation.
+
+        Used to collect membership fees and situation adjustments, even when
+        the member has no running subscription to anchor the payment.
+        """
+        member = self.env["association.member"].browse(
+            self.env.context.get("default_member_id")
+        ).exists()
+        if not member:
+            raise ValidationError(_("Aucun membre n'est sélectionné."))
+        # Only what the allocation can actually settle: a closed subscription
+        # no longer accepts payments.
+        items = [
+            item for item in member._get_financial_situation_items(only_outstanding=True)
+            if not item.get("subscription_id")
+            or self.env["association.subscription"].sudo().browse(item["subscription_id"]).state == "running"
+        ]
+        global_due = sum(item["balance"] for item in items)
+        if global_due <= 0.01:
+            raise ValidationError(_("La situation de ce membre est déjà réglée."))
+        type_labels = dict(
+            self.env["association.member.subscription.cycle.report"]._fields["situation_type"].selection
+        )
+        rows = "".join(
+            "<tr><td>%s</td><td>%s</td><td class='text-end'>%.2f</td></tr>" % (
+                html_escape(type_labels.get(item["situation_type"], "")),
+                html_escape(item["label"]),
+                item["balance"],
+            )
+            for item in items
+        )
+        default_amount_received = self.env.context.get("default_amount_received")
+        return {
+            "origin": "member",
+            "member_id": member.id,
+            "amount_due": global_due,
+            "balance": global_due,
+            "amount_received": (
+                global_due if default_amount_received in (None, False)
+                else max(default_amount_received or 0.0, 0.0)
+            ),
+            "global_due_amount": global_due,
+            "global_lines_html": (
+                "<table class='table table-sm'><thead><tr><th>Créance</th><th>Détail</th>"
+                "<th class='text-end'>Reste à régler</th></tr></thead><tbody>%s</tbody></table>"
+                "<small class='text-muted'>Ordre de règlement : sanctions d’abord, "
+                "puis selon la priorité de règlement de chaque créance.</small>"
+            ) % rows,
+        }
 
     # ==========================================================
     # ACTUALISER LA LIGNE DE COTISATION
@@ -808,9 +872,14 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
     def _action_validate_prioritized_payment(self):
         """Collect all outstanding dues for one member during a meeting."""
         self.ensure_one()
-        if not self.member_id or not self.subscription_line_id:
+        is_member_payment = self.origin == "member"
+        if not self.member_id or not (self.subscription_line_id or is_member_payment):
             raise ValidationError(_("Le membre et la cotisation sont obligatoires."))
-        company = self.meeting_id.company_id if self.meeting_id else self.subscription_line_id.company_id
+        company = (
+            self.meeting_id.company_id
+            or self.subscription_line_id.company_id
+            or self.member_id.company_id
+        )
         amount_received = self.amount_received or 0.0
         if amount_received <= 0:
             raise ValidationError(_("Le montant reçu doit être strictement supérieur à zéro."))
@@ -850,38 +919,34 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
                 priority_allocations.append({"penalty_id": penalty.id, "amount": allocated})
                 remaining -= allocated
 
-        # The mandated order only applies to payments collected in a meeting:
-        # sanctions, subscription cycles (oldest first), then recoveries.
-        # Membership fees must not consume an amount before that sequence.
+        # Après les sanctions, chaque créance est réglée selon sa priorité de
+        # règlement (« Très haute » en premier), définie par le responsable sur la
+        # cotisation, le frais d'adhésion ou l'ajustement.  À priorité égale,
+        # l'ordre standard s'applique :
+        # - en réunion : cycles, recouvrements, frais d'adhésion, ajustements ;
+        # - hors réunion : frais d'adhésion, recouvrements, cycles, ajustements.
         is_meeting_payment = self.origin == "meeting" and bool(self.meeting_id)
+        if is_meeting_payment:
+            standard_rank = {"cycle": 0, "recovery": 1, "membership": 2, "adjustment": 3}
+        else:
+            standard_rank = {"membership": 0, "recovery": 1, "cycle": 2, "adjustment": 3}
         membership_fee_allocations = []
-        MembershipFee = self.env["association.membership.fee"]
-        membership_fees = MembershipFee.search([
-            ("member_id", "=", self.member_id.id),
-            ("company_id", "=", company.id),
-            ("fee_type", "=", "membership"),
-            ("state", "=", "due"),
-            ("amount_remaining", ">", 0),
-        ], order="id asc")
-        adjustments = MembershipFee.search([
-            ("member_id", "=", self.member_id.id),
-            ("company_id", "=", company.id),
-            ("fee_type", "=", "adjustment"),
-            ("state", "=", "due"),
-            ("amount_remaining", ">", 0),
-        ], order="id asc")
-        # Preserve the established allocation order outside a meeting.
-        if not is_meeting_payment:
-            for fee in membership_fees:
-                if remaining <= 0:
-                    break
-                allocated = min(remaining, fee.amount_remaining or 0.0)
-                if allocated > 0:
-                    membership_fee_allocations.append({"membership_fee_id": fee.id, "amount": allocated})
-                    remaining -= allocated
-
         candidates = []
-        if self.origin == "meeting":
+        MembershipFee = self.env["association.membership.fee"]
+        fees = MembershipFee.search([
+            ("member_id", "=", self.member_id.id),
+            ("company_id", "=", company.id),
+            ("state", "=", "due"),
+            ("amount_remaining", ">", 0),
+        ], order="id asc")
+        for fee in fees:
+            kind = "adjustment" if fee.fee_type == "adjustment" else "membership"
+            candidates.append({
+                "key": (int(fee.payment_priority or 3), standard_rank[kind], fields.Date.to_date(fee.create_date), fee.id, 0),
+                "kind": kind, "fee": fee, "balance": fee.amount_remaining or 0.0,
+            })
+
+        if self.origin in ("meeting", "member"):
             lines = SubscriptionLine.search([
                 ("member_id", "=", self.member_id.id),
                 ("company_id", "=", company.id), ("active", "=", True),
@@ -890,50 +955,41 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
         else:
             lines = self.subscription_line_id
         for line in lines:
+            priority = int(line.subscription_id.payment_priority or 3)
             if line.subscription_id.subscription_type == "recovery":
                 if line.balance > 0.01:
-                    # Les recouvrements individuels viennent après les
-                    # cycles périodiques pour un encaissement en réunion.
-                    recovery_priority = 1 if is_meeting_payment else 0
-                    candidates.append((recovery_priority, line.subscription_id.due_date or fields.Date.today(), line.id, line, False, line.balance))
+                    candidates.append({
+                        "key": (priority, standard_rank["recovery"], line.subscription_id.due_date or fields.Date.today(), line.id, 0),
+                        "kind": "recovery", "line": line, "period": False, "balance": line.balance,
+                    })
                 continue
             for period in PaymentLine._get_unsettled_periods_for_line(line):
                 due = PaymentLine._get_period_due_for_line(line, period)
                 paid = PaymentLine._get_period_paid_for_line(line, period)
                 balance = max(due - paid, 0.0)
                 if balance > 0.01:
-                    cycle_priority = 0 if is_meeting_payment else 1
-                    candidates.append((cycle_priority, period.due_date or fields.Date.today(), line.id, line, period, balance))
-        for _priority, _date, _line_id, line, period, balance in sorted(candidates, key=lambda item: (item[0], item[1], item[2], item[4].id if item[4] else 0)):
+                    candidates.append({
+                        "key": (priority, standard_rank["cycle"], period.due_date or fields.Date.today(), line.id, period.id),
+                        "kind": "cycle", "line": line, "period": period, "balance": balance,
+                    })
+
+        for candidate in sorted(candidates, key=lambda item: item["key"]):
             if remaining <= 0:
                 break
-            allocated = min(remaining, balance)
-            allocation_values.append((0, 0, {
-                "subscription_line_id": line.id,
-                "subscription_id": line.subscription_id.id,
-                "subscription_period_id": period.id if period else False,
-                "amount_paid": allocated,
-            }))
+            allocated = min(remaining, candidate["balance"])
+            if allocated <= 0:
+                continue
+            if candidate.get("fee"):
+                membership_fee_allocations.append({"membership_fee_id": candidate["fee"].id, "amount": allocated})
+            else:
+                line = candidate["line"]
+                allocation_values.append((0, 0, {
+                    "subscription_line_id": line.id,
+                    "subscription_id": line.subscription_id.id,
+                    "subscription_period_id": candidate["period"].id if candidate["period"] else False,
+                    "amount_paid": allocated,
+                }))
             remaining -= allocated
-        # Fees are settled last in a meeting: they are neither sanctions nor
-        # subscription cycles, and must not preempt recovery subscriptions.
-        if is_meeting_payment:
-            for fee in membership_fees:
-                if remaining <= 0:
-                    break
-                allocated = min(remaining, fee.amount_remaining or 0.0)
-                if allocated > 0:
-                    membership_fee_allocations.append({"membership_fee_id": fee.id, "amount": allocated})
-                    remaining -= allocated
-        # Ajustements de situation : toujours servis en dernier, après les
-        # sanctions, frais d'adhésion et cotisations du membre.
-        for adjustment in adjustments:
-            if remaining <= 0:
-                break
-            allocated = min(remaining, adjustment.amount_remaining or 0.0)
-            if allocated > 0:
-                membership_fee_allocations.append({"membership_fee_id": adjustment.id, "amount": allocated})
-                remaining -= allocated
         if not allocation_values and not priority_allocations and not membership_fee_allocations:
             raise ValidationError(_("Aucun recouvrement non soldé n’a été trouvé pour ce membre."))
         Payment = self.env["association.payment"]
@@ -941,6 +997,8 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
             "member_id": self.member_id.id,
             "company_id": company.id,
             "meeting_id": self.meeting_id.id if self.meeting_id else False,
+            # Keeps the payment in the session closing report.
+            "meeting_subscription_session_id": self.meeting_id.subscription_session_id.id if self.meeting_id else False,
             "payment_date": fields.Date.context_today(self),
             "amount": amount_received,
             "payment_source": payment_source,
@@ -949,6 +1007,8 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
             "payment_reference": self.payment_reference or (
                 _("Encaissement global en réunion %s") % self.meeting_id.name
                 if self.meeting_id else
+                _("Règlement de la situation de %s") % self.member_id.display_name
+                if is_member_payment else
                 _("Paiement priorisé de la cotisation %s") % self.subscription_line_id.subscription_id.display_name
             ),
             "has_allocations": True,
@@ -965,7 +1025,7 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
     def action_validate_payment(self):
         self.ensure_one()
 
-        if self.origin in ("meeting", "subscription"):
+        if self.origin in ("meeting", "subscription", "member"):
             return self._action_validate_prioritized_payment()
 
         amount_received = self.amount_received or 0.0

@@ -33,7 +33,7 @@
                         </style>
                         <div class="subscription-report-header">
                             <h2 class="subscription-report-title">Rapport de clôture de cotisation</h2>
-                            <p class="subscription-report-subtitle">Synthèse des encaissements et de la situation finale du cycle.</p>
+                            <p class="subscription-report-subtitle">Synthèse des encaissements de la réunion et de la situation globale des membres.</p>
                         </div>
                         <table class="table table-borderless" style="font-size: 11px; margin-bottom: 12px;">
                             <tr>
@@ -45,20 +45,24 @@
                                 <td><strong>Clôturée par :</strong> <span t-field="session.closed_by_id"/></td>
                             </tr>
                         </table>
+                        <!-- Situation globale de chaque membre (toutes ses créances),
+                             identique au tableau de l'onglet Trésorerie de la réunion. -->
+                        <t t-set="situations" t-value="session.meeting_id.treasury_member_situation_ids.sorted(lambda item: item.member_id.display_name or '')"/>
+                        <t t-set="money" t-value="{'widget': 'monetary', 'display_currency': session.currency_id}"/>
                         <table class="subscription-report-summary">
                             <tr>
-                                <td><span class="label">Montant attendu</span><span class="value" t-field="session.closed_expected_amount"/></td>
-                                <td><span class="label">Montant encaissé</span><span class="value" t-field="session.closed_collected_amount"/></td>
-                                <td><span class="label">Membres réglés</span><span class="value" t-field="session.closed_paid_count"/></td>
+                                <td><span class="label">Encaissé en séance</span><span class="value" t-esc="sum(situations.mapped('amount_paid_in_meeting'))" t-options="money"/></td>
+                                <td><span class="label">Reste dû (situation globale)</span><span class="value" t-esc="sum(situations.mapped('amount_due'))" t-options="money"/></td>
+                                <td><span class="label">Membres réglés</span><span class="value" t-esc="len(situations.filtered(lambda item: item.payment_state == 'paid'))"/></td>
                                 <td><span class="label">Date de clôture</span><span class="value" t-field="session.closed_at" t-options="{'widget': 'datetime', 'format': 'dd/MM/yyyy HH:mm'}"/></td>
                             </tr>
                         </table>
                         <table class="subscription-report-summary">
                             <tr>
-                                <td><span class="label">Participants</span><span class="value" t-esc="len(session.snapshot_ids)"/></td>
-                                <td><span class="label">Partiellement réglés</span><span class="value" t-field="session.closed_partial_count"/></td>
-                                <td><span class="label">Impayés</span><span class="value" t-field="session.closed_unpaid_count"/></td>
-                                <td><span class="label">Pénalités</span><span class="value" t-field="session.closed_penalty_amount"/></td>
+                                <td><span class="label">Membres appelés</span><span class="value" t-esc="len(situations)"/></td>
+                                <td><span class="label">Partiellement réglés</span><span class="value" t-esc="len(situations.filtered(lambda item: item.payment_state == 'partial'))"/></td>
+                                <td><span class="label">Non réglés</span><span class="value" t-esc="len(situations.filtered(lambda item: item.payment_state == 'not_paid'))"/></td>
+                                <td><span class="label">Encaissements validés</span><span class="value" t-esc="len(session.get_meeting_payments())"/></td>
                             </tr>
                         </table>
                         <table class="subscription-report-summary">
@@ -70,14 +74,15 @@
                             </tr>
                         </table>
 
+                        <t t-set="meeting_payments" t-value="session.get_meeting_payments()"/>
                         <h3 class="subscription-report-section">Détail des encaissements validés</h3>
                         <table class="subscription-report-table">
                             <thead><tr><th>N° paiement</th><th>Date</th><th>Membre</th><th>Mode</th><th>Référence</th><th class="amount">Montant</th></tr></thead>
                             <tbody>
-                                <tr t-foreach="session.payment_ids.filtered(lambda payment: payment.state in ('collected', 'confirmed'))" t-as="payment">
+                                <tr t-foreach="meeting_payments" t-as="payment">
                                     <td><span t-field="payment.name"/></td><td><span t-field="payment.payment_date"/></td><td><span t-field="payment.member_id"/></td><td><span t-field="payment.payment_method"/></td><td><span t-field="payment.payment_reference"/></td><td class="amount"><span t-field="payment.amount"/></td>
                                 </tr>
-                                <tr t-if="not session.payment_ids.filtered(lambda payment: payment.state in ('collected', 'confirmed'))"><td colspan="6" class="subscription-report-empty">Aucun encaissement validé pour cette session.</td></tr>
+                                <tr t-if="not meeting_payments"><td colspan="6" class="subscription-report-empty">Aucun encaissement validé pour cette réunion.</td></tr>
                             </tbody>
                             <tfoot><tr><td colspan="5" style="text-align: right; font-weight: 700;">Total des encaissements validés</td><td class="amount" style="font-weight: 700;"><span t-field="session.payment_total"/></td></tr></tfoot>
                         </table>
@@ -92,22 +97,31 @@
                             <tfoot><tr><td colspan="4" style="text-align: right; font-weight: 700;">Reliquat versé en trésorerie</td><td class="amount" style="font-weight: 700;"><span t-field="session.period_id.settled_amount"/></td></tr></tfoot>
                         </table>
 
-                        <h3 class="subscription-report-section">Situation des membres à la clôture</h3>
+                        <h3 class="subscription-report-section">Situation globale des membres</h3>
                         <table class="subscription-report-table">
-                            <thead><tr><th>Membre</th><th class="amount">Dû</th><th class="amount">Pénalité</th><th class="amount">Réglé</th><th class="amount">Impayé</th><th>État</th></tr></thead>
-                            <tbody><tr t-foreach="session.snapshot_ids" t-as="line"><td><span t-field="line.member_name"/></td><td class="amount"><span t-field="line.amount_due"/></td><td class="amount"><span t-field="line.penalty_amount"/></td><td class="amount"><span t-field="line.amount_paid"/></td><td class="amount"><span t-field="line.balance"/></td><td><span t-field="line.payment_state"/></td></tr></tbody>
+                            <thead><tr><th>N°</th><th>Membre</th><th class="amount">Encaissé en séance</th><th class="amount">Reste dû</th><th>État</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="situations" t-as="situation"><td><span t-esc="situation.member_code or ''"/></td><td><span t-esc="situation.member_id.display_name"/></td><td class="amount"><span t-esc="situation.amount_paid_in_meeting" t-options="money"/></td><td class="amount"><span t-esc="situation.amount_due" t-options="money"/></td><td><span t-field="situation.payment_state"/></td></tr>
+                                <!-- Anciennes réunions sans tableau de trésorerie : situation figée du cycle. -->
+                                <tr t-if="not situations" t-foreach="session.snapshot_ids" t-as="line"><td><span t-field="line.member_code"/></td><td><span t-field="line.member_name"/></td><td class="amount"><span t-field="line.amount_paid"/></td><td class="amount"><span t-field="line.balance"/></td><td><span t-field="line.payment_state"/></td></tr>
+                                <tr t-if="not situations and not session.snapshot_ids"><td colspan="5" class="subscription-report-empty">Aucun membre appelé dans cette réunion.</td></tr>
+                            </tbody>
+                            <tfoot><tr><td colspan="2" style="text-align: right; font-weight: 700;">Total</td><td class="amount" style="font-weight: 700;"><span t-esc="sum(situations.mapped('amount_paid_in_meeting'))" t-options="money"/></td><td class="amount" style="font-weight: 700;"><span t-esc="sum(situations.mapped('amount_due'))" t-options="money"/></td><td/></tr></tfoot>
                         </table>
 
-                        <h3 class="subscription-report-section">Décision de clôture</h3>
                         <h3 class="subscription-report-section">Détail des recouvrements par membre</h3>
-                        <t t-foreach="session.snapshot_ids" t-as="member_line">
+                        <t t-foreach="situations" t-as="situation">
+                            <t t-set="member_payments" t-value="session.get_member_recovery_details(situation.member_id)"/>
                             <div style="margin: 0 0 10px; padding: 7px 9px; border: 1px solid #d9dde3; page-break-inside: avoid;">
-                                <div style="font-weight: 700; color: #1f4e78; margin-bottom: 4px;"><span t-field="member_line.member_name"/> — dû : <span t-field="member_line.amount_due"/> · réglé : <span t-field="member_line.amount_paid"/> · reste : <span t-field="member_line.balance"/></div>
-                                <table class="subscription-report-table" t-if="session.get_member_recovery_details(member_line.member_id)"><thead><tr><th>Référence</th><th>Date</th><th>Mode</th><th>Détail</th><th class="amount">Montant</th></tr></thead><tbody><tr t-foreach="session.get_member_recovery_details(member_line.member_id)" t-as="payment"><td><span t-field="payment.name"/></td><td><span t-field="payment.payment_date"/></td><td><span t-field="payment.payment_method"/></td><td><span t-field="payment.payment_reference"/></td><td class="amount"><span t-field="payment.amount"/></td></tr></tbody></table>
-                                <div t-if="not session.get_member_recovery_details(member_line.member_id)" class="subscription-report-empty">Aucun règlement validé pour ce membre durant cette réunion.</div>
+                                <div style="font-weight: 700; color: #1f4e78; margin-bottom: 4px;"><span t-esc="situation.member_id.display_name"/> — encaissé en séance : <span t-esc="situation.amount_paid_in_meeting" t-options="money"/> · reste dû : <span t-esc="situation.amount_due" t-options="money"/></div>
+                                <table class="subscription-report-table" t-if="member_payments"><thead><tr><th>Référence</th><th>Date</th><th>Mode</th><th>Détail</th><th class="amount">Montant</th></tr></thead><tbody><tr t-foreach="member_payments" t-as="payment"><td><span t-field="payment.name"/></td><td><span t-field="payment.payment_date"/></td><td><span t-field="payment.payment_method"/></td><td><span t-field="payment.payment_reference"/></td><td class="amount"><span t-field="payment.amount"/></td></tr></tbody></table>
+                                <div t-if="not member_payments" class="subscription-report-empty">Aucun règlement validé pour ce membre durant cette réunion.</div>
                             </div>
                         </t>
-                        <div class="subscription-report-note"><span t-field="session.closure_note"/></div>
+                        <t t-if="session.closure_note">
+                            <h3 class="subscription-report-section">Décision de clôture</h3>
+                            <div class="subscription-report-note"><span t-field="session.closure_note"/></div>
+                        </t>
                     </div>
                 </t>
             </t>

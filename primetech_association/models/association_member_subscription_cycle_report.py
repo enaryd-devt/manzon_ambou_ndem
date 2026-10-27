@@ -6,8 +6,39 @@ from odoo.exceptions import AccessError, ValidationError
 
 class AssociationMemberSubscriptionCycleReport(models.TransientModel):
     _name = "association.member.subscription.cycle.report"
-    _description = "Situation des cotisations du membre"
-    _order = "subscription_id, period_sequence, subscription_period_id"
+    _description = "Situation financière du membre"
+    _order = "situation_type, subscription_id, period_sequence, subscription_period_id, id"
+
+    situation_type = fields.Selection(
+        selection=[
+            ("subscription", "Cotisation"),
+            ("recovery", "Recouvrement"),
+            ("penalty", "Sanction financière"),
+            ("membership", "Frais d'adhésion"),
+            ("adjustment", "Ajustement de situation"),
+        ],
+        string="Type",
+        default="subscription",
+        required=True,
+        readonly=True,
+    )
+
+    label = fields.Char(
+        string="Élément",
+        readonly=True,
+    )
+
+    membership_fee_id = fields.Many2one(
+        comodel_name="association.membership.fee",
+        string="Frais / ajustement",
+        readonly=True,
+    )
+
+    penalty_id = fields.Many2one(
+        comodel_name="association.penalty",
+        string="Sanction",
+        readonly=True,
+    )
 
     member_id = fields.Many2one(
         comodel_name="association.member",
@@ -27,7 +58,6 @@ class AssociationMemberSubscriptionCycleReport(models.TransientModel):
         comodel_name="association.subscription",
         string="Cotisation",
         readonly=True,
-        required=True,
     )
 
     subscription_period_id = fields.Many2one(
@@ -46,7 +76,6 @@ class AssociationMemberSubscriptionCycleReport(models.TransientModel):
         comodel_name="association.subscription.line",
         string="Ligne de cotisation",
         readonly=True,
-        required=True,
     )
 
     period_sequence = fields.Integer(
@@ -63,24 +92,24 @@ class AssociationMemberSubscriptionCycleReport(models.TransientModel):
         store=True,
     )
 
-    @api.depends("subscription_period_id", "subscription_period_id.name")
+    @api.depends("situation_type", "subscription_period_id", "subscription_period_id.name")
     def _compute_cycle_label(self):
         for report in self:
-            report.cycle_label = (
-                report.subscription_period_id.display_name
-                if report.subscription_period_id
-                else _("Sans cycle")
-            )
+            if report.subscription_period_id:
+                report.cycle_label = report.subscription_period_id.display_name
+            elif report.situation_type in ("subscription", "recovery"):
+                report.cycle_label = _("Sans cycle")
+            else:
+                report.cycle_label = False
 
     company_id = fields.Many2one(
-        related="subscription_id.company_id",
+        comodel_name="res.company",
         string="Filiale",
         readonly=True,
-        store=True,
     )
 
     currency_id = fields.Many2one(
-        related="subscription_id.currency_id",
+        related="company_id.currency_id",
         string="Devise",
         readonly=True,
         store=True,
@@ -167,6 +196,24 @@ class AssociationMemberSubscriptionCycleReport(models.TransientModel):
         ]
 
         for current_payment in payment:
+            fee_reports = self.search([
+                ("create_uid", "=", self.env.uid),
+                ("member_id", "=", current_payment.member_id.id),
+                ("membership_fee_id", "!=", False),
+            ])
+            for report in fee_reports:
+                fee = report.membership_fee_id.sudo()
+                paid = fee.amount_paid or 0.0
+                balance = fee.amount_remaining or 0.0
+                report.write({
+                    "amount_paid": paid,
+                    "balance": balance,
+                    "payment_state": (
+                        "paid" if balance <= 0.01
+                        else "partial" if paid > 0.01 else "not_paid"
+                    ),
+                })
+
             for payment_line in current_payment.line_ids.filtered(
                 "subscription_line_id"
             ):
@@ -350,8 +397,24 @@ class AssociationMemberSubscriptionCycleReport(models.TransientModel):
 
         if self.balance <= 0:
             raise ValidationError(
-                _("Cette cotisation ne présente aucun reste à payer.")
+                _("Cet élément ne présente aucun reste à payer.")
             )
+
+        # Sanctions, membership fees and adjustments are not attached to a
+        # subscription: collect them through the member global payment,
+        # which applies the usual priority order.
+        if not self.subscription_line_id:
+            return {
+                "type": "ir.actions.act_window",
+                "name": _("Règlement de la situation du membre"),
+                "res_model": "association.subscription.payment.wizard",
+                "view_mode": "form",
+                "target": "new",
+                "context": {
+                    "default_origin": "member",
+                    "default_member_id": self.member_id.id,
+                },
+            }
 
         return {
             "type": "ir.actions.act_window",

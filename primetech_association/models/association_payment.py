@@ -167,6 +167,13 @@ class AssociationPayment(models.Model):
         string="Détail du règlement du reçu",
         compute="_compute_member_financial_situation",
     )
+    receipt_situation_snapshot = fields.Json(
+        string="Situation du membre à la validation",
+        readonly=True,
+        copy=False,
+        help="Situation figée au moment de la validation : un reçu réimprimé "
+             "affiche le solde dû à la date du paiement.",
+    )
 
     @api.depends(
         "member_id",
@@ -176,21 +183,19 @@ class AssociationPayment(models.Model):
         "line_ids.subscription_period_id",
         "priority_allocation_payload",
         "membership_fee_allocation_payload",
+        "receipt_situation_snapshot",
     )
     def _compute_member_financial_situation(self):
         """Receivable member dues for the receipt.
 
-        Only closed cycles are due.  A running cycle is informational and is
-        not yet included in the debt.  A running subscription without cycles
-        (for example a recovery) is due as a single line. Archived
-        subscriptions are never included.
+        The outstanding debt is the one of the member "Situation" (see
+        ``association.member._get_financial_situation_items``), so the
+        receipt, the payment wizard and the meeting treasury agree.
+        Archived subscriptions are never included.
         """
         # A member may print only their own receipt, but does not have broad
         # read access to subscriptions or sanctions.  Build the report data
         # with elevated rights and expose only the computed receipt values.
-        PaymentLine = self.env["association.payment.line"].sudo()
-        Period = self.env["association.subscription.period"].sudo()
-        SubscriptionLine = self.env["association.subscription.line"].sudo()
         for payment in self:
             receipt_payment = payment.sudo()
             # On a receipt, the "Montant total dû" is the outstanding debt,
@@ -234,122 +239,55 @@ class AssociationPayment(models.Model):
                         "label": fee_label + (" - %s" % fee.display_name if fee else ""),
                         "amount_display": amount_label(amount),
                     })
-            if receipt_payment.member_id:
-                lines = SubscriptionLine.search([
-                    ("member_id", "=", receipt_payment.member_id.id),
-                    ("subscription_id.active", "=", True),
-                    ("subscription_id.state", "in", ["running", "closed"]),
-                ])
-                for line in lines:
-                    all_periods = Period.search([
-                        ("subscription_id", "=", line.subscription_id.id),
-                    ])
-                    periods = all_periods.filtered(
-                        lambda period: period.state == "closed"
-                    )
-                    if periods:
-                        for period in periods:
-                            due = PaymentLine._get_period_due_for_line(line, period)
-                            paid = PaymentLine._get_period_paid_for_line(line, period)
-                            paid = min(paid, due)
-                            balance = max(due - paid, 0.0)
-                            if balance <= 0:
-                                continue
-                            total_paid += paid
-                            total_balance += balance
-                            situation_lines.append({
-                                "label": "%s — %s" % (
-                                    line.subscription_id.display_name,
-                                    period.display_name,
-                                ),
-                                "due": due,
-                                "paid": paid,
-                                "balance": balance,
-                                "due_display": amount_label(due),
-                                "paid_display": amount_label(paid),
-                                "balance_display": amount_label(balance),
-                            })
-                    elif not all_periods and line.subscription_id.state == "running":
-                        due = (
-                            line.recovery_amount
-                            if line.subscription_id.subscription_type == "recovery"
-                            else line.subscription_id.amount
-                        ) or 0.0
-                        paid_lines = PaymentLine.search([
-                            ("subscription_line_id", "=", line.id),
-                            ("payment_id.state", "=", "confirmed"),
-                            ("subscription_period_id", "=", False),
-                            ("payment_id.subscription_period_id", "=", False),
-                        ])
-                        paid = min(sum(paid_lines.mapped("amount_paid")), due)
-                        balance = max(due - paid, 0.0)
-                        if balance <= 0:
-                            continue
-                        total_paid += paid
-                        total_balance += balance
-                        situation_lines.append({
-                            "label": "%s — %s" % (
-                                line.subscription_id.display_name,
-                                _("Sans cycle"),
-                            ),
-                            "due": due,
-                            "paid": paid,
-                            "balance": balance,
-                            "due_display": amount_label(due),
-                            "paid_display": amount_label(paid),
-                            "balance_display": amount_label(balance),
-                        })
-            # Financial sanctions remain receivable independently from a
-            # subscription.  Include only their unpaid/partial balances.
-            penalties = self.env["association.penalty"].sudo().search([
-                ("member_id", "=", receipt_payment.member_id.id),
-                ("company_id", "=", receipt_payment.company_id.id),
-                ("penalty_type", "=", "fine"),
-                ("state", "in", ["validated", "executed"]),
-                ("amount_remaining", ">", 0),
-            ]) if receipt_payment.member_id else self.env["association.penalty"].sudo()
-            for penalty in penalties:
-                due = (penalty.amount_paid or 0.0) + (penalty.amount_remaining or 0.0)
-                paid = penalty.amount_paid or 0.0
-                balance = penalty.amount_remaining or 0.0
-                total_paid += paid
-                total_balance += balance
-                situation_lines.append({
-                    "label": "%s - %s" % (_("Sanction"), penalty.display_name),
-                    "due": due,
-                    "paid": paid,
-                    "balance": balance,
-                    "due_display": amount_label(due),
-                    "paid_display": amount_label(paid),
-                    "balance_display": amount_label(balance),
-                })
-            adjustments = self.env["association.membership.fee"].sudo().search([
-                ("member_id", "=", receipt_payment.member_id.id),
-                ("company_id", "=", receipt_payment.company_id.id),
-                ("fee_type", "=", "adjustment"),
-                ("state", "=", "due"),
-                ("amount_remaining", ">", 0),
-            ]) if receipt_payment.member_id else self.env["association.membership.fee"].sudo()
-            for adjustment in adjustments:
-                due = (adjustment.amount_paid or 0.0) + (adjustment.amount_remaining or 0.0)
-                paid = adjustment.amount_paid or 0.0
-                balance = adjustment.amount_remaining or 0.0
-                total_paid += paid
-                total_balance += balance
-                situation_lines.append({
-                    "label": "%s - %s" % (_("Ajustement de situation"), adjustment.display_name),
-                    "due": due,
-                    "paid": paid,
-                    "balance": balance,
-                    "due_display": amount_label(due),
-                    "paid_display": amount_label(paid),
-                    "balance_display": amount_label(balance),
-                })
+            # A validated payment shows the situation frozen at validation;
+            # older payments without snapshot fall back to the live one.
+            if receipt_payment.receipt_situation_snapshot:
+                situation_items = receipt_payment.receipt_situation_snapshot.get("lines") or []
+            elif receipt_payment.member_id:
+                situation_items = receipt_payment._get_receipt_situation_items()
+            else:
+                situation_items = []
+            for item in situation_items:
+                total_paid += item["paid"]
+                total_balance += item["balance"]
+                situation_lines.append(dict(
+                    item,
+                    due_display=amount_label(item["due"]),
+                    paid_display=amount_label(item["paid"]),
+                    balance_display=amount_label(item["balance"]),
+                ))
+
             payment.member_total_due = total_balance
             payment.member_total_paid = total_paid
             payment.member_total_balance = total_balance
             payment.member_receipt_situation_lines = situation_lines
             payment.member_receipt_payment_lines = payment_lines
+
+    def _get_receipt_situation_items(self):
+        """Outstanding member situation, as printed on the receipt.
+
+        Same source as the member "Situation" button: closed and running
+        cycles, recoveries, financial sanctions, membership fees and
+        situation adjustments.
+        """
+        self.ensure_one()
+        return [
+            {
+                "label": item["label"],
+                "due": item["amount_due"],
+                "paid": item["amount_paid"],
+                "balance": item["balance"],
+            }
+            for item in self.sudo().member_id._get_financial_situation_items(
+                only_outstanding=True,
+            )
+        ]
+
+    def _freeze_receipt_situation(self):
+        for record in self.sudo():
+            record.receipt_situation_snapshot = {"lines": (
+                record._get_receipt_situation_items() if record.member_id else []
+            )}
 
     payment_method = fields.Selection(
         selection="_get_payment_method_selection",
@@ -1438,6 +1376,50 @@ class AssociationPayment(models.Model):
                     })
                     transaction.action_validate()
 
+    def _revert_priority_recoveries(self):
+        """Cancel what _apply_priority_recoveries settled on sanctions."""
+        Penalty = self.env["association.penalty"]
+        for record in self:
+            for allocation in record.priority_allocation_payload or []:
+                penalty = Penalty.browse(allocation.get("penalty_id")).exists()
+                amount = float(allocation.get("amount") or 0.0)
+                if not penalty or amount <= 0:
+                    continue
+                penalty.write({"amount_paid": max((penalty.amount_paid or 0.0) - amount, 0.0)})
+                penalty.message_post(body=_(
+                    "Règlement de %(amount).2f %(currency)s annulé avec le paiement %(payment)s."
+                ) % {
+                    "amount": amount,
+                    "currency": record.currency_id.name or "",
+                    "payment": record.display_name,
+                })
+
+    def _revert_membership_fee_recoveries(self):
+        """Cancel what _apply_membership_fee_recoveries settled.
+
+        Membership fees and situation adjustments store their paid amount:
+        without this, a cancelled payment would leave them settled and the
+        member situation would be understated.
+        """
+        Fee = self.env["association.membership.fee"]
+        Transaction = self.env["association.fund.transaction"]
+        for record in self:
+            for allocation in record.membership_fee_allocation_payload or []:
+                fee = Fee.browse(allocation.get("membership_fee_id")).exists()
+                amount = float(allocation.get("amount") or 0.0)
+                if not fee or amount <= 0 or fee.state == "cancelled":
+                    continue
+                paid = max((fee.amount_paid or 0.0) - amount, 0.0)
+                fee.with_context(allow_adjustment_state_change=True).write({
+                    "amount_paid": paid,
+                    "state": "paid" if paid >= (fee.amount or 0.0) - 0.01 else "due",
+                })
+            Transaction.search([
+                ("origin_model", "=", "association.membership.fee"),
+                ("payment_id", "=", record.id),
+                ("state", "!=", "cancelled"),
+            ]).action_cancel()
+
     def _credit_member_account(
         self,
         amount,
@@ -2389,6 +2371,9 @@ class AssociationPayment(models.Model):
                         period,
                     )
 
+            # The receipt must keep the balance due on the payment date.
+            record._freeze_receipt_situation()
+
             # ======================================================
             # PAIEMENT DEPUIS LE COMPTE MEMBRE
             #
@@ -2545,9 +2530,15 @@ class AssociationPayment(models.Model):
             if record.state == "cancelled":
                 continue
 
+            was_confirmed = record.state == "confirmed"
+
             record.write({
                 "state": "cancelled",
             })
+
+            if was_confirmed:
+                record._revert_priority_recoveries()
+                record._revert_membership_fee_recoveries()
 
             penalty_transactions = self.env[
                 "association.fund.transaction"
@@ -2602,6 +2593,7 @@ class AssociationPayment(models.Model):
 
             record.write({
                 "state": "draft",
+                "receipt_situation_snapshot": False,
             })
 
             record._invalidate_subscription_lines()

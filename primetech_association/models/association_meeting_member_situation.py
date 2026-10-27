@@ -123,10 +123,11 @@ class AssociationMeetingMemberSituation(models.Model):
 
             # A membership fee remains in state ``due`` after a partial
             # payment.  amount_remaining is therefore the reliable value.
+            # A draft fee or adjustment is not validated yet: not payable.
             due += sum(Fee.search([
                 ("member_id", "=", rec.member_id.id),
                 ("company_id", "=", company.id),
-                ("state", "!=", "cancelled"),
+                ("state", "=", "due"),
                 ("amount_remaining", ">", 0),
             ]).mapped("amount_remaining"))
 
@@ -157,7 +158,13 @@ class AssociationMeetingMemberSituation(models.Model):
             ("subscription_id.state", "=", "running"),
         ], order="id", limit=1)
         if not line:
-            raise ValidationError(_("Ce membre n'a aucune cotisation en cours à régler. Les sanctions et frais restent consultables dans sa situation."))
+            # Only sanctions, membership fees or adjustments remain: collect
+            # them without a subscription anchor, still in this meeting.
+            return {
+                "type": "ir.actions.act_window", "name": _("Encaissement global du membre"),
+                "res_model": "association.subscription.payment.wizard", "view_mode": "form", "target": "new",
+                "context": {"default_origin": "member", "default_meeting_id": self.meeting_id.id, "default_member_id": self.member_id.id},
+            }
         return {
             "type": "ir.actions.act_window", "name": _("Encaissement global du membre"),
             "res_model": "association.subscription.payment.wizard", "view_mode": "form", "target": "new",
