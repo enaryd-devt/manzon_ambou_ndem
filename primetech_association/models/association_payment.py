@@ -446,6 +446,9 @@ class AssociationPayment(models.Model):
         string="Solde du compte membre",
         currency_field="currency_id",
         compute="_compute_member_account_balance",
+        groups="primetech_association.group_association_meeting_treasurer,"
+               "primetech_association.group_association_manager,"
+               "primetech_association.group_association_admin",
     )
 
     # ==========================================================

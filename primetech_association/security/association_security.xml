@@ -121,6 +121,12 @@
         <field name="category_id" ref="module_category_association"/>
         <field name="implied_ids" eval="[(4, ref('group_association_user'))]"/>
     </record>
+    <!-- Le président (et donc le vice-président, qui hérite de ses droits)
+         dispose des mêmes droits financiers que le trésorier.  Déclaré après
+         le trésorier pour que la référence existe dès la première installation. -->
+    <record id="group_association_meeting_president" model="res.groups">
+        <field name="implied_ids" eval="[(4, ref('group_association_meeting_treasurer'))]"/>
+    </record>
     <record id="group_association_accountant" model="res.groups">
         <field name="name">Comptable Association</field>
         <field name="category_id" ref="module_category_association"/>

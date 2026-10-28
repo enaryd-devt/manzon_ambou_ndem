@@ -524,6 +524,15 @@ class AssociationDashboard(models.AbstractModel):
 
         return {
             "user_name": self.env.user.name,
+            # Consultation rapide de la situation d'un membre : profils financiers.
+            "can_view_member_situation": any(
+                self.env.user.has_group(xmlid)
+                for xmlid in (
+                    "primetech_association.group_association_meeting_treasurer",
+                    "primetech_association.group_association_manager",
+                    "primetech_association.group_association_admin",
+                )
+            ),
             "company": {
                 "id":
                     company.id,

@@ -27,3 +27,4 @@ from . import member_activation_wizard
 from . import subscription_member_add_wizard
 
 from . import statement_report_wizard
+from . import member_situation_wizard

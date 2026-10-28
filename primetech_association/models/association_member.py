@@ -10,9 +10,20 @@
 ##############################################################################
 
 from datetime import date
+from html import escape
 
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, ValidationError
+
+
+# Profils autorisés à consulter les finances d'un membre : trésorier (dont
+# héritent le comptable, le président et le vice-président), responsable, administrateur.
+FINANCE_GROUP_XMLIDS = (
+    "primetech_association.group_association_meeting_treasurer",
+    "primetech_association.group_association_manager",
+    "primetech_association.group_association_admin",
+)
+FINANCE_GROUPS = ",".join(FINANCE_GROUP_XMLIDS)
 
 
 class AssociationMember(models.Model):
@@ -381,17 +392,20 @@ class AssociationMember(models.Model):
         comodel_name="association.member.wallet",
         string="Compte financier",
         compute="_compute_wallet_information",
+        groups=FINANCE_GROUPS,
     )
 
     wallet_balance = fields.Monetary(
         string="Solde du compte",
         currency_field="currency_id",
         compute="_compute_wallet_information",
+        groups=FINANCE_GROUPS,
     )
 
     wallet_transaction_count = fields.Integer(
         string="Mouvements du compte",
         compute="_compute_wallet_information",
+        groups=FINANCE_GROUPS,
     )
 
 
@@ -402,6 +416,7 @@ class AssociationMember(models.Model):
     def action_view_transactions(self):
 
         self.ensure_one()
+        self._check_financial_access()
 
         Wallet = self.env[
             "association.member.wallet"
@@ -533,6 +548,7 @@ class AssociationMember(models.Model):
     def action_view_wallet(self):
 
         self.ensure_one()
+        self._check_financial_access()
 
         wallet = self._get_or_create_wallet()
 
@@ -735,6 +751,7 @@ class AssociationMember(models.Model):
         currency_field="currency_id",
         compute="_compute_real_account_balance",
         store=False,
+        groups=FINANCE_GROUPS,
     )
 
     # ==========================================================
@@ -747,6 +764,7 @@ class AssociationMember(models.Model):
 
     def action_view_member_account_transactions(self):
         self.ensure_one()
+        self._check_financial_access()
 
         Account = self.env[
             "association.member.account"
@@ -1519,6 +1537,164 @@ class AssociationMember(models.Model):
             items = [item for item in items if item["balance"] > 0.01]
         return items
 
+    # Situation affichée sur la fiche membre et dans la consultation rapide
+    # du tableau de bord.  Même source que le bouton « Situation » et le reçu.
+    situation_amount_due = fields.Monetary(
+        string="Total dû", currency_field="currency_id",
+        compute="_compute_financial_situation_display",
+        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin",
+    )
+    situation_amount_paid = fields.Monetary(
+        string="Total réglé", currency_field="currency_id",
+        compute="_compute_financial_situation_display",
+        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin",
+    )
+    situation_balance = fields.Monetary(
+        string="Reste à payer", currency_field="currency_id",
+        compute="_compute_financial_situation_display",
+        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin",
+    )
+    situation_html = fields.Html(
+        string="Situation financière", sanitize=False,
+        compute="_compute_financial_situation_display",
+        groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin",
+    )
+
+    @api.depends_context("uid")
+    def _compute_financial_situation_display(self):
+        for member in self:
+            if not member.id:
+                member.situation_amount_due = 0.0
+                member.situation_amount_paid = 0.0
+                member.situation_balance = 0.0
+                member.situation_html = False
+                continue
+            items = member._get_financial_situation_items()
+            member.situation_amount_due = sum(item["amount_due"] for item in items)
+            member.situation_amount_paid = sum(item["amount_paid"] for item in items)
+            member.situation_balance = sum(item["balance"] for item in items)
+            member.situation_html = member._render_financial_situation_html(items)
+
+    def _render_financial_situation_html(self, items=None):
+        """Carte « situation financière » : indicateurs, répartition, détail."""
+        self.ensure_one()
+        if items is None:
+            items = self._get_financial_situation_items()
+        currency = self.company_id.currency_id or self.env.company.currency_id
+
+        def amount(value):
+            formatted = "{:,.0f}".format(value or 0.0).replace(",", " ")
+            symbol = escape(currency.symbol or "")
+            if currency.position == "before":
+                return "%s %s" % (symbol, formatted)
+            return "%s %s" % (formatted, symbol)
+
+        type_meta = {
+            "subscription": (_("Cotisations"), "fa-calendar"),
+            "recovery": (_("Recouvrements"), "fa-history"),
+            "penalty": (_("Sanctions financières"), "fa-gavel"),
+            "membership": (_("Frais d'adhésion"), "fa-id-card-o"),
+            "adjustment": (_("Ajustements"), "fa-sliders"),
+        }
+        state_meta = {
+            "paid": (_("Payé"), "paid"),
+            "partial": (_("Partiel"), "partial"),
+            "not_paid": (_("Non payé"), "not_paid"),
+        }
+        total_due = sum(item["amount_due"] for item in items)
+        total_paid = sum(item["amount_paid"] for item in items)
+        total_balance = sum(item["balance"] for item in items)
+        progress = min(round(total_paid * 100.0 / total_due), 100) if total_due else 100
+
+        if total_balance <= 0.01:
+            status = ('<span class="pt-sit-status paid"><i class="fa fa-check-circle"></i> %s</span>'
+                      % escape(_("À jour")))
+        else:
+            status = ('<span class="pt-sit-status due"><i class="fa fa-exclamation-circle"></i> %s</span>'
+                      % escape(_("Solde à régler")))
+
+        kpis = "".join(
+            '<div class="pt-sit-kpi %s"><span class="pt-sit-kpi-icon"><i class="fa %s"></i></span>'
+            '<div><small>%s</small><strong>%s</strong></div></div>'
+            % (css, icon, escape(label), amount(value))
+            for css, icon, label, value in (
+                ("due", "fa-file-text-o", _("Total dû"), total_due),
+                ("paid", "fa-check", _("Total réglé"), total_paid),
+                ("balance", "fa-hourglass-half", _("Reste à payer"), total_balance),
+            )
+        )
+
+        chips = ""
+        for situation_type, (label, icon) in type_meta.items():
+            balance = sum(item["balance"] for item in items if item["situation_type"] == situation_type)
+            count = sum(1 for item in items if item["situation_type"] == situation_type)
+            if not count:
+                continue
+            chips += (
+                '<div class="pt-sit-chip%s"><i class="fa %s"></i><span>%s</span><b>%s</b></div>'
+                % (" settled" if balance <= 0.01 else "", icon, escape(label), amount(balance))
+            )
+
+        rows = ""
+        for item in sorted(items, key=lambda line: (line["balance"] <= 0.01, list(type_meta).index(line["situation_type"]))):
+            label, icon = type_meta.get(item["situation_type"], ("", "fa-circle"))
+            state_label, state_css = state_meta.get(item["payment_state"], ("", ""))
+            rows += (
+                '<tr><td><span class="pt-sit-type"><i class="fa %s"></i>%s</span></td>'
+                '<td class="pt-sit-label">%s</td><td class="text-end">%s</td><td class="text-end">%s</td>'
+                '<td class="text-end fw-bold">%s</td><td class="text-center"><span class="pt-sit-badge %s">%s</span></td></tr>'
+                % (icon, escape(label), escape(item["label"]), amount(item["amount_due"]),
+                   amount(item["amount_paid"]), amount(item["balance"]), state_css, escape(state_label))
+            )
+        if not rows:
+            rows = ('<tr><td colspan="6" class="pt-sit-empty"><i class="fa fa-smile-o"></i> %s</td></tr>'
+                    % escape(_("Aucune créance enregistrée pour ce membre.")))
+
+        return (
+            '<div class="pt-situation">'
+            '<div class="pt-sit-head"><div><span class="pt-sit-kicker">%s</span><h3>%s</h3></div>%s</div>'
+            '<div class="pt-sit-kpis">%s</div>'
+            '<div class="pt-sit-progress"><div class="pt-sit-progress-label"><span>%s</span><b>%s %%</b></div>'
+            '<div class="pt-sit-bar"><span style="width:%s%%"></span></div></div>'
+            '<div class="pt-sit-chips">%s</div>'
+            '<div class="pt-sit-table-wrap"><table class="pt-sit-table"><thead><tr>'
+            '<th>%s</th><th>%s</th><th class="text-end">%s</th><th class="text-end">%s</th>'
+            '<th class="text-end">%s</th><th class="text-center">%s</th></tr></thead><tbody>%s</tbody></table></div>'
+            '</div>'
+        ) % (
+            escape(_("Situation financière")), escape(self.display_name), status,
+            kpis,
+            escape(_("Taux de règlement")), progress, progress,
+            chips,
+            escape(_("Type")), escape(_("Élément")), escape(_("Dû")), escape(_("Réglé")),
+            escape(_("Reste")), escape(_("État")), rows,
+        )
+
+    def _check_financial_access(self):
+        """Situation et comptes des membres : profils financiers uniquement."""
+        if not any(self.env.user.has_group(xmlid) for xmlid in FINANCE_GROUP_XMLIDS):
+            raise AccessError(_(
+                "Seuls le président, le trésorier, le comptable, le responsable et "
+                "l'administrateur peuvent consulter la situation financière "
+                "et le compte d'un membre."
+            ))
+
+    def action_register_situation_payment(self):
+        """Encaisser la situation globale du membre (ordre de priorité habituel)."""
+        self.ensure_one()
+        self._check_financial_access()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Règlement de la situation du membre"),
+            "res_model": "association.subscription.payment.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {
+                "default_origin": "member",
+                "default_member_id": self.id,
+            },
+        }
+
     def action_view_subscriptions(self):
         """
         Open the member financial situation: subscription cycles (paid,
@@ -1526,6 +1702,7 @@ class AssociationMember(models.Model):
         and situation adjustments.
         """
         self.ensure_one()
+        self._check_financial_access()
 
         Report = self.env[
             "association.member.subscription.cycle.report"

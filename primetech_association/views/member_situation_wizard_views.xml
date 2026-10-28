@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_member_situation_wizard_form" model="ir.ui.view">
+        <field name="name">association.member.situation.wizard.form</field>
+        <field name="model">association.member.situation.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Situation d'un membre">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <i class="fa fa-search text-primary" title="Rechercher"/>
+                    <field name="member_id" placeholder="Rechercher un membre par nom ou numéro…"
+                        options="{'no_create': True, 'no_open': True}" class="flex-grow-1"/>
+                </div>
+                <field name="situation_balance" invisible="1"/>
+                <field name="currency_id" invisible="1"/>
+                <div class="text-muted text-center py-4" invisible="member_id">
+                    <i class="fa fa-user-circle fa-2x d-block mb-2" title="Membre"/>
+                    Choisissez un membre pour afficher sa situation financière.
+                </div>
+                <field name="situation_html" nolabel="1" readonly="1" invisible="not member_id"/>
+                <footer>
+                    <button name="action_register_payment" type="object" string="Encaisser"
+                        icon="fa-money" class="btn-primary"
+                        invisible="not member_id or situation_balance &lt;= 0"/>
+                    <button name="action_view_detail" type="object" string="Détail ligne par ligne"
+                        icon="fa-list" class="btn-secondary" invisible="not member_id"/>
+                    <button name="action_open_member" type="object" string="Ouvrir la fiche"
+                        icon="fa-user" class="btn-secondary" invisible="not member_id"/>
+                    <button string="Fermer" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_member_situation_wizard" model="ir.actions.act_window">
+        <field name="name">Situation d'un membre</field>
+        <field name="res_model">association.member.situation.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{"dialog_size": "extra-large"}</field>
+    </record>
+</odoo>

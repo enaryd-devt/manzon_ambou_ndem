@@ -62,6 +62,7 @@
           <div class="quick_actions_intro"><span class="quick_actions_icon"><i class="fa fa-bolt"/></span><div><strong>Actions rapides</strong><small>Accédez aux opérations les plus fréquentes.</small></div></div>
           <div class="quick_actions_list">
             <button class="quick_action primary" t-on-click="createMember"><i class="fa fa-user-plus"/><span>Nouveau membre</span></button>
+            <button t-if="state.data.can_view_member_situation" class="quick_action" t-on-click="openMemberSituation"><i class="fa fa-balance-scale"/><span>Situation d'un membre</span></button>
             <button class="quick_action" t-on-click="openMeetings"><i class="fa fa-calendar-plus-o"/><span>Réunions</span></button>
             <button class="quick_action" t-on-click="openPayments"><i class="fa fa-money"/><span>Encaissements</span></button>
             <button class="quick_action" t-on-click="openSubscriptions"><i class="fa fa-refresh"/><span>Cotisations</span></button>

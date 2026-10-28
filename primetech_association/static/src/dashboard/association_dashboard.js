@@ -249,6 +249,12 @@ export class AssociationDashboard extends Component {
 
     }
 
+    openMemberSituation() {
+        return this.action.doAction(
+            "primetech_association.action_member_situation_wizard"
+        );
+    }
+
     createMember() {
         return this.action.doAction({
             type: "ir.actions.act_window",

@@ -314,6 +314,7 @@
                         <button
                             name="action_view_member_account_transactions"
                             type="object"
+                            groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin"
                             class="oe_stat_button"
                             icon="fa-exchange">
 
@@ -625,6 +626,22 @@
                     <!-- ================================================== -->
 
                     <notebook>
+
+                        <page
+                            string="Situation financière"
+                            name="financial_situation"
+                            invisible="not id"
+                            groups="primetech_association.group_association_meeting_treasurer,primetech_association.group_association_manager,primetech_association.group_association_admin">
+                            <div class="d-flex flex-wrap justify-content-end gap-2 mb-2">
+                                <button name="action_view_subscriptions" type="object"
+                                    string="Détail ligne par ligne" icon="fa-list" class="btn-secondary"/>
+                                <button name="action_register_situation_payment" type="object"
+                                    string="Encaisser" icon="fa-money" class="btn-primary"
+                                    invisible="situation_balance &lt;= 0"/>
+                            </div>
+                            <field name="situation_balance" invisible="1"/>
+                            <field name="situation_html" nolabel="1" readonly="1"/>
+                        </page>
 
                         <page string="Conditions d’adhésion" name="activation_requirements" invisible="state == 'draft'">
                             <div class="alert alert-info" role="alert">Les conditions d’adhésion sont enregistrées lors de l’activation du membre.</div>

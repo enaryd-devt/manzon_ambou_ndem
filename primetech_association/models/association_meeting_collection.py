@@ -319,6 +319,10 @@ class AssociationMeetingCollection(models.Model):
         currency_field="currency_id",
         compute="_compute_member_account_balance",
         store=False,
+        # Le compte d'un membre n'est visible que des profils financiers.
+        groups="primetech_association.group_association_meeting_treasurer,"
+               "primetech_association.group_association_manager,"
+               "primetech_association.group_association_admin",
     )
 
 
