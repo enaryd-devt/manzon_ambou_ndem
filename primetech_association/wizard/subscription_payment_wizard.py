@@ -170,8 +170,8 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
     )
     global_lines_html = fields.Html(string="Recouvrements en cours", readonly=True)
 
-    # Hors réunion, l'utilisateur choisit l'ordre de règlement des créances
-    # (glisser-déposer).  En réunion, l'ordre reste automatique.
+    # L'utilisateur choisit l'ordre de règlement des créances par
+    # glisser-déposer, y compris lors d'un encaissement en réunion.
     allocation_line_ids = fields.One2many(
         comodel_name="association.subscription.payment.wizard.line",
         inverse_name="wizard_id",
@@ -187,13 +187,19 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
         values = self._get_default_payment_values(fields_list)
         meeting_id = values.get("meeting_id") or self.env.context.get("default_meeting_id")
         member = self.env["association.member"].browse(values.get("member_id")).exists()
-        if meeting_id or not member or not values.get("origin"):
+        if not member or not values.get("origin"):
             return values
         subscription_line = self.env["association.subscription.line"].browse(
             values.get("subscription_line_id")
         ).exists()
         company = subscription_line.company_id or member.company_id or self.env.company
-        items = self._get_outstanding_items(member, company, values["origin"], subscription_line)
+        items = self._get_outstanding_items(
+            member,
+            company,
+            values["origin"],
+            subscription_line,
+            is_meeting_payment=bool(meeting_id),
+        )
         values["allocation_line_ids"] = [
             (0, 0, {
                 "sequence": (index + 1) * 10,
@@ -663,6 +669,7 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
         return {
             "origin": "member",
             "member_id": member.id,
+            "meeting_id": self.env.context.get("default_meeting_id") or False,
             "amount_due": global_due,
             "balance": global_due,
             "amount_received": (
@@ -1021,14 +1028,14 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
         priority_allocations = []
         membership_fee_allocations = []
 
-        # Les soldes sont relus au moment de la validation.  En réunion,
-        # l'ordre est automatique ; ailleurs, l'ordre choisi dans l'assistant
-        # s'applique (une créance apparue depuis l'ouverture passe en dernier).
-        is_meeting_payment = self.origin == "meeting" and bool(self.meeting_id)
+        # Les soldes sont relus au moment de la validation. L'ordre choisi
+        # dans l'assistant s'applique aussi en réunion ; une créance apparue
+        # depuis l'ouverture passe en dernier.
+        is_meeting_payment = bool(self.meeting_id)
         items = self._get_outstanding_items(
             self.member_id, company, self.origin, self.subscription_line_id, is_meeting_payment,
         )
-        if not self.meeting_id and self.allocation_line_ids:
+        if self.allocation_line_ids:
             chosen_rank = {
                 wizard_line._get_item_identity_from_line(): rank
                 for rank, wizard_line in enumerate(self.allocation_line_ids.sorted(lambda l: (l.sequence, l.id)))
