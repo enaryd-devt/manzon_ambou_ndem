@@ -44,6 +44,9 @@ class AssociationMemberSituationWizard(models.TransientModel):
     def action_view_detail(self):
         return self._get_member().action_view_subscriptions()
 
+    def action_print_situation_report(self):
+        return self._get_member().action_print_situation_report()
+
     def action_register_payment(self):
         return self._get_member().action_register_situation_payment()
 

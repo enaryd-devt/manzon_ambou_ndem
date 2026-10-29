@@ -439,3 +439,5 @@ body.o_association_member_only {
     .member_mobile_reference { display: grid !important; }
     .member_mobile_page { display: block !important; }
 }
+/* Tableau de bord filtré selon le rôle : pas de colonne vide. */
+.o_association_dashboard .dash_grid.role_grid{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}.o_association_dashboard .dash_grid.role_grid>article:last-child{grid-column:auto}.o_association_dashboard .kpi_grid.role_grid{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}

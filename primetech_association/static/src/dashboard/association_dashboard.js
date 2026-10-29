@@ -186,16 +186,27 @@ export class AssociationDashboard extends Component {
         return first ? Number(first.percentage || 0) : 0;
     }
 
+    hasZone(zone) {
+        return (this.state.data.zones || []).includes(zone);
+    }
+
+    // Tableau de bord partiel (selon le rôle) : grilles qui s'adaptent au
+    // nombre de panneaux affichés, sans colonne vide.
+    get roleGridClass() {
+        return (this.state.data.zones || []).length < 6 ? " role_grid" : "";
+    }
+
     get kpis() {
         const data = this.state.data;
+        // Chaque indicateur appartient à une zone ; seules celles du rôle sont affichées.
         return [
-            {label: "Membres actifs", value: this.formatAmount(data.members.active), icon: "fa-users", color: "purple", note: "Effectif actuel", action: "members"},
-            {label: "Total membres", value: this.formatAmount(data.members.total), icon: "fa-user-plus", color: "green", note: "Base des adhérents", action: "members"},
-            {label: "Cotisations collectées", value: this.formatAmount(data.payments.total), currency: true, icon: "fa-handshake-o", color: "orange", note: "Paiements confirmés", action: "payments"},
-            {label: "Trésorerie", value: this.formatAmount(data.treasury.balance), currency: true, icon: "fa-credit-card", color: "blue", note: "Solde disponible", action: "treasury"},
-            {label: "Événements", value: this.formatAmount(data.meetings.upcoming), icon: "fa-calendar", color: "purple", note: "À venir", action: "meetings"},
-            {label: "Pénalités à traiter", value: this.formatAmount(data.penalties.pending), icon: "fa-gavel", color: "red", note: "À régulariser", negative: true, action: "penalties"},
-        ];
+            {label: "Membres actifs", value: this.formatAmount(data.members.active), icon: "fa-users", color: "purple", note: "Effectif actuel", action: "members", zone: "members"},
+            {label: "Total membres", value: this.formatAmount(data.members.total), icon: "fa-user-plus", color: "green", note: "Base des adhérents", action: "members", zone: "members"},
+            {label: "Cotisations collectées", value: this.formatAmount(data.payments.total), currency: true, icon: "fa-handshake-o", color: "orange", note: "Paiements confirmés", action: "payments", zone: "collections"},
+            {label: "Trésorerie", value: this.formatAmount(data.treasury.balance), currency: true, icon: "fa-credit-card", color: "blue", note: "Solde disponible", action: "treasury", zone: "treasury"},
+            {label: "Événements", value: this.formatAmount(data.meetings.upcoming), icon: "fa-calendar", color: "purple", note: "À venir", action: "meetings", zone: "meetings"},
+            {label: "Pénalités à traiter", value: this.formatAmount(data.penalties.pending), icon: "fa-gavel", color: "red", note: "À régulariser", negative: true, action: "penalties", zone: "discipline"},
+        ].filter((kpi) => this.hasZone(kpi.zone));
     }
 
     get chartBars() {

@@ -23,6 +23,8 @@
                         invisible="not member_id or situation_balance &lt;= 0"/>
                     <button name="action_view_detail" type="object" string="Détail ligne par ligne"
                         icon="fa-list" class="btn-secondary" invisible="not member_id"/>
+                    <button name="action_print_situation_report" type="object" string="Imprimer la situation"
+                        icon="fa-print" class="btn-secondary" invisible="not member_id"/>
                     <button name="action_open_member" type="object" string="Ouvrir la fiche"
                         icon="fa-user" class="btn-secondary" invisible="not member_id"/>
                     <button string="Fermer" special="cancel" class="btn-secondary"/>

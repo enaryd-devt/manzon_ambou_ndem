@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <record id="action_report_member_situation" model="ir.actions.report">
+        <field name="name">Situation financière du membre</field>
+        <field name="model">association.member</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">primetech_association.report_member_situation_document</field>
+        <field name="report_file">primetech_association.report_member_situation_document</field>
+        <field name="print_report_name">'Situation - %s' % (object.display_name)</field>
+        <field name="binding_model_id" ref="model_association_member"/>
+        <field name="binding_type">report</field>
+        <field name="groups_id" eval="[(6, 0, [
+            ref('primetech_association.group_association_meeting_treasurer'),
+            ref('primetech_association.group_association_manager'),
+            ref('primetech_association.group_association_admin')])]"/>
+    </record>
+
+    <template id="report_member_situation_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="member">
+                <t t-call="web.external_layout">
+                    <t t-set="situation" t-value="member._get_situation_report_values()"/>
+                    <t t-set="currency" t-value="situation['currency']"/>
+                    <t t-set="money_options" t-value="{'widget': 'monetary', 'display_currency': currency}"/>
+
+                    <div class="page" style="font-family:Arial, sans-serif;color:#1f2a44;font-size:9.5pt;">
+
+                        <!-- EN-TÊTE -->
+                        <table style="width:100%;border-collapse:collapse;margin-bottom:14px;">
+                            <tr>
+                                <td style="background:#1f3a68;color:#ffffff;padding:12px 16px;border-radius:6px 0 0 6px;">
+                                    <div style="font-size:8pt;letter-spacing:1px;text-transform:uppercase;opacity:.8;">Rapport de situation</div>
+                                    <div style="font-size:16pt;font-weight:bold;">Situation financière du membre</div>
+                                </td>
+                                <td style="background:#1f3a68;color:#ffffff;padding:12px 16px;text-align:right;border-radius:0 6px 6px 0;white-space:nowrap;">
+                                    <div style="font-size:8pt;opacity:.8;">Édité le</div>
+                                    <div style="font-weight:bold;" t-esc="situation['print_date'].strftime('%d/%m/%Y %H:%M')"/>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- IDENTITÉ DU MEMBRE -->
+                        <table style="width:100%;border-collapse:collapse;margin-bottom:14px;border:1px solid #e4eaf4;">
+                            <tr>
+                                <td style="padding:8px 12px;width:50%;border-right:1px solid #e4eaf4;">
+                                    <div style="color:#6b7a99;font-size:8pt;text-transform:uppercase;">Membre</div>
+                                    <div style="font-weight:bold;font-size:11pt;" t-esc="member.display_name"/>
+                                    <div t-if="member.member_code" style="color:#6b7a99;">N° <span t-esc="member.member_code"/></div>
+                                </td>
+                                <td style="padding:8px 12px;width:50%;">
+                                    <div t-if="member.category_id"><span style="color:#6b7a99;">Catégorie :</span> <span t-esc="member.category_id.display_name"/></div>
+                                    <div t-if="member.join_date"><span style="color:#6b7a99;">Adhésion :</span> <span t-field="member.join_date"/></div>
+                                    <div t-if="member.phone or member.mobile"><span style="color:#6b7a99;">Téléphone :</span> <span t-esc="member.mobile or member.phone"/></div>
+                                    <div><span style="color:#6b7a99;">Statut :</span> <span t-field="member.state"/></div>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- INDICATEURS -->
+                        <table style="width:100%;border-collapse:separate;border-spacing:6px 0;margin:0 -6px 14px;">
+                            <tr>
+                                <td style="border:1px solid #e4eaf4;border-top:4px solid #2f6fe4;padding:8px 12px;width:25%;">
+                                    <div style="color:#6b7a99;font-size:8pt;text-transform:uppercase;">Total dû</div>
+                                    <div style="font-weight:bold;font-size:12pt;" t-esc="situation['total_due']" t-options="money_options"/>
+                                </td>
+                                <td style="border:1px solid #e4eaf4;border-top:4px solid #16865a;padding:8px 12px;width:25%;">
+                                    <div style="color:#6b7a99;font-size:8pt;text-transform:uppercase;">Total réglé</div>
+                                    <div style="font-weight:bold;font-size:12pt;color:#16865a;" t-esc="situation['total_paid']" t-options="money_options"/>
+                                </td>
+                                <td style="border:1px solid #e4eaf4;border-top:4px solid #c62f45;padding:8px 12px;width:25%;">
+                                    <div style="color:#6b7a99;font-size:8pt;text-transform:uppercase;">Reste à payer</div>
+                                    <div style="font-weight:bold;font-size:12pt;color:#c62f45;" t-esc="situation['total_balance']" t-options="money_options"/>
+                                </td>
+                                <td style="border:1px solid #e4eaf4;border-top:4px solid #c46a0a;padding:8px 12px;width:25%;">
+                                    <div style="color:#6b7a99;font-size:8pt;text-transform:uppercase;">Taux de règlement</div>
+                                    <div style="font-weight:bold;font-size:12pt;"><t t-esc="situation['progress']"/> %</div>
+                                    <div t-if="situation['total_balance'] &lt;= 0.01" style="color:#16865a;font-weight:bold;">À jour</div>
+                                    <div t-else="" style="color:#c62f45;font-weight:bold;">Solde à régler</div>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- RÉCAPITULATIF PAR NATURE -->
+                        <div t-if="situation['summary']" style="font-weight:bold;font-size:10.5pt;margin:4px 0 6px;">Récapitulatif par nature</div>
+                        <table t-if="situation['summary']" style="width:100%;border-collapse:collapse;margin-bottom:14px;">
+                            <thead>
+                                <tr style="background:#1f3a68;color:#ffffff;font-weight:bold;">
+                                    <th style="padding:6px 8px;text-align:left;">Nature</th>
+                                    <th style="padding:6px 8px;text-align:center;">Éléments</th>
+                                    <th style="padding:6px 8px;text-align:right;">Dû</th>
+                                    <th style="padding:6px 8px;text-align:right;">Réglé</th>
+                                    <th style="padding:6px 8px;text-align:right;">Reste</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="situation['summary']" t-as="group">
+                                    <tr t-att-style="'background:#f5f8fd;' if group_index % 2 else ''">
+                                        <td style="padding:5px 8px;border-bottom:1px solid #e4eaf4;" t-esc="group['label']"/>
+                                        <td style="padding:5px 8px;border-bottom:1px solid #e4eaf4;text-align:center;" t-esc="group['count']"/>
+                                        <td style="padding:5px 8px;border-bottom:1px solid #e4eaf4;text-align:right;" t-esc="group['amount_due']" t-options="money_options"/>
+                                        <td style="padding:5px 8px;border-bottom:1px solid #e4eaf4;text-align:right;color:#16865a;" t-esc="group['amount_paid']" t-options="money_options"/>
+                                        <td t-att-style="'padding:5px 8px;border-bottom:1px solid #e4eaf4;text-align:right;font-weight:bold;color:%s;' % ('#c62f45' if group['balance'] &gt; 0.01 else '#16865a')" t-esc="group['balance']" t-options="money_options"/>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+
+                        <!-- DÉTAIL -->
+                        <div style="font-weight:bold;font-size:10.5pt;margin:4px 0 6px;">Détail des éléments</div>
+                        <table style="width:100%;border-collapse:collapse;">
+                            <thead>
+                                <tr style="background:#1f3a68;color:#ffffff;font-weight:bold;">
+                                    <th style="padding:6px 8px;text-align:left;">Nature</th>
+                                    <th style="padding:6px 8px;text-align:left;">Élément</th>
+                                    <th style="padding:6px 8px;text-align:right;">Dû</th>
+                                    <th style="padding:6px 8px;text-align:right;">Réglé</th>
+                                    <th style="padding:6px 8px;text-align:right;">Reste</th>
+                                    <th style="padding:6px 8px;text-align:center;">État</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="situation['lines']" t-as="line">
+                                    <tr t-att-style="'page-break-inside:avoid;' + ('background:#f5f8fd;' if line_index % 2 else '')">
+                                        <td style="padding:5px 8px;border-bottom:1px solid #e4eaf4;color:#6b7a99;white-space:nowrap;" t-esc="line['type_label']"/>
+                                        <td style="padding:5px 8px;border-bottom:1px solid #e4eaf4;" t-esc="line['label']"/>
+                                        <td style="padding:5px 8px;border-bottom:1px solid #e4eaf4;text-align:right;white-space:nowrap;" t-esc="line['amount_due']" t-options="money_options"/>
+                                        <td style="padding:5px 8px;border-bottom:1px solid #e4eaf4;text-align:right;white-space:nowrap;color:#16865a;" t-esc="line['amount_paid']" t-options="money_options"/>
+                                        <td t-att-style="'padding:5px 8px;border-bottom:1px solid #e4eaf4;text-align:right;white-space:nowrap;font-weight:bold;color:%s;' % ('#c62f45' if line['balance'] &gt; 0.01 else '#16865a')" t-esc="line['balance']" t-options="money_options"/>
+                                        <td style="padding:5px 8px;border-bottom:1px solid #e4eaf4;text-align:center;">
+                                            <span t-att-style="'display:inline-block;padding:1px 8px;border-radius:10px;font-size:8pt;font-weight:bold;color:#ffffff;background:%s;' % {'paid': '#16865a', 'partial': '#c46a0a'}.get(line['payment_state'], '#c62f45')" t-esc="line['state_label']"/>
+                                        </td>
+                                    </tr>
+                                </t>
+                                <tr t-if="not situation['lines']">
+                                    <td colspan="6" style="padding:10px;text-align:center;color:#6b7a99;">Aucune créance enregistrée pour ce membre.</td>
+                                </tr>
+                            </tbody>
+                            <tfoot t-if="situation['lines']">
+                                <tr style="background:#eef2f9;font-weight:bold;">
+                                    <td colspan="2" style="padding:6px 8px;text-align:right;">TOTAL</td>
+                                    <td style="padding:6px 8px;text-align:right;white-space:nowrap;" t-esc="situation['total_due']" t-options="money_options"/>
+                                    <td style="padding:6px 8px;text-align:right;white-space:nowrap;color:#16865a;" t-esc="situation['total_paid']" t-options="money_options"/>
+                                    <td style="padding:6px 8px;text-align:right;white-space:nowrap;color:#c62f45;" t-esc="situation['total_balance']" t-options="money_options"/>
+                                    <td/>
+                                </tr>
+                            </tfoot>
+                        </table>
+
+                        <p style="margin-top:10px;color:#6b7a99;font-size:8pt;">
+                            Document édité par <t t-esc="situation['printed_by']"/>. Les montants reflètent la situation enregistrée à la date d'édition.
+                        </p>
+
+                        <!-- SIGNATURES -->
+                        <table style="width:100%;border-collapse:separate;border-spacing:10px 0;margin:24px -10px 0;page-break-inside:avoid;">
+                            <tr>
+                                <td t-foreach="['Le membre', 'Le trésorier', 'Le président']" t-as="signatory"
+                                    style="width:33%;border:1px solid #e4eaf4;border-radius:6px;padding:8px 10px;height:90px;vertical-align:top;">
+                                    <div style="font-weight:bold;" t-esc="signatory"/>
+                                    <div style="color:#6b7a99;font-size:8pt;">Nom, date et signature</div>
+                                </td>
+                            </tr>
+                        </table>
+
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>

@@ -15,9 +15,11 @@ class AssociationIrHttp(models.AbstractModel):
         Odoo and caused saving errors on user accounts.
         """
         info = super().session_info()
+        # Un membre du bureau qui est aussi membre ordinaire garde la
+        # navigation et le tableau de bord des responsables.
         if self.env.user.has_group(
             "primetech_association.group_association_member"
-        ):
+        ) and not self.env["association.dashboard"]._has_responsible_dashboard():
             # Consumed as soon as the web client starts so application
             # navigation never flashes before the member dashboard is loaded.
             info["primetech_association_member_only"] = True

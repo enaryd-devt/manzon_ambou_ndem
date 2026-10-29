@@ -385,6 +385,10 @@
                             Seules les cotisations du membre
                             avec un cycle en cours ou terminé
                             et un solde restant sont proposées.
+                            <br/>
+                            <strong>Ordre de règlement :</strong> faites glisser les lignes
+                            (poignée à gauche) pour choisir l'ordre, puis cliquez sur
+                            « Répartir automatiquement » ; la première ligne est réglée en premier.
 
                         </div>
 

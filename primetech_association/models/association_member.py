@@ -1695,6 +1695,82 @@ class AssociationMember(models.Model):
             },
         }
 
+    def action_open_identity_wizard(self):
+        """Modifier le nom et le compte utilisateur (secrétaire inclus)."""
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Nom et compte utilisateur"),
+            "res_model": "association.member.identity.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {"default_member_id": self.id},
+        }
+
+    def action_print_situation_report(self):
+        """Imprimer l'état global de la situation financière du membre."""
+        self._check_financial_access()
+        return self.env.ref(
+            "primetech_association.action_report_member_situation"
+        ).report_action(self)
+
+    def _get_situation_report_values(self):
+        """Données du rapport imprimé, issues de la même source que l'onglet."""
+        self.ensure_one()
+        self._check_financial_access()
+        type_labels = {
+            "subscription": _("Cotisation"),
+            "recovery": _("Recouvrement"),
+            "penalty": _("Sanction financière"),
+            "membership": _("Frais d'adhésion"),
+            "adjustment": _("Ajustement"),
+        }
+        state_labels = {
+            "paid": _("Payé"),
+            "partial": _("Partiel"),
+            "not_paid": _("Non payé"),
+        }
+        type_order = list(type_labels)
+        items = sorted(
+            self._get_financial_situation_items(),
+            key=lambda item: (
+                item["balance"] <= 0.01,
+                type_order.index(item["situation_type"]) if item["situation_type"] in type_order else 99,
+            ),
+        )
+        lines = [
+            dict(
+                item,
+                type_label=type_labels.get(item["situation_type"], ""),
+                state_label=state_labels.get(item["payment_state"], ""),
+            )
+            for item in items
+        ]
+        total_due = sum(item["amount_due"] for item in items)
+        total_paid = sum(item["amount_paid"] for item in items)
+        summary = []
+        for situation_type, label in type_labels.items():
+            typed = [item for item in items if item["situation_type"] == situation_type]
+            if typed:
+                summary.append({
+                    "label": label,
+                    "count": len(typed),
+                    "amount_due": sum(item["amount_due"] for item in typed),
+                    "amount_paid": sum(item["amount_paid"] for item in typed),
+                    "balance": sum(item["balance"] for item in typed),
+                })
+        return {
+            "lines": lines,
+            "summary": summary,
+            "total_due": total_due,
+            "total_paid": total_paid,
+            "total_balance": sum(item["balance"] for item in items),
+            "progress": min(round(total_paid * 100.0 / total_due), 100) if total_due else 100,
+            "currency": self.company_id.currency_id or self.env.company.currency_id,
+            "print_date": fields.Datetime.context_timestamp(self, fields.Datetime.now()),
+            "printed_by": self.env.user.name,
+        }
+
     def action_view_subscriptions(self):
         """
         Open the member financial situation: subscription cycles (paid,

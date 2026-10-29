@@ -3,6 +3,7 @@
 from dateutil.relativedelta import relativedelta
 
 from odoo import _, api, fields, models
+from odoo.exceptions import AccessError
 
 
 class AssociationDashboard(models.AbstractModel):
@@ -13,11 +14,150 @@ class AssociationDashboard(models.AbstractModel):
     # DONNÉES DU TABLEAU DE BORD
     # ==========================================================
 
+    # Actions rapides du tableau de bord selon la fonction de l'utilisateur.
+    # L'administrateur voit tout ; un responsable sans fonction de bureau
+    # conserve l'ensemble de gestion ; sinon, chaque fonction apporte ses
+    # actions (un utilisateur cumulant plusieurs fonctions en voit l'union).
+    DASHBOARD_QUICK_ACTIONS = {
+        "group_association_meeting_president": (
+            "new_member", "member_situation", "meetings", "payments",
+            "subscriptions", "treasury", "penalties",
+        ),
+        "group_association_meeting_treasurer": (
+            "member_situation", "meetings", "payments", "subscriptions", "treasury",
+        ),
+        "group_association_accountant": (
+            "member_situation", "payments", "treasury", "expenses",
+        ),
+        "group_association_meeting_secretary": (
+            "new_member", "members", "meetings",
+        ),
+        "group_association_meeting_censor": (
+            "meetings", "penalties",
+        ),
+    }
+    DASHBOARD_QUICK_ACTIONS_MANAGER = (
+        "new_member", "member_situation", "meetings", "payments",
+        "subscriptions", "treasury",
+    )
+    DASHBOARD_QUICK_ACTIONS_ORDER = (
+        "new_member", "members", "member_situation", "meetings", "payments",
+        "subscriptions", "treasury", "expenses", "penalties",
+    )
+
+    @api.model
+    def _get_dashboard_quick_actions(self):
+        user = self.env.user
+        if user.has_group("primetech_association.group_association_admin"):
+            allowed = set(self.DASHBOARD_QUICK_ACTIONS_ORDER)
+        else:
+            allowed = set()
+            for group, actions in self.DASHBOARD_QUICK_ACTIONS.items():
+                if user.has_group("primetech_association.%s" % group):
+                    allowed.update(actions)
+            if not allowed and user.has_group("primetech_association.group_association_manager"):
+                allowed.update(self.DASHBOARD_QUICK_ACTIONS_MANAGER)
+        return [key for key in self.DASHBOARD_QUICK_ACTIONS_ORDER if key in allowed]
+
+    # Zones du tableau de bord des responsables, attribuées selon le rôle.
+    # Chaque utilisateur ne reçoit (et ne peut ouvrir) que les indicateurs
+    # de ses zones ; un cumul de fonctions donne l'union des zones.
+    DASHBOARD_ZONES = ("members", "meetings", "collections", "treasury", "expenses", "discipline")
+    DASHBOARD_ROLE_ZONES = {
+        "group_association_meeting_president": DASHBOARD_ZONES,
+        "group_association_meeting_treasurer": ("members", "meetings", "collections", "treasury", "expenses"),
+        "group_association_accountant": ("collections", "treasury", "expenses"),
+        "group_association_meeting_secretary": ("members", "meetings"),
+        "group_association_meeting_censor": ("meetings", "discipline"),
+    }
+    DASHBOARD_ROLE_GROUPS = tuple(
+        "primetech_association.%s" % group
+        for group in (
+            "group_association_admin",
+            "group_association_manager",
+            "group_association_meeting_president",
+            "group_association_meeting_treasurer",
+            "group_association_accountant",
+            "group_association_meeting_secretary",
+            "group_association_meeting_censor",
+        )
+    )
+
+    @api.model
+    def _has_responsible_dashboard(self):
+        return any(self.env.user.has_group(xmlid) for xmlid in self.DASHBOARD_ROLE_GROUPS)
+
+    @api.model
+    def _get_dashboard_zones(self):
+        user = self.env.user
+        if user.has_group("primetech_association.group_association_admin"):
+            return list(self.DASHBOARD_ZONES)
+        zones = set()
+        for group, role_zones in self.DASHBOARD_ROLE_ZONES.items():
+            if user.has_group("primetech_association.%s" % group):
+                zones.update(role_zones)
+        if not zones and user.has_group("primetech_association.group_association_manager"):
+            zones.update(self.DASHBOARD_ZONES)
+        return [zone for zone in self.DASHBOARD_ZONES if zone in zones]
+
     @api.model
     def get_dashboard_data(self, options=None):
+        # Un membre du bureau qui est aussi membre ordinaire voit le tableau
+        # de bord des responsables ; les autres membres gardent leur espace.
+        if not self._has_responsible_dashboard():
+            if self.env.user.has_group("primetech_association.group_association_member"):
+                return self._get_member_portal_data()
+            raise AccessError(_("Vous n'avez pas accès au tableau de bord de l'association."))
 
-        if self.env.user.has_group("primetech_association.group_association_member"):
-            return self._get_member_portal_data()
+        zones = self._get_dashboard_zones()
+        quick_actions = self._get_dashboard_quick_actions()
+        can_view_member_situation = "member_situation" in quick_actions
+        # Les agrégats sont calculés avec des droits élevés : les profils du
+        # bureau n'ont pas tous la lecture sur chaque modèle.  Seules les
+        # zones autorisées sont ensuite renvoyées au navigateur.
+        data = self.sudo()._get_responsible_dashboard_data(options)
+        data.update({
+            "zones": zones,
+            "quick_actions": quick_actions,
+            "can_view_member_situation": can_view_member_situation,
+        })
+        return self._restrict_dashboard_data(data, zones)
+
+    @api.model
+    def _restrict_dashboard_data(self, data, zones):
+        empty_values = {
+            "members": {
+                "members": {"total": 0, "active": 0, "categories": []},
+                "recent_members": [],
+            },
+            "meetings": {
+                "meetings": {"upcoming": 0, "last_attendance": 0},
+                "upcoming_meetings": [],
+                "next_meeting": False,
+            },
+            "collections": {
+                "subscriptions": {"total": 0, "pending": 0},
+                "payments": {"count": 0, "total": 0.0, "monthly": []},
+                "recent_payments": [],
+            },
+            "treasury": {
+                "treasury": {"balance": 0.0},
+                "financial": {"in": 0.0, "out": 0.0, "net": 0.0, "transaction_count": 0},
+            },
+            "expenses": {
+                "expenses": {"total": 0.0, "breakdown": []},
+            },
+            "discipline": {
+                "penalties": {"total": 0, "pending": 0, "active": 0, "amount_remaining": 0.0, "recent": []},
+            },
+        }
+        for zone, values in empty_values.items():
+            if zone not in zones:
+                data.update(values)
+        return data
+
+    @api.model
+    def _get_responsible_dashboard_data(self, options=None):
 
         company = self.env.company
         today = fields.Date.context_today(self)
@@ -524,15 +664,6 @@ class AssociationDashboard(models.AbstractModel):
 
         return {
             "user_name": self.env.user.name,
-            # Consultation rapide de la situation d'un membre : profils financiers.
-            "can_view_member_situation": any(
-                self.env.user.has_group(xmlid)
-                for xmlid in (
-                    "primetech_association.group_association_meeting_treasurer",
-                    "primetech_association.group_association_manager",
-                    "primetech_association.group_association_admin",
-                )
-            ),
             "company": {
                 "id":
                     company.id,

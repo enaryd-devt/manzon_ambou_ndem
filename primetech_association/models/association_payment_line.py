@@ -17,7 +17,8 @@ from odoo.exceptions import ValidationError
 class AssociationPaymentLine(models.Model):
     _name = "association.payment.line"
     _description = "Ligne d'affectation de paiement"
-    _order = "id"
+    # La séquence porte l'ordre de règlement choisi par l'utilisateur.
+    _order = "sequence, id"
 
     # ==========================================================
     # TECHNIQUE

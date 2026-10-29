@@ -170,12 +170,133 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
     )
     global_lines_html = fields.Html(string="Recouvrements en cours", readonly=True)
 
+    # Hors réunion, l'utilisateur choisit l'ordre de règlement des créances
+    # (glisser-déposer).  En réunion, l'ordre reste automatique.
+    allocation_line_ids = fields.One2many(
+        comodel_name="association.subscription.payment.wizard.line",
+        inverse_name="wizard_id",
+        string="Ordre de règlement",
+    )
+
     # ==========================================================
     # DEFAULT GET
     # ==========================================================
 
     @api.model
     def default_get(self, fields_list):
+        values = self._get_default_payment_values(fields_list)
+        meeting_id = values.get("meeting_id") or self.env.context.get("default_meeting_id")
+        member = self.env["association.member"].browse(values.get("member_id")).exists()
+        if meeting_id or not member or not values.get("origin"):
+            return values
+        subscription_line = self.env["association.subscription.line"].browse(
+            values.get("subscription_line_id")
+        ).exists()
+        company = subscription_line.company_id or member.company_id or self.env.company
+        items = self._get_outstanding_items(member, company, values["origin"], subscription_line)
+        values["allocation_line_ids"] = [
+            (0, 0, {
+                "sequence": (index + 1) * 10,
+                "kind": item["kind"],
+                "detail": item["detail"],
+                "balance": item["balance"],
+                "penalty_id": item.get("penalty") and item["penalty"].id,
+                "membership_fee_id": item.get("fee") and item["fee"].id,
+                "subscription_line_id": item.get("line") and item["line"].id,
+                "period_id": item.get("period") and item["period"].id,
+            })
+            for index, item in enumerate(items)
+        ]
+        return values
+
+    @api.model
+    def _get_outstanding_items(self, member, company, origin, subscription_line=False, is_meeting_payment=False):
+        """Return the member's outstanding dues in the automatic order.
+
+        Financial sanctions come first, then each due follows its payment
+        priority (« Très haute » first) defined on the subscription, the
+        membership fee or the adjustment.  At equal priority the standard
+        order applies:
+        - in a meeting: cycles, recoveries, membership fees, adjustments;
+        - outside a meeting: membership fees, recoveries, cycles, adjustments.
+        """
+        PaymentLine = self.env["association.payment.line"]
+        items = []
+        penalties = self.env["association.penalty"].search([
+            ("member_id", "=", member.id),
+            ("company_id", "=", company.id),
+            ("penalty_type", "=", "fine"),
+            ("state", "in", ("validated", "executed")),
+            ("amount_remaining", ">", 0),
+        ], order="recovery_priority asc, incident_date asc, id asc")
+        for rank, penalty in enumerate(penalties):
+            items.append({
+                "key": (0, rank), "kind": "penalty", "penalty": penalty,
+                "balance": penalty.amount_remaining or 0.0,
+                "detail": penalty.penalty_description or penalty.display_name,
+            })
+
+        if is_meeting_payment:
+            standard_rank = {"cycle": 0, "recovery": 1, "membership": 2, "adjustment": 3}
+        else:
+            standard_rank = {"membership": 0, "recovery": 1, "cycle": 2, "adjustment": 3}
+        fees = self.env["association.membership.fee"].search([
+            ("member_id", "=", member.id),
+            ("company_id", "=", company.id),
+            ("state", "=", "due"),
+            ("amount_remaining", ">", 0),
+        ], order="id asc")
+        for fee in fees:
+            kind = "adjustment" if fee.fee_type == "adjustment" else "membership"
+            items.append({
+                "key": (1, int(fee.payment_priority or 3), standard_rank[kind], fields.Date.to_date(fee.create_date), fee.id, 0),
+                "kind": kind, "fee": fee, "balance": fee.amount_remaining or 0.0,
+                "detail": fee.name,
+            })
+
+        if origin in ("meeting", "member"):
+            lines = self.env["association.subscription.line"].search([
+                ("member_id", "=", member.id),
+                ("company_id", "=", company.id), ("active", "=", True),
+                ("subscription_id.state", "=", "running"),
+            ])
+        else:
+            lines = subscription_line or self.env["association.subscription.line"]
+        for line in lines:
+            subscription = line.subscription_id
+            priority = int(subscription.payment_priority or 3)
+            if subscription.subscription_type == "recovery":
+                if line.balance > 0.01:
+                    items.append({
+                        "key": (1, priority, standard_rank["recovery"], subscription.due_date or fields.Date.today(), line.id, 0),
+                        "kind": "recovery", "line": line, "period": False, "balance": line.balance,
+                        "detail": subscription.display_name,
+                    })
+                continue
+            for period in PaymentLine._get_unsettled_periods_for_line(line):
+                due = PaymentLine._get_period_due_for_line(line, period)
+                paid = PaymentLine._get_period_paid_for_line(line, period)
+                balance = max(due - paid, 0.0)
+                if balance > 0.01:
+                    items.append({
+                        "key": (1, priority, standard_rank["cycle"], period.due_date or fields.Date.today(), line.id, period.id),
+                        "kind": "cycle", "line": line, "period": period, "balance": balance,
+                        "detail": "%s — %s" % (subscription.display_name, period.display_name),
+                    })
+        return sorted(items, key=lambda item: item["key"])
+
+    @api.model
+    def _get_item_identity(self, item):
+        return (
+            item["kind"],
+            item["penalty"].id if item.get("penalty") else 0,
+            item["fee"].id if item.get("fee") else 0,
+            item["line"].id if item.get("line") else 0,
+            item["period"].id if item.get("period") else 0,
+        )
+
+    @api.model
+    def _get_default_payment_values(self, fields_list):
 
         values = super().default_get(fields_list)
 
@@ -883,9 +1004,6 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
         amount_received = self.amount_received or 0.0
         if amount_received <= 0:
             raise ValidationError(_("Le montant reçu doit être strictement supérieur à zéro."))
-        PaymentLine = self.env["association.payment.line"]
-        SubscriptionLine = self.env["association.subscription.line"]
-        Penalty = self.env["association.penalty"]
         payment_source = "meeting_cash" if self.meeting_id else "external"
         member_account = False
         if self.use_member_account:
@@ -901,85 +1019,31 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
         remaining = amount_received
         allocation_values = []
         priority_allocations = []
-
-        # Ordre impératif : sanctions disciplinaires financières, puis frais
-        # d'activation, avant la moindre cotisation.
-        priority_penalties = Penalty.search([
-            ("member_id", "=", self.member_id.id),
-            ("company_id", "=", company.id),
-            ("penalty_type", "=", "fine"),
-            ("state", "in", ("validated", "executed")),
-            ("amount_remaining", ">", 0),
-        ], order="recovery_priority asc, incident_date asc, id asc")
-        for penalty in priority_penalties:
-            if remaining <= 0:
-                break
-            allocated = min(remaining, penalty.amount_remaining or 0.0)
-            if allocated > 0:
-                priority_allocations.append({"penalty_id": penalty.id, "amount": allocated})
-                remaining -= allocated
-
-        # Après les sanctions, chaque créance est réglée selon sa priorité de
-        # règlement (« Très haute » en premier), définie par le responsable sur la
-        # cotisation, le frais d'adhésion ou l'ajustement.  À priorité égale,
-        # l'ordre standard s'applique :
-        # - en réunion : cycles, recouvrements, frais d'adhésion, ajustements ;
-        # - hors réunion : frais d'adhésion, recouvrements, cycles, ajustements.
-        is_meeting_payment = self.origin == "meeting" and bool(self.meeting_id)
-        if is_meeting_payment:
-            standard_rank = {"cycle": 0, "recovery": 1, "membership": 2, "adjustment": 3}
-        else:
-            standard_rank = {"membership": 0, "recovery": 1, "cycle": 2, "adjustment": 3}
         membership_fee_allocations = []
-        candidates = []
-        MembershipFee = self.env["association.membership.fee"]
-        fees = MembershipFee.search([
-            ("member_id", "=", self.member_id.id),
-            ("company_id", "=", company.id),
-            ("state", "=", "due"),
-            ("amount_remaining", ">", 0),
-        ], order="id asc")
-        for fee in fees:
-            kind = "adjustment" if fee.fee_type == "adjustment" else "membership"
-            candidates.append({
-                "key": (int(fee.payment_priority or 3), standard_rank[kind], fields.Date.to_date(fee.create_date), fee.id, 0),
-                "kind": kind, "fee": fee, "balance": fee.amount_remaining or 0.0,
-            })
 
-        if self.origin in ("meeting", "member"):
-            lines = SubscriptionLine.search([
-                ("member_id", "=", self.member_id.id),
-                ("company_id", "=", company.id), ("active", "=", True),
-                ("subscription_id.state", "=", "running"),
-            ])
-        else:
-            lines = self.subscription_line_id
-        for line in lines:
-            priority = int(line.subscription_id.payment_priority or 3)
-            if line.subscription_id.subscription_type == "recovery":
-                if line.balance > 0.01:
-                    candidates.append({
-                        "key": (priority, standard_rank["recovery"], line.subscription_id.due_date or fields.Date.today(), line.id, 0),
-                        "kind": "recovery", "line": line, "period": False, "balance": line.balance,
-                    })
-                continue
-            for period in PaymentLine._get_unsettled_periods_for_line(line):
-                due = PaymentLine._get_period_due_for_line(line, period)
-                paid = PaymentLine._get_period_paid_for_line(line, period)
-                balance = max(due - paid, 0.0)
-                if balance > 0.01:
-                    candidates.append({
-                        "key": (priority, standard_rank["cycle"], period.due_date or fields.Date.today(), line.id, period.id),
-                        "kind": "cycle", "line": line, "period": period, "balance": balance,
-                    })
+        # Les soldes sont relus au moment de la validation.  En réunion,
+        # l'ordre est automatique ; ailleurs, l'ordre choisi dans l'assistant
+        # s'applique (une créance apparue depuis l'ouverture passe en dernier).
+        is_meeting_payment = self.origin == "meeting" and bool(self.meeting_id)
+        items = self._get_outstanding_items(
+            self.member_id, company, self.origin, self.subscription_line_id, is_meeting_payment,
+        )
+        if not self.meeting_id and self.allocation_line_ids:
+            chosen_rank = {
+                wizard_line._get_item_identity_from_line(): rank
+                for rank, wizard_line in enumerate(self.allocation_line_ids.sorted(lambda l: (l.sequence, l.id)))
+            }
+            items.sort(key=lambda item: chosen_rank.get(self._get_item_identity(item), len(chosen_rank)))
 
-        for candidate in sorted(candidates, key=lambda item: item["key"]):
+        for candidate in items:
             if remaining <= 0:
                 break
             allocated = min(remaining, candidate["balance"])
             if allocated <= 0:
                 continue
-            if candidate.get("fee"):
+            if candidate.get("penalty"):
+                priority_allocations.append({"penalty_id": candidate["penalty"].id, "amount": allocated})
+            elif candidate.get("fee"):
                 membership_fee_allocations.append({"membership_fee_id": candidate["fee"].id, "amount": allocated})
             else:
                 line = candidate["line"]
@@ -1774,3 +1838,67 @@ class AssociationSubscriptionPaymentWizard(models.TransientModel):
                     ),
             },
         }
+
+
+class AssociationSubscriptionPaymentWizardLine(models.TransientModel):
+    _name = "association.subscription.payment.wizard.line"
+    _description = "Ordre de règlement d'un encaissement"
+    _order = "sequence, id"
+
+    wizard_id = fields.Many2one(
+        comodel_name="association.subscription.payment.wizard",
+        required=True,
+        ondelete="cascade",
+    )
+    sequence = fields.Integer(string="Ordre", default=10)
+    kind = fields.Selection(
+        selection=[
+            ("penalty", "Sanction financière"),
+            ("membership", "Frais d’adhésion"),
+            ("adjustment", "Ajustement de situation"),
+            ("recovery", "Recouvrement"),
+            ("cycle", "Cycle de cotisation"),
+        ],
+        string="Créance",
+        readonly=True,
+    )
+    detail = fields.Char(string="Détail", readonly=True)
+    currency_id = fields.Many2one(related="wizard_id.currency_id")
+    balance = fields.Monetary(string="Reste à régler", currency_field="currency_id", readonly=True)
+    amount_allocated = fields.Monetary(
+        string="Montant affecté",
+        currency_field="currency_id",
+        compute="_compute_amount_allocated",
+    )
+    penalty_id = fields.Many2one("association.penalty", readonly=True)
+    membership_fee_id = fields.Many2one("association.membership.fee", readonly=True)
+    subscription_line_id = fields.Many2one("association.subscription.line", readonly=True)
+    period_id = fields.Many2one("association.subscription.period", readonly=True)
+
+    @api.depends(
+        "sequence", "balance",
+        "wizard_id.amount_received",
+        "wizard_id.allocation_line_ids.sequence",
+    )
+    def _compute_amount_allocated(self):
+        # Aperçu : le montant reçu est consommé ligne par ligne, dans l'ordre
+        # affiché, exactement comme lors de la validation.
+        allocated = {}
+        for wizard in self.mapped("wizard_id"):
+            remaining = wizard.amount_received or 0.0
+            for line in wizard.allocation_line_ids.sorted(lambda l: l.sequence):
+                amount = min(max(remaining, 0.0), line.balance or 0.0)
+                allocated[line] = amount
+                remaining -= amount
+        for line in self:
+            line.amount_allocated = allocated.get(line, 0.0)
+
+    def _get_item_identity_from_line(self):
+        self.ensure_one()
+        return (
+            self.kind,
+            self.penalty_id.id or 0,
+            self.membership_fee_id.id or 0,
+            self.subscription_line_id.id or 0,
+            self.period_id.id or 0,
+        )

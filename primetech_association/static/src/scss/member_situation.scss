@@ -149,10 +149,19 @@
         }
     }
 
+    // 5 lignes visibles, le reste défile verticalement (en-tête figé).
     .pt-sit-table-wrap {
         border: 1px solid var(--pt-sit-line);
         border-radius: 12px;
         overflow-x: auto;
+        overflow-y: auto;
+        max-height: 232px;
+
+        thead th {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
     }
 
     .pt-sit-table {

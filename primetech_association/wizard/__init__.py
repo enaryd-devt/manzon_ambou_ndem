@@ -28,3 +28,4 @@ from . import subscription_member_add_wizard
 
 from . import statement_report_wizard
 from . import member_situation_wizard
+from . import member_identity_wizard

@@ -78,7 +78,7 @@ Bonnes pratiques
   des membres cohérents.
 """,
 
-    "version": "18.0.1.0.26",
+    "version": "18.0.1.0.31",
 
     "author": "PrimeTech Services",
 
@@ -126,6 +126,7 @@ Bonnes pratiques
         "views/membership_fee_views.xml",
         "views/member_situation_adjustment_views.xml",
         "views/member_situation_wizard_views.xml",
+        "views/member_identity_wizard_views.xml",
         "views/member_card_views.xml",
 
         "views/committee_views.xml",
@@ -159,6 +160,7 @@ Bonnes pratiques
         "report/member_card_report.xml",
         "report/member_directory_report.xml",
         "report/statement_report.xml",
+        "report/member_situation_report.xml",
         "report/payment_receipt_report.xml",
 
         "report/meeting_minutes_report.xml",

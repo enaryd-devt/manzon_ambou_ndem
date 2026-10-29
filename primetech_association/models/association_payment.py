@@ -1748,6 +1748,27 @@ class AssociationPayment(models.Model):
                         )
                     )
 
+            # Ordre proposé : priorité de règlement de la cotisation, puis
+            # échéance.  L'utilisateur peut ensuite le modifier par
+            # glisser-déposer avant la répartition automatique.
+            def _default_order_key(command):
+                values = command[2]
+                subscription = SubscriptionLine.browse(values["subscription_line_id"]).subscription_id
+                period = self.env["association.subscription.period"].browse(
+                    values.get("subscription_period_id") or []
+                )
+                return (
+                    int(subscription.payment_priority or 3),
+                    period.due_date or subscription.due_date or fields.Date.today(),
+                    values["subscription_line_id"],
+                    period.id or 0,
+                )
+
+            new_lines.sort(key=_default_order_key)
+            next_sequence = max(record.line_ids.mapped("sequence") or [0]) + 1
+            for index, command in enumerate(new_lines):
+                command[2]["sequence"] = next_sequence + index
+
             if not new_lines:
                 raise UserError(
                     _(
@@ -1814,8 +1835,10 @@ class AssociationPayment(models.Model):
 
             remaining_amount = record.amount
 
+            # L'ordre des lignes (glisser-déposer) est l'ordre de règlement.
             lines = record.line_ids.sorted(
                 key=lambda line: (
+                    line.sequence,
                     (
                         line.subscription_period_id.due_date
                         if line.subscription_period_id
