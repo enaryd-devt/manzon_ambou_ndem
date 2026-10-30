@@ -31,6 +31,9 @@ export class AssociationDashboard extends Component {
         this.state = useState({
 
             loading: true,
+            treasuryChoice: false,
+            treasuryQuery: "",
+            treasurySort: "date_desc",
 
             data: {
                 company: {},
@@ -445,14 +448,74 @@ export class AssociationDashboard extends Component {
         this.state.subscriptionDetail = false;
     }
 
-    async openMemberTreasury(fundId) {
+    openMemberTreasury(fund) {
+        // The desktop portal passes the full account object while the mobile
+        // member views pass its id. Support both entry points.
+        const selectedFund = typeof fund === "object"
+            ? fund
+            : (this.state.data.treasury_accounts || []).find(
+                (account) => account.id === fund
+            );
+        if (!selectedFund?.id) {
+            return;
+        }
+        this.state.treasuryChoice = selectedFund;
+    }
+
+    closeMemberTreasuryChoice() {
+        this.state.treasuryChoice = false;
+    }
+
+    async showMemberTreasuryHistory(transactionType) {
+        const fund = this.state.treasuryChoice;
+        if (!fund?.id || !["in", "out", "all"].includes(transactionType)) {
+            return;
+        }
         this.state.treasuryDetail = await this.orm.call(
-            "association.dashboard", "get_member_treasury_detail", [fundId]
+            "association.dashboard", "get_member_treasury_detail",
+            [fund.id, transactionType === "all" ? false : transactionType]
         );
+        if (this.state.treasuryDetail) {
+            this.state.treasuryDetail.transaction_type = transactionType;
+        }
+        this.state.treasuryQuery = "";
+        this.state.treasurySort = "date_desc";
     }
 
     closeMemberTreasury() {
         this.state.treasuryDetail = false;
+        // Keep the selected account open so the user can choose another
+        // history type without returning to the dashboard.
+    }
+
+    onTreasuryQuery(ev) {
+        this.state.treasuryQuery = ev.target.value || "";
+    }
+
+    onTreasurySort(ev) {
+        this.state.treasurySort = ev.target.value || "date_desc";
+    }
+
+    get memberTreasuryTransactions() {
+        const transactions = [...(this.state.treasuryDetail?.transactions || [])];
+        const query = this.state.treasuryQuery.trim().toLocaleLowerCase();
+        const filtered = query ? transactions.filter((transaction) =>
+            [transaction.description, transaction.date, transaction.amount]
+                .join(" ").toLocaleLowerCase().includes(query)
+        ) : transactions;
+        const sort = this.state.treasurySort;
+        return filtered.sort((left, right) => {
+            if (sort === "alpha_asc" || sort === "alpha_desc") {
+                const result = (left.description || "").localeCompare(right.description || "", "fr");
+                return sort === "alpha_asc" ? result : -result;
+            }
+            if (sort === "amount_asc" || sort === "amount_desc") {
+                const result = Number(left.amount || 0) - Number(right.amount || 0);
+                return sort === "amount_asc" ? result : -result;
+            }
+            const result = `${left.date || ""}-${left.id || 0}`.localeCompare(`${right.date || ""}-${right.id || 0}`);
+            return sort === "date_asc" ? result : -result;
+        });
     }
 
     async openMemberGlobalFinance(documentType, documentId) {

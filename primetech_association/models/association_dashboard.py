@@ -1227,8 +1227,8 @@ class AssociationDashboard(models.AbstractModel):
         }
 
     @api.model
-    def get_member_treasury_detail(self, fund_id):
-        """Provide a transparency view of a treasury account to members."""
+    def get_member_treasury_detail(self, fund_id, transaction_type=False):
+        """Provide one read-only credit or debit history to a member."""
         company = self.env.company
         fund = self.env["association.fund"].sudo().search([
             ("id", "=", fund_id), ("company_id", "=", company.id),
@@ -1236,13 +1236,19 @@ class AssociationDashboard(models.AbstractModel):
         if not fund:
             return False
         Transaction = self.env["association.fund.transaction"].sudo()
-        transactions = Transaction.search([
+        transaction_domain = [
             ("fund_id", "=", fund.id), ("state", "=", "validated"),
-        ], order="transaction_date desc, id desc", limit=30)
+        ]
+        if transaction_type in ("in", "out"):
+            transaction_domain.append(("transaction_type", "=", transaction_type))
+        transactions = Transaction.search(
+            transaction_domain, order="transaction_date desc, id desc", limit=500,
+        )
         return {
             "id": fund.id,
             "name": fund.display_name,
             "balance": fund.current_balance or 0.0,
+            "transaction_type": transaction_type if transaction_type in ("in", "out") else False,
             "transactions": [{
                 "id": transaction.id,
                 "date": fields.Date.to_string(transaction.transaction_date) if transaction.transaction_date else "",

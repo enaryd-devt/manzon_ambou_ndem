@@ -94,6 +94,12 @@ class AssociationMeetingSubscriptionSession(models.Model):
         string="Rapport de recouvrement partagé aux membres",
         default=False, readonly=True, copy=False, tracking=True,
     )
+    report_published_at = fields.Datetime(
+        string="Date de publication du rapport",
+        readonly=True,
+        copy=False,
+        tracking=True,
+    )
 
     _sql_constraints = [
         (
@@ -468,7 +474,10 @@ class AssociationMeetingSubscriptionSession(models.Model):
         for session in self:
             if session.state != "closed":
                 raise UserError(_("Le rapport ne peut être partagé qu'après la clôture."))
-            session.write({"report_shared": True})
+            session.write({
+                "report_shared": True,
+                "report_published_at": session.report_published_at or fields.Datetime.now(),
+            })
         return True
 
     def action_unshare_report(self):
@@ -489,7 +498,7 @@ class AssociationMeetingSubscriptionSession(models.Model):
         # A closed session remains financially immutable.  Publishing or
         # withdrawing its already frozen PDF is a communication setting only.
         protected_fields = set(vals) - {
-            "message_follower_ids", "message_ids", "report_shared",
+            "message_follower_ids", "message_ids", "report_shared", "report_published_at",
         }
         if protected_fields:
             for session in self:

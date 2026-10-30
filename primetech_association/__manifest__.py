@@ -211,6 +211,7 @@ Bonnes pratiques
             "primetech_association/static/src/dashboard/member_minutes.xml",
             "primetech_association/static/src/dashboard/member_mobile_shell.xml",
             "primetech_association/static/src/dashboard/member_mobile_reference.xml",
+            "primetech_association/static/src/dashboard/member_desktop_reference.xml",
             "primetech_association/static/src/dashboard/association_dashboard.scss",
             "primetech_association/static/src/scss/member_card.scss",
             "primetech_association/static/src/scss/member_list_filter.scss",

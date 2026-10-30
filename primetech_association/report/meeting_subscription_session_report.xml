@@ -14,11 +14,12 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="session">
                 <t t-call="web.external_layout">
-                    <div class="page" style="padding-top: 18mm;">
+                    <div class="page" style="margin-top: 0; padding-top: 0;">
                         <style>
-                            .subscription-report-header { border-bottom: 1px solid #d9dde3; margin-bottom: 13px; padding-bottom: 7px; }
+                            .subscription-report-header { border-bottom: 1px solid #d9dde3; margin: 0 0 13px; padding-bottom: 7px; }
                             .subscription-report-title { color: #1f4e78; font-size: 22px; font-weight: 700; margin: 0; }
                             .subscription-report-subtitle { color: #6c757d; font-size: 11px; margin: 4px 0 0; }
+                            .subscription-report-published { color: #52616b; float: right; font-size: 9px; margin: 0 0 3px; text-align: right; }
                             .subscription-report-section { color: #1f4e78; font-size: 14px; font-weight: 700; margin: 20px 0 8px; }
                             .subscription-report-summary { margin: 0 -5px 16px; }
                             .subscription-report-summary td { border: 1px solid #d9e2f3; padding: 8px 10px; width: 25%; }
@@ -32,6 +33,7 @@
                             .subscription-report-note { background: #f4f8fc; border-left: 3px solid #1f4e78; padding: 10px; white-space: pre-line; }
                         </style>
                         <div class="subscription-report-header">
+                            <div class="subscription-report-published">Publié le : <t t-if="session.report_published_at"><span t-field="session.report_published_at" t-options="{'widget': 'datetime', 'format': 'dd/MM/yyyy HH:mm'}"/></t><t t-else=""><span t-field="session.closed_at" t-options="{'widget': 'datetime', 'format': 'dd/MM/yyyy HH:mm'}"/></t></div>
                             <h2 class="subscription-report-title">Rapport de clôture de cotisation</h2>
                             <p class="subscription-report-subtitle">Synthèse des encaissements de la réunion et de la situation globale des membres.</p>
                         </div>
@@ -57,6 +59,13 @@
                                 <td><span class="label">Date de clôture</span><span class="value" t-field="session.closed_at" t-options="{'widget': 'datetime', 'format': 'dd/MM/yyyy HH:mm'}"/></td>
                             </tr>
                         </table>
+                        <div class="subscription-report-note" style="margin: -7px 0 16px;">
+                            <strong>Compte de trésorerie de versement :</strong>
+                            <span t-esc="session.meeting_id.pot_settlement_fund_id.display_name or 'Aucun versement final en trésorerie'"/>
+                            <t t-if="session.meeting_id.pot_settlement_transaction_id">
+                                — mouvement <span t-esc="session.meeting_id.pot_settlement_transaction_id.name"/>
+                            </t>
+                        </div>
                         <table class="subscription-report-summary">
                             <tr>
                                 <td><span class="label">Membres appelés</span><span class="value" t-esc="len(situations)"/></td>
@@ -87,6 +96,57 @@
                             <tfoot><tr><td colspan="5" style="text-align: right; font-weight: 700;">Total des encaissements validés</td><td class="amount" style="font-weight: 700;"><span t-field="session.payment_total"/></td></tr></tfoot>
                         </table>
 
+                        <!-- Les recettes et dépenses propres à la séance sont
+                             séparées des cotisations pour une lecture transparente. -->
+                        <t t-set="meeting_receipts" t-value="session.meeting_id.meeting_receipt_ids.filtered(lambda item: item.state == 'confirmed')"/>
+                        <t t-set="meeting_expenses" t-value="session.meeting_id.expense_ids.filtered(lambda item: item.state == 'validated')"/>
+                        <t t-set="meeting_receipt_total" t-value="sum(meeting_receipts.mapped('amount'))"/>
+                        <t t-set="meeting_expense_total" t-value="sum(meeting_expenses.mapped('amount'))"/>
+                        <h3 class="subscription-report-section">Recettes et dépenses de la réunion</h3>
+                        <table class="subscription-report-summary">
+                            <tr>
+                                <td><span class="label">Recettes de séance</span><span class="value" t-esc="meeting_receipt_total" t-options="money"/></td>
+                                <td><span class="label">Dépenses de séance</span><span class="value" t-esc="meeting_expense_total" t-options="money"/></td>
+                                <td><span class="label">Solde net de séance</span><span class="value" t-esc="meeting_receipt_total - meeting_expense_total" t-options="money"/></td>
+                                <td><span class="label">Opérations validées</span><span class="value" t-esc="len(meeting_receipts) + len(meeting_expenses)"/></td>
+                            </tr>
+                        </table>
+
+                        <h4 style="color: #28784b; font-size: 12px; margin: 12px 0 6px;">Détail des recettes de séance</h4>
+                        <table class="subscription-report-table">
+                            <thead><tr><th>Date</th><th>Contributeur</th><th>Motif</th><th>Mode</th><th>État</th><th class="amount">Montant</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="meeting_receipts" t-as="receipt">
+                                    <td><span t-field="receipt.receipt_date"/></td>
+                                    <td><span t-field="receipt.contributor_display"/></td>
+                                    <td><span t-field="receipt.reason"/></td>
+                                    <td><span t-field="receipt.payment_method"/></td>
+                                    <td><span t-field="receipt.state"/></td>
+                                    <td class="amount"><span t-field="receipt.amount"/></td>
+                                </tr>
+                                <tr t-if="not meeting_receipts"><td colspan="6" class="subscription-report-empty">Aucune recette de séance confirmée.</td></tr>
+                            </tbody>
+                            <tfoot><tr><td colspan="5" style="text-align: right; font-weight: 700;">Total des recettes de séance</td><td class="amount" style="font-weight: 700;"><span t-esc="meeting_receipt_total" t-options="money"/></td></tr></tfoot>
+                        </table>
+
+                        <h4 style="color: #a13838; font-size: 12px; margin: 16px 0 6px;">Détail des dépenses de séance</h4>
+                        <table class="subscription-report-table">
+                            <thead><tr><th>Date</th><th>Référence</th><th>Objet</th><th>Bénéficiaire</th><th>Mode</th><th>Justificatif</th><th class="amount">Montant</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="meeting_expenses" t-as="expense">
+                                    <td><span t-field="expense.expense_date"/></td>
+                                    <td><span t-esc="expense.name or expense.external_reference or '—'"/></td>
+                                    <td><span t-field="expense.subject"/><t t-if="expense.description"> — <span t-field="expense.description"/></t></td>
+                                    <td><span t-esc="expense.member_id.display_name or expense.beneficiary_name or '—'"/></td>
+                                    <td><span t-field="expense.payment_method"/></td>
+                                    <td><span t-esc="expense.receipt_number or expense.external_reference or '—'"/></td>
+                                    <td class="amount"><span t-field="expense.amount"/></td>
+                                </tr>
+                                <tr t-if="not meeting_expenses"><td colspan="7" class="subscription-report-empty">Aucune dépense de séance validée.</td></tr>
+                            </tbody>
+                            <tfoot><tr><td colspan="6" style="text-align: right; font-weight: 700;">Total des dépenses de séance</td><td class="amount" style="font-weight: 700;"><span t-esc="meeting_expense_total" t-options="money"/></td></tr></tfoot>
+                        </table>
+
                         <h3 class="subscription-report-section">Attributions et versement</h3>
                         <table class="subscription-report-table">
                             <thead><tr><th>Bénéficiaire</th><th>Mode</th><th>Date</th><th>Statut</th><th class="amount">Montant attribué</th></tr></thead>
@@ -94,7 +154,7 @@
                                 <tr t-foreach="session.allocation_ids" t-as="allocation"><td><span t-field="allocation.beneficiary_id"/></td><td><span t-field="allocation.allocation_method"/></td><td><span t-field="allocation.allocation_date"/></td><td><span t-field="allocation.state"/></td><td class="amount"><span t-field="allocation.amount"/></td></tr>
                                 <tr t-if="not session.allocation_ids"><td colspan="5" class="subscription-report-empty">Aucune attribution pour cette session.</td></tr>
                             </tbody>
-                            <tfoot><tr><td colspan="4" style="text-align: right; font-weight: 700;">Reliquat versé en trésorerie</td><td class="amount" style="font-weight: 700;"><span t-field="session.period_id.settled_amount"/></td></tr></tfoot>
+                            <tfoot><tr><td colspan="3" style="text-align: right; font-weight: 700;">Reliquat versé en trésorerie</td><td style="font-weight: 700;"><span t-esc="session.meeting_id.pot_settlement_fund_id.display_name or 'Non versé'"/></td><td class="amount" style="font-weight: 700;"><span t-field="session.period_id.settled_amount"/></td></tr></tfoot>
                         </table>
 
                         <h3 class="subscription-report-section">Situation globale des membres</h3>
