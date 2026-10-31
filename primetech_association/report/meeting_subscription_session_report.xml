@@ -76,7 +76,7 @@
                                 <td class="settled"><span class="label">Totalement réglés</span><span class="value" t-esc="len(situations.filtered(lambda item: item.payment_state == 'paid'))"/></td>
                                 <td class="partial"><span class="label">Partiellement réglés</span><span class="value" t-esc="len(situations.filtered(lambda item: item.payment_state == 'partial'))"/></td>
                                 <td><span class="label">Non réglés</span><span class="value" t-esc="len(situations.filtered(lambda item: item.payment_state == 'not_paid'))"/></td>
-                                <td><span class="label">Encaissements validés</span><span class="value" t-esc="len(session.get_meeting_payments())"/></td>
+                                <td><span class="label">Encaissements validés</span><span class="value" t-esc="len(situations.filtered(lambda item: item.payment_state in ('paid', 'partial')))"/></td>
                             </tr>
                         </table>
                         <table class="subscription-report-summary">
