@@ -1054,19 +1054,112 @@ class AssociationDashboard(models.AbstractModel):
                 "is_lifted": p.state == "lifted",
                 "is_active_alert": p in active_alert_sanctions,
             } for p in penalties],
-            "subscriptions": [{
-                "id": line.id,
-                "name": line.subscription_id.display_name or "Cotisation",
-                "cycle": line.current_period_id.display_name or "",
-                "contribution_due": line.cycle_base_amount_due or 0.0,
-                "penalty_due": line.cycle_penalty_amount or 0.0,
-                "total_due": line.cycle_amount_due or line.amount_due or 0.0,
-                "paid": line.amount_paid or 0.0,
-                "balance": line.balance or 0.0,
-                "state": payment_state_labels.get(line.payment_state, line.payment_state or ""),
-            } for line in subscription_lines],
+            "subscriptions": list(
+                self._get_member_subscription_summaries(member, subscription_lines).values()
+            ),
         }
         return values
+
+    @api.model
+    def _get_member_subscription_summaries(self, member, subscription_lines):
+        """Return the portal values of each subscription line of a member.
+
+        A subscription with cycles cumulates all its cycles (running and
+        closed): amounts due, paid and remaining, with a status derived from
+        the remaining amount.  The cycles come from the member financial
+        situation, the same source as the "Situation" button and the payment
+        receipt, so the portal always shows the treasurer's figures.
+        """
+        Period = self.env["association.subscription.period"].sudo()
+        payment_state_labels = dict(
+            self.env["association.subscription.line"]._fields["payment_state"]._description_selection(self.env)
+        )
+        period_state_labels = dict(Period._fields["state"]._description_selection(self.env))
+
+        def payment_state(due, paid, balance):
+            if balance > 0.01:
+                return "partial" if paid > 0.01 else "not_paid"
+            return "paid" if due > 0.01 else "not_paid"
+
+        def date_string(value):
+            return fields.Date.to_string(value) if value else ""
+
+        cycles_by_line = {}
+        for item in member._get_financial_situation_items():
+            if item["situation_type"] == "subscription" and item.get("subscription_period_id"):
+                cycles_by_line.setdefault(item["subscription_line_id"], []).append(item)
+
+        summaries = {}
+        for line in subscription_lines:
+            items = cycles_by_line.get(line.id)
+            if not items:
+                # Subscription without cycle (or not started yet): unchanged.
+                summaries[line.id] = {
+                    "id": line.id,
+                    "name": line.subscription_id.display_name or _("Cotisation"),
+                    "cycle": line.current_period_id.display_name or "",
+                    "cycle_count": 0,
+                    "contribution_due": line.cycle_base_amount_due or 0.0,
+                    "penalty_due": line.cycle_penalty_amount or 0.0,
+                    "total_due": line.cycle_amount_due or line.amount_due or 0.0,
+                    "paid": line.amount_paid or 0.0,
+                    "balance": line.balance or 0.0,
+                    "state": payment_state_labels.get(line.payment_state, line.payment_state or ""),
+                    "state_code": line.payment_state or "",
+                    "last_payment_date": date_string(line.payment_date),
+                    "cycles": [],
+                }
+                continue
+            periods = Period.browse([item["subscription_period_id"] for item in items])
+            cycles = []
+            for item, period in zip(items, periods):
+                cycles.append({
+                    "id": period.id,
+                    "name": period.display_name or "",
+                    "period_state": period_state_labels.get(period.state, period.state or ""),
+                    "is_running": period.state == "running",
+                    "start_date": date_string(period.period_start_date),
+                    "end_date": date_string(period.period_end_date),
+                    "due_date": date_string(period.due_date),
+                    "contribution_due": item["base_amount_due"],
+                    "penalty_due": item["penalty_due_amount"],
+                    "total_due": item["amount_due"],
+                    "paid": item["amount_paid"],
+                    "balance": item["balance"],
+                    "state": payment_state_labels.get(item["payment_state"], item["payment_state"]),
+                    "state_code": item["payment_state"],
+                    "last_payment_date": date_string(item["last_payment_date"]),
+                })
+            total_due = sum(cycle["total_due"] for cycle in cycles)
+            paid = sum(cycle["paid"] for cycle in cycles)
+            balance = sum(cycle["balance"] for cycle in cycles)
+            state = payment_state(total_due, paid, balance)
+            running = [cycle["name"] for cycle in cycles if cycle["is_running"]]
+            if len(cycles) > 1:
+                cycle_label = _("%s cycles") % len(cycles)
+                if running:
+                    cycle_label = _("%(count)s cycles · en cours : %(name)s") % {
+                        "count": len(cycles), "name": running[0],
+                    }
+            else:
+                cycle_label = cycles[0]["name"]
+            last_payments = [cycle["last_payment_date"] for cycle in cycles if cycle["last_payment_date"]]
+            summaries[line.id] = {
+                "id": line.id,
+                "name": line.subscription_id.display_name or _("Cotisation"),
+                "cycle": cycle_label,
+                "cycle_count": len(cycles),
+                "contribution_due": sum(cycle["contribution_due"] for cycle in cycles),
+                "penalty_due": sum(cycle["penalty_due"] for cycle in cycles),
+                "total_due": total_due,
+                "paid": paid,
+                "balance": balance,
+                "state": payment_state_labels.get(state, state),
+                "state_code": state,
+                "last_payment_date": max(last_payments) if last_payments else "",
+                "cycles": cycles,
+            }
+        return summaries
 
     @api.model
     def set_member_theme(self, theme):
@@ -1212,19 +1305,7 @@ class AssociationDashboard(models.AbstractModel):
         ], limit=1)
         if not line:
             return False
-        labels = dict(line._fields["payment_state"]._description_selection(self.env))
-        return {
-            "id": line.id,
-            "name": line.subscription_id.display_name or "Cotisation",
-            "cycle": line.current_period_id.display_name or "",
-            "state": labels.get(line.payment_state, line.payment_state or ""),
-            "contribution_due": line.cycle_base_amount_due or 0.0,
-            "penalty_due": line.cycle_penalty_amount or 0.0,
-            "total_due": line.cycle_amount_due or line.amount_due or 0.0,
-            "paid": line.amount_paid or 0.0,
-            "balance": line.balance or 0.0,
-            "last_payment_date": fields.Date.to_string(line.payment_date) if line.payment_date else "",
-        }
+        return self._get_member_subscription_summaries(member, line)[line.id]
 
     @api.model
     def get_member_treasury_detail(self, fund_id, transaction_type=False):

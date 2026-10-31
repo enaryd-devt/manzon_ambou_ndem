@@ -78,7 +78,7 @@ Bonnes pratiques
   des membres cohérents.
 """,
 
-    "version": "18.0.1.0.31",
+    "version": "18.0.1.0.32",
 
     "author": "PrimeTech Services",
 
