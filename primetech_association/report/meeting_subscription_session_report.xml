@@ -22,9 +22,13 @@
                             .subscription-report-published { color: #52616b; float: right; font-size: 9px; margin: 0 0 3px; text-align: right; }
                             .subscription-report-section { color: #1f4e78; font-size: 14px; font-weight: 700; margin: 20px 0 8px; }
                             .subscription-report-summary { margin: 0 -5px 16px; }
-                            .subscription-report-summary td { border: 1px solid #d9e2f3; padding: 8px 10px; width: 25%; }
+                            .subscription-report-summary td { border: 1px solid #d9e2f3; padding: 8px 10px; }
                             .subscription-report-summary .label { color: #52616b; display: block; font-size: 9px; text-transform: uppercase; }
                             .subscription-report-summary .value { color: #1f4e78; display: block; font-size: 15px; font-weight: 700; margin-top: 3px; }
+                            .subscription-report-summary .settled { background: #edf8f1; border-color: #a8d9b7; }
+                            .subscription-report-summary .settled .label, .subscription-report-summary .settled .value { color: #19733b; }
+                            .subscription-report-summary .partial { background: #fff7e7; border-color: #efcf8f; }
+                            .subscription-report-summary .partial .label, .subscription-report-summary .partial .value { color: #a45b00; }
                             .subscription-report-table { font-size: 10px; width: 100%; }
                             .subscription-report-table th { background: #1f4e78; color: #fff; font-weight: 700; padding: 7px 5px; }
                             .subscription-report-table td { border-bottom: 1px solid #d9e2f3; padding: 6px 5px; vertical-align: top; }
@@ -69,7 +73,8 @@
                         <table class="subscription-report-summary">
                             <tr>
                                 <td><span class="label">Membres appelés</span><span class="value" t-esc="len(situations)"/></td>
-                                <td><span class="label">Partiellement réglés</span><span class="value" t-esc="len(situations.filtered(lambda item: item.payment_state == 'partial'))"/></td>
+                                <td class="settled"><span class="label">Totalement réglés</span><span class="value" t-esc="len(situations.filtered(lambda item: item.payment_state == 'paid'))"/></td>
+                                <td class="partial"><span class="label">Partiellement réglés</span><span class="value" t-esc="len(situations.filtered(lambda item: item.payment_state == 'partial'))"/></td>
                                 <td><span class="label">Non réglés</span><span class="value" t-esc="len(situations.filtered(lambda item: item.payment_state == 'not_paid'))"/></td>
                                 <td><span class="label">Encaissements validés</span><span class="value" t-esc="len(session.get_meeting_payments())"/></td>
                             </tr>
